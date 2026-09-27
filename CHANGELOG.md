@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.1.0] - 2026-09-27
+
+### Added
+
+- Add optional directory/workspace clustering that groups visible modules while retaining import edges and line-level inspection.
+- Add a mini overview for maps with more than 50 visible modules; click any area to navigate, inspect the current viewport, or center it with a keyboard-accessible button.
+- Label the overview with the current page and visible module count so paged maps are not mistaken for the full graph.
+
+### Quality
+
+- Browser-checked navigation and cluster readability on a generated 260-module repository; the overview remains anchored during both horizontal and vertical scrolling.
+- Retain exact edge click/keyboard behavior and source evidence in clustered mode.
+
 ## [1.0.0] - 2026-09-27
 
 ### Added

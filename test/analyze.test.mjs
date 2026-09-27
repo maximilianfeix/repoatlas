@@ -147,7 +147,8 @@ test('CLI runs outside project, returns JSON, and refuses accidental overwrite',
   assert.equal(JSON.parse(run('--json','doctor').stdout).offline,true);
   assert.equal(JSON.parse(run('.', '--json').stdout).modules.length,1);
   assert.equal(run('.').status,0);assert.equal(run('.').status,1);assert.equal(run('.','--force').status,0);
-  assert.match(await readFile(path.join(dir,'repoatlas.html'),'utf8'),/RepoAtlas/);
+  const html=await readFile(path.join(dir,'repoatlas.html'),'utf8');
+  assert.match(html,/RepoAtlas/);assert.match(html,/id="clusters"/);assert.match(html,/id="overview-svg"/);assert.match(html,/Center map/);
   const bad=run('--bad','--json');assert.equal(bad.status,1);assert.ok(JSON.parse(bad.stderr).error);
 });
 test('empty projects fail clearly',async t=>{await assert.rejects(()=>fixture(t,{}).then(dir=>analyze(dir)),/No TypeScript/);});

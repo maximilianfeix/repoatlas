@@ -36,6 +36,14 @@ The boundary view compares workspace packages and source directories. Each count
   <a href="https://maximilianfeix.github.io/repoatlas/examples/hono.html"><img src="docs/assets/boundary-matrix-preview.png" alt="Hono dependency boundary matrix with directory groups, import counts, and unreachable-module insight" width="1100"></a>
 </p>
 
+## Navigate larger codebases
+
+The Hono demo has 247 modules. RepoAtlas pages large results, groups the visible modules by their workspace or directory, and adds a clickable overview so wide maps stay navigable. The highlighted viewport moves with the graph; the module explorer remains available for keyboard navigation.
+
+<p align="center">
+  <a href="https://maximilianfeix.github.io/repoatlas/examples/hono.html"><img src="docs/assets/large-map-overview.png" alt="Hono TypeScript architecture map with a navigable overview, entry points, dependencies, and module inspector" width="1100"></a>
+</p>
+
 ## Quickstart
 
 Requires **Node.js 22+** and **Git**. Map a public GitHub repository:
@@ -66,7 +74,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: maximilianfeix/repoatlas@v1.0.0
+      - uses: maximilianfeix/repoatlas@v1.1.0
         with:
           output: repoatlas-map.html
 ```
@@ -99,6 +107,7 @@ The Zustand demo includes a workspace boundary: `examples/starter/src/index.tsx`
 - **Compare snapshots:** report added or removed modules and dependency relationships, plus changed import specifiers, between two JSON maps; line shifts alone do not count as architecture drift.
 - **Enforce architecture in CI:** fail a workflow on forbidden workspace/directory imports, excess circular groups, or modules outside detected entry paths, with source-line evidence in JSON output.
 - **Integrate with stable formats:** inspect the versioned snapshot/config JSON Schemas from the CLI; v1 preserves required graph fields and allows additive snapshot metadata.
+- **Navigate large maps:** page through 100 modules at a time, group modules by workspace or top-level directory, and use the overview to jump across wide graph pages.
 - **Portable output:** one offline HTML file, full graph JSON, a boundary SVG, or a concise CI text report.
 
 ```sh
@@ -166,7 +175,7 @@ RepoAtlas v1 snapshots use `schemaVersion: 1`. Generate the full JSON Schema at 
 
 RepoAtlas performs **static file-dependency analysis**. Entry-point reachability follows resolved imports from entries detected by package metadata and file conventions; entry detection is heuristic, so unreachable means “not found along these static paths,” not proof of dead code. If no entry is detected, reachability is unknown. The boundary matrix groups declared workspace packages separately and other files by their top-level directory; it counts resolved internal imports only. Matrices and SVG exports show at most 80 groups; use the existing search or directory filters to narrow larger projects, or use the text report. Impact map follows resolved internal imports backwards to show potential dependents; circular dependency groups use strongly connected components over the same resolved graph. Workspace links are followed only for packages declared by npm/Yarn workspaces or `pnpm-workspace.yaml` (common `*`, `**`, and exclusion patterns are supported), and export maps remain authoritative for package subpaths. These are source-level signals, not runtime or test-coverage guarantees. RepoAtlas does not execute project code, install target dependencies, or infer runtime calls, framework routes, or computed imports. Unresolved and external dependencies remain visible as unresolved or external.
 
-Generated directories, declaration files, hidden files, and tests are excluded by default. Use `--include-tests` to include tests and fixtures. Analysis is limited to 5,000 files and 2 MB per source file; the interactive map displays 100 matching modules per page, with previous/next navigation, while JSON retains the full analyzed graph. Local edits disable GitHub source links, but source evidence remains embedded in the HTML.
+Generated directories, declaration files, hidden files, and tests are excluded by default. Use `--include-tests` to include tests and fixtures. Analysis is limited to 5,000 files and 2 MB per source file; the interactive map displays 100 matching modules per page, with previous/next navigation. Cluster mode groups visible modules by declared workspace package or top-level source folder, and a navigable overview appears on pages with more than 50 modules. JSON retains the full analyzed graph. Local edits disable GitHub source links, but source evidence remains embedded in the HTML.
 
 Repository credentials are not copied into the map. Files are read from the selected directory; symlinks are skipped, reads stay within that directory, and the viewer makes no network requests. Since the map contains source snippets, share private-repository maps only with people who already have access to that code.
 
