@@ -1,5 +1,11 @@
 import type { Edge, Module } from './types.js';
 
+export interface EntryPath {
+  entry: string;
+  modules: string[];
+  edges: Edge[];
+}
+
 export interface Reachability {
   known: boolean;
   reachable: Set<string>;
@@ -24,6 +30,32 @@ export function analyzeReachability(modules: Module[], edges: Edge[]): Reachabil
   }
   const orderedReachable=new Set(modules.filter(module=>reachable.has(module.id)).map(module=>module.id));
   return {known:true,reachable:orderedReachable,unreachable:new Set(modules.filter(module=>!reachable.has(module.id)).map(module=>module.id))};
+}
+
+/** Find a deterministic shortest resolved-import path from any detected entry to a module. */
+export function findEntryPath(modules: Module[], edges: Edge[], target: string): EntryPath | null {
+  const ids=new Set(modules.map(module=>module.id));
+  if(!ids.has(target))return null;
+  const compare=(a:string,b:string)=>a<b?-1:a>b?1:0;
+  const entries=modules.filter(module=>module.entry.length).map(module=>module.id).sort(compare);
+  if(!entries.length)return null;
+  const adjacency=new Map(modules.map(module=>[module.id,[] as Edge[]]));
+  for(const edge of edges)if(edge.resolution==='internal'&&ids.has(edge.source)&&ids.has(edge.target))adjacency.get(edge.source)!.push(edge);
+  for(const outgoing of adjacency.values())outgoing.sort((a,b)=>compare(a.target,b.target)||a.line-b.line||compare(a.specifier,b.specifier));
+  const visited=new Set(entries),parent=new Map<string,Edge>(),root=new Map(entries.map(entry=>[entry,entry]));
+  const queue=[...entries];
+  for(let index=0;index<queue.length;index++){
+    const source=queue[index]!;
+    if(source===target){
+      const path:Edge[]=[];let cursor=target;
+      while(parent.has(cursor)){const edge=parent.get(cursor)!;path.push(edge);cursor=edge.source;}
+      path.reverse();return {entry:root.get(target)!,modules:[root.get(target)!,...path.map(edge=>edge.target)],edges:path};
+    }
+    for(const edge of adjacency.get(source)??[])if(!visited.has(edge.target)){
+      visited.add(edge.target);parent.set(edge.target,edge);root.set(edge.target,root.get(source)!);queue.push(edge.target);
+    }
+  }
+  return null;
 }
 
 /** Return deterministic strongly connected groups that contain a real import cycle. */

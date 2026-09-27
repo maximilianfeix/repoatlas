@@ -6,7 +6,7 @@
     "modules": 247,
     "connections": 676,
     "warnings": [
-      "6 imports could not be mapped to included TypeScript files. See the dependency inspector."
+      "6 imports could not be mapped to included source files. See the dependency inspector."
     ]
   },
   {
@@ -16,7 +16,7 @@
     "modules": 18,
     "connections": 24,
     "warnings": [
-      "2 imports could not be mapped to included TypeScript files. See the dependency inspector."
+      "2 imports could not be mapped to included source files. See the dependency inspector."
     ]
   },
   {

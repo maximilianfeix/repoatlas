@@ -1,7 +1,7 @@
 import type { Atlas, Edge, Module } from './types.js';
 import { focusNeighborhood, impactNeighborhood } from './focus.js';
 import { buildBoundaryMatrix, type BoundaryCell } from './boundaries.js';
-import { analyzeReachability, findCycles } from './insights.js';
+import { analyzeReachability, findCycles, findEntryPath } from './insights.js';
 const data: Atlas = JSON.parse(document.getElementById('atlas-data')!.textContent!);
 const $ = (id: string) => document.getElementById(id)!;
 function el(tag: string, text = '', cls = '') { const e = document.createElement(tag); e.textContent = text; if (cls) e.className = cls; return e; }
@@ -20,7 +20,7 @@ for (const edge of internal) {
   importers.add(edge.source);
   importerSets.set(edge.target,importers);
 }
-let selected: string | undefined, selectedEdge: Edge | undefined, entriesOnly = false, focusMap = false, impactMap = false, cyclesOnly = false, orphansOnly = false, boundaryView = false, clusterView = false, cycleGroupIndex = 0, pageIndex = 0, zoom = 1;
+let selected: string | undefined, selectedEdge: Edge | undefined, entriesOnly = false, focusMap = false, impactMap = false, entryPathView = false, cyclesOnly = false, orphansOnly = false, boundaryView = false, clusterView = false, cycleGroupIndex = 0, pageIndex = 0, zoom = 1;
 $('repo-name').textContent = data.name;
 for (const [value,label] of [[data.modules.length,'modules'],[internal.length,'connections'],[data.modules.filter(m=>m.entry.length).length,'entry points']]) { const stat = el('div'); stat.append(el('strong',String(value)),el('span',String(label))); $('stats').append(stat); }
 for (const group of [...new Set(data.modules.map(m=>m.group))].sort()) { const opt = document.createElement('option'); opt.value = group; opt.textContent = group; $('group').append(opt); }
@@ -63,6 +63,7 @@ function edgeDetail(edge: Edge) {
   draw();
 }
 function choose(id: string) {
+  if(selected!==id)entryPathView=false;
   selected=id; selectedEdge=undefined;
   const module=byId.get(id)!; const panel=$('inspector'); panel.replaceChildren(el('h2','Module inspector'),el('h3',id),el('p',`${module.lines} lines · ${module.group}`));
   if(reachability.known)panel.append(el('span',reachability.unreachable.has(id)?'Outside detected entry-point paths':'Reachable from detected entry points',`pill${reachability.unreachable.has(id)?' orphan-pill':''}`));
@@ -70,6 +71,14 @@ function choose(id: string) {
   const cycleIndex=cycleByModule.get(id);
   if (cycleIndex !== undefined) panel.append(el('span',`Circular group ${cycleIndex+1} · ${cycleGroups[cycleIndex]!.length} modules`,'pill cycle-pill'));
   if (module.url) panel.append(el('p'),link('Open module on GitHub ↗',module.url));
+  if(!reachability.known)panel.append(el('p','Entry path is unknown because no entry points were detected.'));
+  else if(reachability.reachable.has(id)){
+    const path=findEntryPath(data.modules,internal,id)!;
+    panel.append(el('p',path.edges.length?`Shortest detected-entry path · ${path.edges.length} imports from ${path.entry}`:'This module is a detected entry point.'));
+    const pathButton=el('button',entryPathView?'Exit entry path':'Trace path from entry point','button impact-link');
+    pathButton.onclick=()=>{entryPathView=!entryPathView;focusMap=false;impactMap=false;cyclesOnly=false;orphansOnly=false;entriesOnly=false;boundaryView=false;pageIndex=0;draw();choose(id);};
+    panel.append(pathButton);
+  }else panel.append(el('p','No path from the detected entry points reaches this module. Entry detection and import reachability are static signals.'));
   const directCount = importerSets.get(id)?.size ?? 0;
   const totalDependents = Math.max(0,impactNeighborhood(data.modules,internal,id).length-1);
   const summary = el('div','','impact-summary');
@@ -125,7 +134,9 @@ function draw() {
   const group=($('group') as HTMLSelectElement).value;
   const focused=focusMap && selected ? focusNeighborhood(data.modules,internal,selected) : undefined;
   const impacted=impactMap && selected ? impactNeighborhood(data.modules,internal,selected) : undefined;
-  const matches=cyclesOnly ? data.modules.filter(m=>cycleByModule.has(m.id) && (cycleGroupIndex<0 || cycleByModule.get(m.id)===cycleGroupIndex)) : focused ?? impacted ?? data.modules.filter(m=>(!query || m.id.toLowerCase().includes(query)) && (!group || m.group===group) && (!entriesOnly || m.entry.length) && (!orphansOnly || reachability.unreachable.has(m.id)));
+  const entryPath=entryPathView&&selected?findEntryPath(data.modules,internal,selected):null;
+  const entryPathModules=new Set(entryPath?.modules??[]),entryPathEdges=new Set(entryPath?.edges??[]);
+  const matches=entryPathView&&entryPath ? data.modules.filter(module=>entryPathModules.has(module.id)) : cyclesOnly ? data.modules.filter(m=>cycleByModule.has(m.id) && (cycleGroupIndex<0 || cycleByModule.get(m.id)===cycleGroupIndex)) : focused ?? impacted ?? data.modules.filter(m=>(!query || m.id.toLowerCase().includes(query)) && (!group || m.group===group) && (!entriesOnly || m.entry.length) && (!orphansOnly || reachability.unreachable.has(m.id)));
   const scoped=matches;
   const pageCount=Math.max(1,Math.ceil(scoped.length/100));
   pageIndex=Math.min(pageIndex,pageCount-1);
@@ -160,8 +171,8 @@ function draw() {
   $('page-previous').hidden=boundaryView;$('page-next').hidden=boundaryView;
   ($('page-previous') as HTMLButtonElement).disabled=pageIndex===0;
   ($('page-next') as HTMLButtonElement).disabled=pageIndex>=pageCount-1;
-  $('view-count').textContent=boundaryView ? 'Boundary matrix' : cyclesOnly ? `${visible.length} modules · ${cycleGroupIndex<0 ? `all ${cycleGroups.length} cycles` : `cycle ${cycleGroupIndex+1}/${cycleGroups.length}`}` : `${visible.length} / ${scoped.length} ${orphansOnly ? 'unreachable' : focused ? 'connected' : impacted ? 'affected' : 'matching'} modules`;
-  $('view-description').textContent=boundaryView ? 'Rows are importers · columns are imported boundaries · choose a count for line-level evidence' : cyclesOnly ? `${cycleGroupIndex<0 ? `${cycleGroups.length} circular groups` : `Cycle group ${cycleGroupIndex+1} of ${cycleGroups.length}`} · amber links are part of a cycle` : orphansOnly ? 'Outside paths from detected entry points · entry detection is heuristic' : impacted ? `Potential change impact for ${selected} · reverse imports` : focused ? `Direct neighborhood of ${selected}` : clusterView ? 'Grouped by workspace package or top-level directory · click a connection for its code' : 'Click a connection for its code';
+  $('view-count').textContent=boundaryView ? 'Boundary matrix' : entryPathView&&entryPath ? `Entry path · ${visible.length} modules` : cyclesOnly ? `${visible.length} modules · ${cycleGroupIndex<0 ? `all ${cycleGroups.length} cycles` : `cycle ${cycleGroupIndex+1}/${cycleGroups.length}`}` : `${visible.length} / ${scoped.length} ${orphansOnly ? 'unreachable' : focused ? 'connected' : impacted ? 'affected' : 'matching'} modules`;
+  $('view-description').textContent=boundaryView ? 'Rows are importers · columns are imported boundaries · choose a count for line-level evidence' : entryPathView&&entryPath ? `Shortest path from ${entryPath.entry} to ${selected} · click a highlighted import for its source line` : cyclesOnly ? `${cycleGroupIndex<0 ? `${cycleGroups.length} circular groups` : `Cycle group ${cycleGroupIndex+1} of ${cycleGroups.length}`} · amber links are part of a cycle` : orphansOnly ? 'Outside paths from detected entry points · entry detection is heuristic' : impacted ? `Potential change impact for ${selected} · reverse imports` : focused ? `Direct neighborhood of ${selected}` : clusterView ? 'Grouped by workspace package or top-level directory · click a connection for its code' : 'Click a connection for its code';
   const list=$('module-list'); list.replaceChildren();
   for (const m of visible) { const b=el('button',`${m.entry.length ? '● ' : ''}${m.id}`,selected===m.id ? 'selected' : ''); b.onclick=()=>choose(m.id); list.append(b); }
   if (!matches.length) list.append(el('p','No matching modules.'));
@@ -184,7 +195,7 @@ function draw() {
     table.append(body);matrixRoot.append(table);return;
   }
   const ids=new Set(visible.map(m=>m.id));
-  const edges=internal.filter(e=>ids.has(e.source)&&ids.has(e.target)&&(!cyclesOnly||cycleByModule.get(e.source)===cycleByModule.get(e.target)));
+  const edges=internal.filter(e=>ids.has(e.source)&&ids.has(e.target)&&(entryPathView?entryPathEdges.has(e):!cyclesOnly||cycleByModule.get(e.source)===cycleByModule.get(e.target)));
   // Three stable columns: likely entry points, connecting modules, leaf modules.
   const buckets: Module[][]=[[],[],[]];
   for(const m of visible) buckets[m.entry.length ? 0 : modulesWithImports.has(m.id) ? 1 : 2].push(m);
@@ -193,7 +204,8 @@ function draw() {
   if(clusterView)for(const bucket of buckets)bucket.sort((a,b)=>compareText(clusterKey(a),clusterKey(b))||compareText(a.id,b.id));
   const labels=['ENTRY POINTS','MODULES','LEAVES'];
   const columns:{modules:Module[];label:string}[]=[];
-  buckets.forEach((bucket,index)=>{for(let start=0;start<bucket.length;start+=20){const lane=start/20;columns.push({modules:bucket.slice(start,start+20),label:lane?`${labels[index]} · ${lane+1}`:labels[index]!});}});
+  if(entryPathView&&entryPath)columns.push({modules:visible,label:'ENTRY PATH'});
+  else buckets.forEach((bucket,index)=>{for(let start=0;start<bucket.length;start+=20){const lane=start/20;columns.push({modules:bucket.slice(start,start+20),label:lane?`${labels[index]} · ${lane+1}`:labels[index]!});}});
   const circleCycles=cyclesOnly && !clusterView && visible.length>1 && visible.length<=10;
   const radius=circleCycles ? Math.max(150,250/(2*Math.sin(Math.PI/visible.length))) : 0;
   const width=circleCycles ? Math.max(920,2*(radius+160)) : Math.max(920,columns.length*300+20);
@@ -223,7 +235,9 @@ function draw() {
   for (const edge of edges) {
     const a=positions.get(edge.source)!,b=positions.get(edge.target)!;
     let d:string;
-    if(circleCycles){
+    const isPath=entryPathEdges.has(edge);
+    if(entryPathView&&isPath&&a.x===b.x)d=`M ${a.x+120} ${a.y+58} L ${b.x+120} ${b.y}`;
+    else if(circleCycles){
       const ax=a.x+120,ay=a.y+29,bx=b.x+120,by=b.y+29,dx=bx-ax,dy=by-ay;
       const fromX=Math.abs(dx)>Math.abs(dy)?a.x+(dx>0?240:0):ax,fromY=Math.abs(dx)>Math.abs(dy)?ay:a.y+(dy>0?58:0);
       const toX=Math.abs(dx)>Math.abs(dy)?b.x+(dx>0?0:240):bx,toY=Math.abs(dx)>Math.abs(dy)?by:b.y+(dy>0?0:58);
@@ -232,12 +246,12 @@ function draw() {
     }else d=a.x===b.x ? `M ${a.x+240} ${a.y+27} C ${a.x+280} ${a.y+27}, ${b.x+280} ${b.y+27}, ${b.x+240} ${b.y+27}` : `M ${a.x+240} ${a.y+27} C ${a.x+275} ${a.y+27}, ${b.x-35} ${b.y+27}, ${b.x} ${b.y+27}`;
     const isCycle=cycleByModule.has(edge.source)&&cycleByModule.get(edge.source)===cycleByModule.get(edge.target);
     const description=`${edge.source} imports ${edge.target} at line ${edge.line}${isCycle?' · circular dependency':''}`;
-    const p=svg('path',{d,class:`edge${isCycle?' cycle-edge':''}${selectedEdge===edge ? ' selected':''}`,'marker-end':'url(#arrow)','aria-hidden':'true'});
+    const p=svg('path',{d,class:`edge${isCycle?' cycle-edge':''}${isPath?' path-edge':''}${selectedEdge===edge ? ' selected':''}`,'marker-end':'url(#arrow)','aria-hidden':'true'});
     const hit=svg('path',{d,class:'edge-hit',tabindex:0,role:'button','aria-label':description});
     hit.addEventListener('click',()=>edgeDetail(edge)); hit.addEventListener('keydown',(e)=>{if((e as KeyboardEvent).key==='Enter'||(e as KeyboardEvent).key===' ')edgeDetail(edge);}); graph.append(p,hit);
   }
   for(const m of visible) {
-    const {x,y}=positions.get(m.id)!; const g=svg('g',{transform:`translate(${x},${y})`,class:`node${m.entry.length?' entry':''}${cycleByModule.has(m.id)?' cyclic':''}${reachability.unreachable.has(m.id)?' orphan':''}${selected===m.id?' selected':''}`,tabindex:0,role:'button','aria-label':`${m.id}${reachability.unreachable.has(m.id)?' · outside detected entry-point paths':''}${cycleByModule.has(m.id)?' · circular dependency':''}`});
+    const {x,y}=positions.get(m.id)!; const g=svg('g',{transform:`translate(${x},${y})`,class:`node${m.entry.length?' entry':''}${cycleByModule.has(m.id)?' cyclic':''}${reachability.unreachable.has(m.id)?' orphan':''}${entryPathModules.has(m.id)?' path-node':''}${selected===m.id?' selected':''}`,tabindex:0,role:'button','aria-label':`${m.id}${entryPathModules.has(m.id)?' · on traced entry path':''}${reachability.unreachable.has(m.id)?' · outside detected entry-point paths':''}${cycleByModule.has(m.id)?' · circular dependency':''}`});
     const title=svg('title');title.textContent=m.id;g.append(title,svg('rect',{width:240,height:58,rx:8}));
     const text=svg('text',{x:12,y:24}); const name=m.id.split('/').at(-1)!;text.textContent=(m.entry.length?'● ':'')+(name.length>28?name.slice(0,25)+'…':name);
     const meta=svg('text',{x:12,y:43,class:'meta'});meta.textContent=m.group.length>32?'…'+m.group.slice(-31):m.group;g.append(text,meta);
@@ -247,15 +261,15 @@ function draw() {
 }
 for(const id of ['page-previous','page-next']) $(id).addEventListener('click',()=>{pageIndex+=id==='page-next'?1:-1;draw();});
 $('search').addEventListener('input',()=>{pageIndex=0;draw();});$('group').addEventListener('change',()=>{pageIndex=0;draw();});
-$('entries').onclick=()=>{entriesOnly=!entriesOnly;orphansOnly=false;pageIndex=0;$('entries').classList.toggle('active',entriesOnly);$('entries').setAttribute('aria-pressed',String(entriesOnly));draw();};
-$('orphans').onclick=()=>{if(reachability.known&&reachability.unreachable.size){orphansOnly=!orphansOnly;entriesOnly=false;focusMap=false;impactMap=false;cyclesOnly=false;pageIndex=0;draw();}};
-$('boundaries').onclick=()=>{boundaryView=!boundaryView;pageIndex=0;draw();};
+$('entries').onclick=()=>{entriesOnly=!entriesOnly;entryPathView=false;orphansOnly=false;pageIndex=0;$('entries').classList.toggle('active',entriesOnly);$('entries').setAttribute('aria-pressed',String(entriesOnly));draw();};
+$('orphans').onclick=()=>{if(reachability.known&&reachability.unreachable.size){orphansOnly=!orphansOnly;entryPathView=false;entriesOnly=false;focusMap=false;impactMap=false;cyclesOnly=false;pageIndex=0;draw();}};
+$('boundaries').onclick=()=>{boundaryView=!boundaryView;entryPathView=false;pageIndex=0;draw();};
 $('clusters').onclick=()=>{clusterView=!clusterView;draw();};
-$('impact').onclick=()=>{if(selected){impactMap=!impactMap;focusMap=false;cyclesOnly=false;orphansOnly=false;pageIndex=0;draw();}};
-$('focus').onclick=()=>{if(selected){focusMap=!focusMap;impactMap=false;cyclesOnly=false;orphansOnly=false;pageIndex=0;draw();}};
-$('cycles').onclick=()=>{cyclesOnly=!cyclesOnly;focusMap=false;impactMap=false;orphansOnly=false;pageIndex=0;draw();};
+$('impact').onclick=()=>{if(selected){impactMap=!impactMap;entryPathView=false;focusMap=false;cyclesOnly=false;orphansOnly=false;pageIndex=0;draw();}};
+$('focus').onclick=()=>{if(selected){focusMap=!focusMap;entryPathView=false;impactMap=false;cyclesOnly=false;orphansOnly=false;pageIndex=0;draw();}};
+$('cycles').onclick=()=>{cyclesOnly=!cyclesOnly;entryPathView=false;focusMap=false;impactMap=false;orphansOnly=false;pageIndex=0;draw();};
 $('cycle-group').addEventListener('change',()=>{cycleGroupIndex=Number(($('cycle-group') as HTMLSelectElement).value);pageIndex=0;draw();});
-$('reset').onclick=()=>{($('search') as HTMLInputElement).value='';($('group') as HTMLSelectElement).value='';entriesOnly=false;focusMap=false;impactMap=false;cyclesOnly=false;orphansOnly=false;boundaryView=false;clusterView=false;cycleGroupIndex=0;pageIndex=0;selected=undefined;selectedEdge=undefined;zoom=1;$('entries').classList.remove('active');$('entries').setAttribute('aria-pressed','false');intro();draw();};
+$('reset').onclick=()=>{($('search') as HTMLInputElement).value='';($('group') as HTMLSelectElement).value='';entriesOnly=false;focusMap=false;impactMap=false;entryPathView=false;cyclesOnly=false;orphansOnly=false;boundaryView=false;clusterView=false;cycleGroupIndex=0;pageIndex=0;selected=undefined;selectedEdge=undefined;zoom=1;$('entries').classList.remove('active');$('entries').setAttribute('aria-pressed','false');intro();draw();};
 $('zoom-in').onclick=()=>{zoom=Math.min(2,zoom+0.2);draw();};$('zoom-out').onclick=()=>{zoom=Math.max(0.4,zoom-0.2);draw();};
 $('overview-center').addEventListener('click',()=>{const canvas=$('graph').parentElement!;canvas.scrollTo({left:Math.max(0,(canvas.scrollWidth-canvas.clientWidth)/2),top:Math.max(0,(canvas.scrollHeight-canvas.clientHeight)/2),behavior:'smooth'});});
 $('graph').parentElement!.addEventListener('scroll',updateOverviewViewport);

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { analyzeReachability, findCycles } from '../dist/insights.js';
+import { analyzeReachability, findCycles, findEntryPath } from '../dist/insights.js';
 
 const modules = ['entry.ts', 'a.ts', 'b.ts', 'self.ts', 'free.ts', 'outside.ts'].map(id => ({ id }));
 
@@ -46,6 +46,34 @@ test('marks modules outside all recognized entry paths, including cycles and mul
 test('does not claim reachability when no entry points were detected', () => {
   const result=analyzeReachability([{id:'a.ts',entry:[]},{id:'b.ts',entry:[]}],[]);
   assert.deepEqual(result,{known:false,reachable:new Set(),unreachable:new Set()});
+});
+
+test('finds the deterministic shortest path from all detected entries',()=>{
+  const withEntries=[
+    {id:'app.ts',entry:['package script']},{id:'lib.ts',entry:['filename convention']},
+    {id:'a.ts',entry:[]},{id:'target.ts',entry:[]},{id:'z.ts',entry:[]}
+  ];
+  const edges=[
+    {source:'app.ts',target:'a.ts',resolution:'internal',line:1,specifier:'./a'},
+    {source:'a.ts',target:'target.ts',resolution:'internal',line:2,specifier:'./target'},
+    {source:'lib.ts',target:'target.ts',resolution:'internal',line:3,specifier:'./target'},
+    {source:'z.ts',target:'target.ts',resolution:'internal',line:4,specifier:'./target'}
+  ];
+  assert.deepEqual(findEntryPath(withEntries,edges,'target.ts'),{entry:'lib.ts',modules:['lib.ts','target.ts'],edges:[edges[2]]});
+  assert.deepEqual(findEntryPath(withEntries,edges,'app.ts'),{entry:'app.ts',modules:['app.ts'],edges:[]});
+});
+
+test('entry paths handle cycles and keep unknown or disconnected targets distinct as no path',()=>{
+  const withEntries=[{id:'entry.ts',entry:['detected']},{id:'loop-a.ts',entry:[]},{id:'loop-b.ts',entry:[]},{id:'lost.ts',entry:[]}];
+  const edges=[
+    {source:'entry.ts',target:'loop-a.ts',resolution:'internal',line:1,specifier:'./loop-a'},
+    {source:'loop-a.ts',target:'loop-b.ts',resolution:'internal',line:2,specifier:'./loop-b'},
+    {source:'loop-b.ts',target:'loop-a.ts',resolution:'internal',line:3,specifier:'./loop-a'}
+  ];
+  assert.deepEqual(findEntryPath(withEntries,edges,'loop-b.ts').modules,['entry.ts','loop-a.ts','loop-b.ts']);
+  assert.equal(findEntryPath(withEntries,edges,'lost.ts'),null);
+  assert.equal(findEntryPath(withEntries.map(module=>({...module,entry:[]})),edges,'loop-b.ts'),null);
+  assert.equal(findEntryPath(withEntries,edges,'missing.ts'),null);
 });
 
 test('computes reachability iteratively for the full analysis file limit', () => {

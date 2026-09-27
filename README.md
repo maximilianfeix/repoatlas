@@ -44,6 +44,14 @@ The Hono demo has 247 modules. RepoAtlas pages large results, groups the visible
   <a href="https://maximilianfeix.github.io/repoatlas/examples/hono.html"><img src="docs/assets/large-map-overview.png" alt="Hono TypeScript architecture map with a navigable overview, entry points, dependencies, and module inspector" width="1100"></a>
 </p>
 
+## Trace how a module is reached
+
+Select any reachable module to see its shortest resolved-import path from a detected entry point. The path stays explicitly static and heuristic-backed; each highlighted edge opens its exact import line and source link.
+
+<p align="center">
+  <a href="https://maximilianfeix.github.io/repoatlas/examples/hono.html"><img src="docs/assets/entry-path-trace.png" alt="A four-module Hono import path from the Cloudflare Workers entry point to utils.ts, with source-backed edges highlighted" width="1100"></a>
+</p>
+
 ## Quickstart
 
 Requires **Node.js 22+** and **Git**. Map a public GitHub repository:
@@ -74,7 +82,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: maximilianfeix/repoatlas@v1.3.0
+      - uses: maximilianfeix/repoatlas@v1.4.0
         with:
           output: repoatlas-map.html
 ```
@@ -103,6 +111,7 @@ The Zustand demo includes a workspace boundary: `examples/starter/src/index.tsx`
 - **Evidence:** the exact import statement and line, with a commit-pinned GitHub link when the checkout is clean.
 - **Explore maps and assess change:** search, directory and entry-point filters, accessible pagination, Focus map for direct neighbors, and Impact map for every transitively dependent module.
 - **Check entry-point reachability:** find modules outside paths from detected entries; if RepoAtlas finds no entry point, reachability stays unknown instead of flagging every file.
+- **Trace entry paths:** follow the shortest resolved-import route from a detected entry point to a reachable module, then click each highlighted edge for its exact source evidence.
 - **Map monorepo boundaries:** resolve declared npm/Yarn or pnpm workspace exports, compare imports between packages and source directories, and open each populated boundary cell to inspect exact import sites.
 - **Spot architecture risks:** isolate circular import groups, trace the exact cycle edges, and jump straight to the most depended-on modules.
 - **Compare snapshots:** report added or removed modules and dependency relationships, plus changed import specifiers, between two JSON maps; line shifts alone do not count as architecture drift.
