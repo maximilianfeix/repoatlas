@@ -82,7 +82,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: maximilianfeix/repoatlas@v1.6.0
+      - uses: maximilianfeix/repoatlas@v1.7.0
         with:
           output: repoatlas-map.html
 ```
@@ -107,6 +107,7 @@ The Zustand demo includes a workspace boundary: `examples/starter/src/index.tsx`
 
 - **Project shape:** source modules, directories, and likely entry points.
 - **Dependencies:** static imports, re-exports, type imports, and literal dynamic imports or `require` calls. Computed calls remain visible as unresolved source evidence; their targets are never guessed.
+- **Precise CommonJS evidence:** only calls to the global `require` are treated as imports; locally shadowed parameters and variables are ignored.
 - **External packages:** browse npm package usage, Node built-ins, and URL imports separately, with import-site counts and clickable source evidence for every usage.
 - **Mixed repositories:** opt into `.js`, `.jsx`, `.mjs`, and `.cjs` modules with `--include-js`; TypeScript-only stays the default.
 - **Evidence:** the exact import statement and line, with a commit-pinned GitHub link when the checkout is clean.

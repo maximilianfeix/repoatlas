@@ -1,5 +1,16 @@
 # Changelog
 
+## [1.7.0] - 2026-09-27
+
+### Fixed
+
+- Stop treating calls to locally shadowed `require` parameters, imports, variables, catch bindings, or named function/class bindings as CommonJS dependencies.
+- Respect block scopes, function-scoped `var`, destructuring, and type-only imports while preserving the actual global CommonJS `require` signal.
+
+### Quality
+
+- Cover nested and unrelated scopes, hoisted variables, ambient/type-only declarations, exact internal resolution, and computed global `require` evidence.
+
 ## [1.6.0] - 2026-09-27
 
 ### Added
