@@ -1,0 +1,37 @@
+{
+  "name": "@maximilianfeix/repoatlas",
+  "version": "0.1.0",
+  "description": "Understand any TypeScript repo in one interactive map. Every edge has evidence.",
+  "type": "module",
+  "bin": {
+    "repoatlas": "dist/cli.js"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "tsc && node scripts/build-ui.mjs",
+    "test": "npm run build && node --test test/*.test.mjs",
+    "check": "tsc --noEmit",
+    "prepack": "npm run build",
+    "examples": "node scripts/examples.mjs"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/maximilianfeix/repoatlas.git"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "commander": "^15.0.0",
+    "typescript": "5.9.3"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.3",
+    "esbuild": "^0.28.2"
+  }
+}
