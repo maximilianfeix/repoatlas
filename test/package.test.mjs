@@ -10,7 +10,7 @@ test('package and lockfile release versions stay aligned',async()=>{
 });
 
 test('composite action keeps its node setup structure and JavaScript input wired',async()=>{
-  const action=await readFile('action.yml','utf8');
+  const action=(await readFile('action.yml','utf8')).replace(/\r\n/g,'\n');
   assert.match(action,/      with:\n        node-version: 22/);
   assert.match(action,/  include-js:\n    description: Include JavaScript and JSX modules/);
   assert.match(action,/REPOATLAS_INCLUDE_JS: \$\{\{ inputs\.include-js \}\}/);
