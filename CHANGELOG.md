@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.3.0] - 2026-09-27
+
+### Added
+
+- Resolve TypeScript imports across declared npm, Yarn, and pnpm workspace packages, including common glob and exclusion patterns.
+- Follow package export roots, subpaths, wildcard entries, TypeScript custom conditions, and declaration/build targets back to included source files.
+- Warn on duplicate workspace package names and keep ambiguous links external.
+- Updated the Zustand live example to demonstrate a source-inspectable import across its workspace boundary.
+
+### Quality
+
+- Added fixtures for npm, pnpm, and Yarn workspaces, inherited TypeScript conditions, export encapsulation, path traversal, exclusions, and ambiguous package names.
+- Verified Node 22 and 24 on Linux, macOS, and Windows, plus CodeQL, architecture analysis, and action smoke tests.
+
 ## [0.2.0] - 2026-09-27
 
 ### Added
