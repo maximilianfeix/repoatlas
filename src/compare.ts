@@ -1,0 +1,71 @@
+import type { Atlas, Edge } from './types.js';
+
+export interface SnapshotMetadata {
+  name: string;
+  repository?: string;
+  commit?: string;
+}
+
+export interface EdgeChange {
+  before: Edge;
+  after: Edge;
+}
+
+export interface AtlasComparison {
+  base: SnapshotMetadata;
+  head: SnapshotMetadata;
+  modules: { added: string[]; removed: string[] };
+  dependencies: { added: Edge[]; removed: Edge[]; changedSpecifier: EdgeChange[] };
+}
+
+const kinds=new Set(['import','type','export','dynamic','require']);
+const resolutions=new Set(['internal','external','unresolved']);
+const record=(value:unknown):value is Record<string,unknown>=>typeof value==='object'&&value!==null&&!Array.isArray(value);
+
+/** Validate only stable graph fields, allowing additive optional module metadata. */
+export function parseAtlas(value: unknown): Atlas {
+  if(!record(value)||value.schemaVersion!==1||typeof value.name!=='string'||!Array.isArray(value.modules)||!Array.isArray(value.edges)||!Array.isArray(value.warnings))throw new Error('Invalid RepoAtlas snapshot: expected schemaVersion 1 with modules, edges, and warnings.');
+  for(const module of value.modules){if(!record(module)||typeof module.id!=='string'||typeof module.group!=='string'||typeof module.lines!=='number'||!Array.isArray(module.entry)||!module.entry.every(item=>typeof item==='string')||('workspace'in module&&typeof module.workspace!=='string'))throw new Error('Invalid RepoAtlas snapshot: malformed module record.');}
+  if(('repository'in value&&typeof value.repository!=='string')||('commit'in value&&typeof value.commit!=='string'))throw new Error('Invalid RepoAtlas snapshot: malformed snapshot metadata.');
+  for(const edge of value.edges){if(!record(edge)||typeof edge.source!=='string'||typeof edge.target!=='string'||typeof edge.specifier!=='string'||!kinds.has(String(edge.kind))||typeof edge.line!=='number'||typeof edge.code!=='string'||!resolutions.has(String(edge.resolution)))throw new Error('Invalid RepoAtlas snapshot: malformed dependency edge.');}
+  if(!value.warnings.every(item=>typeof item==='string'))throw new Error('Invalid RepoAtlas snapshot: malformed warnings.');
+  return value as unknown as Atlas;
+}
+
+function metadata(atlas:Atlas):SnapshotMetadata {
+  return {name:atlas.name,...(atlas.repository?{repository:atlas.repository}:{}),...(atlas.commit?{commit:atlas.commit}:{})};
+}
+function edgeKey(edge:Edge):string { return JSON.stringify([edge.source,edge.target,edge.specifier,edge.kind,edge.resolution]); }
+function edgeOrder(a:Edge,b:Edge):number { return a.source.localeCompare(b.source)||a.target.localeCompare(b.target)||a.kind.localeCompare(b.kind)||a.specifier.localeCompare(b.specifier)||a.line-b.line; }
+
+/** Compare graph relationships while ignoring source line shifts and code formatting. */
+export function compareAtlases(base:Atlas,head:Atlas):AtlasComparison {
+  const beforeModules=new Set(base.modules.map(module=>module.id)),afterModules=new Set(head.modules.map(module=>module.id));
+  const addedModules=[...afterModules].filter(id=>!beforeModules.has(id)).sort();
+  const removedModules=[...beforeModules].filter(id=>!afterModules.has(id)).sort();
+  const beforeEdges=new Map<string,Edge>(),afterEdges=new Map<string,Edge>();
+  for(const edge of base.edges)if(!beforeEdges.has(edgeKey(edge)))beforeEdges.set(edgeKey(edge),edge);
+  for(const edge of head.edges)if(!afterEdges.has(edgeKey(edge)))afterEdges.set(edgeKey(edge),edge);
+  const relationKey=(edge:Edge)=>JSON.stringify([edge.source,edge.target,edge.kind,edge.resolution]);
+  const groupByRelation=(edges:Edge[])=>{const groups=new Map<string,Edge[]>();for(const edge of edges){const key=relationKey(edge),group=groups.get(key)??[];if(!group.some(item=>item.specifier===edge.specifier)){group.push(edge);groups.set(key,group);}}return groups;};
+  const baseRelations=groupByRelation([...beforeEdges.values()]),headRelations=groupByRelation([...afterEdges.values()]);
+  const changedSpecifier:EdgeChange[]=[];
+  const changedBefore=new Set<string>(),changedAfter=new Set<string>();
+  for(const [key,before] of baseRelations){
+    const after=headRelations.get(key);
+    if(!after)continue;
+    const remainingBefore=before.filter(edge=>!after.some(next=>next.specifier===edge.specifier));
+    const remainingAfter=after.filter(edge=>!before.some(previous=>previous.specifier===edge.specifier));
+    remainingBefore.sort(edgeOrder);remainingAfter.sort(edgeOrder);
+    for(let i=0;i<Math.min(remainingBefore.length,remainingAfter.length);i++){
+      const previous=remainingBefore[i]!,next=remainingAfter[i]!;
+      changedSpecifier.push({before:previous,after:next});changedBefore.add(edgeKey(previous));changedAfter.add(edgeKey(next));
+    }
+  }
+  const added=[...afterEdges].filter(([key])=>!beforeEdges.has(key)&&!changedAfter.has(key)).map(([,edge])=>edge).sort(edgeOrder);
+  const removed=[...beforeEdges].filter(([key])=>!afterEdges.has(key)&&!changedBefore.has(key)).map(([,edge])=>edge).sort(edgeOrder);
+  const uniqueSpecifier=new Map<string,EdgeChange>();
+  for(const change of changedSpecifier)uniqueSpecifier.set(`${edgeKey(change.before)}\0${edgeKey(change.after)}`,change);
+  const changes=[...uniqueSpecifier.values()].sort((a,b)=>edgeOrder(a.after,b.after));
+  return {base:metadata(base),head:metadata(head),modules:{added:addedModules,removed:removedModules},dependencies:{added,removed,changedSpecifier:changes}};
+}
