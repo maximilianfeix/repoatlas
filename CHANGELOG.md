@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.4.0] - 2026-09-27
+
+### Added
+
+- Paginate large graph results in accessible groups of 100 modules, with synchronized module explorer and first, previous, next, and final page behavior.
+- Distribute each page into compact columns capped at 20 modules for faster visual scanning.
+- Expand edge hit targets and support Space-key activation while preserving exact source evidence.
+
+### Quality
+
+- Reviewed a 260-module generated project in a real browser, including page boundaries, edge selection, and the source inspector.
+- Verified 24 automated tests, TypeScript checks, npm packaging, cross-platform CI, action maps, and CodeQL.
+
 ## [0.3.0] - 2026-09-27
 
 ### Added
