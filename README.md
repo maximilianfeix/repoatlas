@@ -66,7 +66,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: maximilianfeix/repoatlas@v0.6.0
+      - uses: maximilianfeix/repoatlas@v0.7.0
         with:
           output: repoatlas-map.html
 ```

@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.7.0] - 2026-09-27
+
+### Added
+
+- Compare two RepoAtlas JSON snapshots with concise text or machine-readable output.
+- Report added and removed modules and dependency relationships, and call out changed import specifiers.
+- Ignore source line and formatting shifts when measuring architecture drift; retain before/after line evidence on actual edge changes.
+- Validate snapshot schema before comparing and read the CLI version from package.json.
+
+### Quality
+
+- Added tests for identical graphs with shifted line numbers, workspace-compatible snapshots, added/removed internal and external edges, unresolved imports, specifier changes, malformed inputs, and CLI text/JSON modes.
+- Verified 33 tests, TypeScript checks, package dry-run, cross-platform CI, action map, and CodeQL.
+
 ## [0.6.0] - 2026-09-27
 
 ### Added
