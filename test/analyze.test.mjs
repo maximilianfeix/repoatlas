@@ -19,6 +19,17 @@ test('AST edges retain exact lines; aliases, ESM extensions, reexports, types an
   assert.ok(atlas.edges.every(e=>e.target==='src/a.ts'&&e.resolution==='internal'));assert.deepEqual(atlas.edges.map(e=>e.line),[2,3,4,5,6,7]);assert.match(atlas.edges[0].code,/@\/a/);assert.ok(atlas.modules.find(m=>m.id==='src/index.ts').entry.includes('package.json source'));
   assert.equal((await analyze(dir,{includeTests:true})).modules.length,3);
 });
+test('configured bundler, Node ESM and Node 10 resolution modes are honored',async t=>{
+  for (const [mode,options,specifier] of [
+    ['bundler',{module:'preserve',moduleResolution:'bundler'},'./target'],
+    ['nodenext',{module:'nodenext',moduleResolution:'nodenext'},'./target.js'],
+    ['node16',{module:'node16',moduleResolution:'node16'},'./target.js'],
+    ['node10',{module:'commonjs',moduleResolution:'node10'},'./target']
+  ]) {
+    const dir=await fixture(t,{'package.json':'{"type":"module"}','tsconfig.json':JSON.stringify({compilerOptions:options}), 'src/index.ts':`import '${specifier}';`,'src/target.ts':'export const target = true;'});
+    const atlas=await analyze(dir);assert.equal(atlas.edges[0].resolution,'internal',`${mode} resolves its supported TypeScript source`);assert.equal(atlas.edges[0].target,'src/target.ts');
+  }
+});
 test('cycles, missing imports and external packages remain explicit',async t=>{
   const dir=await fixture(t,{'a.ts':"import './b'; import './missing'; import 'node:fs';",'b.ts':"import './a'"});const atlas=await analyze(dir);
   assert.equal(atlas.edges.filter(e=>e.resolution==='internal').length,2);assert.equal(atlas.edges[1].resolution,'unresolved');assert.equal(atlas.edges[2].resolution,'external');
