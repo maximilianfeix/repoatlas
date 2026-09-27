@@ -1,0 +1,62 @@
+name: RepoAtlas architecture map
+description: Generate a shareable, interactive architecture map for a TypeScript repository.
+author: maximilianfeix
+inputs:
+  path:
+    description: Path to the checked-out TypeScript project
+    required: false
+    default: .
+  output:
+    description: HTML file to create (relative to the workspace)
+    required: false
+    default: repoatlas-map.html
+  include-tests:
+    description: Include tests and fixtures in the map
+    required: false
+    default: 'false'
+  artifact-name:
+    description: Name of the downloadable workflow artifact
+    required: false
+    default: repoatlas-map
+  retention-days:
+    description: Artifact retention in days (1–90)
+    required: false
+    default: '7'
+outputs:
+  map-path:
+    description: Path to the generated HTML map
+    value: ${{ inputs.output }}
+  artifact-url:
+    description: URL to the uploaded workflow artifact
+    value: ${{ steps.upload.outputs.artifact-url }}
+runs:
+  using: composite
+  steps:
+    - name: Set up Node.js
+      uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+      with:
+        node-version: 22
+    - name: Build RepoAtlas
+      shell: bash
+      working-directory: ${{ github.action_path }}
+      run: npm ci && npm run build
+    - name: Generate architecture map
+      shell: bash
+      working-directory: ${{ github.workspace }}
+      env:
+        REPOATLAS_PATH: ${{ inputs.path }}
+        REPOATLAS_OUTPUT: ${{ inputs.output }}
+        REPOATLAS_INCLUDE_TESTS: ${{ inputs.include-tests }}
+        REPOATLAS_CLI: ${{ github.action_path }}/dist/cli.js
+      run: |
+        args=()
+        if [[ "$REPOATLAS_INCLUDE_TESTS" == "true" ]]; then args+=(--include-tests); fi
+        node "$REPOATLAS_CLI" "$REPOATLAS_PATH" -o "$REPOATLAS_OUTPUT" "${args[@]}"
+    - name: Upload architecture map
+      id: upload
+      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+      with:
+        name: ${{ inputs.artifact-name }}
+        path: ${{ inputs.output }}
+        if-no-files-found: error
+        retention-days: ${{ inputs.retention-days }}
