@@ -1,5 +1,19 @@
 # Changelog
 
+## [1.4.0] - 2026-09-27
+
+### Added
+
+- Add a per-module trace of the deterministic shortest resolved-import path from any detected entry point.
+- Isolate the ordered path in a vertical map, highlight only its source-backed edges, and keep each import clickable for exact line evidence.
+- Explain the distinct cases: the selected module is an entry, a path is available, no detected entry points exist, or a module is outside the detected paths.
+- Add an interactive Hono path screenshot and update the feature page and README.
+
+### Quality
+
+- Cover shortest-path choice across multiple entries, already-entered modules, cycles, disconnected modules, and missing entry detection.
+- Browser-verify the path layout on a real Hono snapshot and inspect a highlighted import through to its commit-pinned source line.
+
 ## [1.3.0] - 2026-09-27
 
 ### Added
