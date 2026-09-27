@@ -71,16 +71,19 @@ These maps are pinned to the analyzed source commit and need no install:
 
 | Repository | Modules | Connections | Explore |
 | --- | ---: | ---: | --- |
-| [Zustand](https://github.com/pmndrs/zustand) | 18 | 23 | [Open map](https://maximilianfeix.github.io/repoatlas/examples/zustand.html) |
+| [Zustand](https://github.com/pmndrs/zustand) | 18 | 24 | [Open map](https://maximilianfeix.github.io/repoatlas/examples/zustand.html) |
 | [Ky](https://github.com/sindresorhus/ky) | 51 | 93 | [Open map](https://maximilianfeix.github.io/repoatlas/examples/ky.html) |
 | [Hono](https://github.com/honojs/hono) | 247 | 676 | [Open map](https://maximilianfeix.github.io/repoatlas/examples/hono.html) |
 
 The analyzed commits, warnings, and upstream license notices are listed in [`docs/examples/manifest.json`](docs/examples/manifest.json) and [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md).
 
+The Zustand demo includes a workspace boundary: `examples/starter/src/index.tsx` imports the library's `src/index.ts`. Open that edge to inspect its exact import line and source link.
+
 ## What you can inspect
 
 - **Project shape:** source modules, directories, and likely entry points.
 - **Dependencies:** static imports, re-exports, type imports, literal dynamic imports, and literal `require` calls.
+- **Monorepos:** resolve declared npm/Yarn or pnpm workspace packages, including `package.json` export subpaths, back to included TypeScript source.
 - **Evidence:** the exact import statement and line, with a commit-pinned GitHub link when the checkout is clean.
 - **Explore and assess change:** search, directory and entry-point filters, Focus map for direct neighbors, and Impact map for every transitively dependent module.
 - **Spot architecture risks:** isolate circular import groups, trace the exact cycle edges, and jump straight to the most depended-on modules.
@@ -95,7 +98,7 @@ repoatlas --help
 
 ## Scope and privacy
 
-RepoAtlas performs **static file-dependency analysis**. Impact map follows resolved internal imports backwards to show potential dependents; circular dependency groups use strongly connected components over the same resolved graph. These are source-level signals, not runtime or test-coverage guarantees. RepoAtlas does not execute project code, install target dependencies, or infer runtime calls, framework routes, or computed imports. Unresolved and external dependencies remain visible as unresolved or external.
+RepoAtlas performs **static file-dependency analysis**. Impact map follows resolved internal imports backwards to show potential dependents; circular dependency groups use strongly connected components over the same resolved graph. Workspace links are followed only for packages declared by npm/Yarn workspaces or `pnpm-workspace.yaml` (common `*`, `**`, and exclusion patterns are supported), and export maps remain authoritative for package subpaths. These are source-level signals, not runtime or test-coverage guarantees. RepoAtlas does not execute project code, install target dependencies, or infer runtime calls, framework routes, or computed imports. Unresolved and external dependencies remain visible as unresolved or external.
 
 Generated directories, declaration files, hidden files, and tests are excluded by default. Use `--include-tests` to include tests and fixtures. Analysis is limited to 5,000 files and 2 MB per source file; the interactive map displays up to 100 matching modules at a time, while JSON retains the full analyzed graph. Local edits disable GitHub source links, but source evidence remains embedded in the HTML.
 

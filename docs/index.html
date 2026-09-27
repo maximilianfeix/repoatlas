@@ -85,7 +85,7 @@
   <section id="examples" class="section">
     <div class="section-title"><div><div class="kicker">No install needed</div><h2>Explore real repositories.</h2></div><p>Open a map, follow an edge, inspect the exact line. Every sample is pinned to the source commit it was analyzed from.</p></div>
     <div class="cards">
-      <a class="card" href="examples/zustand.html"><div class="card-top"><h3>Zustand</h3><span class="arrow" aria-hidden="true">↗</span></div><p>A compact state library. Start at the entry point and follow the store.</p><div class="metric"><strong>18</strong> modules&nbsp; · &nbsp;<strong>23</strong> connections</div></a>
+      <a class="card" href="examples/zustand.html"><div class="card-top"><h3>Zustand</h3><span class="arrow" aria-hidden="true">↗</span></div><p>A compact state library. Follow imports across its workspace package boundary.</p><div class="metric"><strong>18</strong> modules&nbsp; · &nbsp;<strong>24</strong> connections</div></a>
       <a class="card" href="examples/ky.html"><div class="card-top"><h3>Ky</h3><span class="arrow" aria-hidden="true">↗</span></div><p>An HTTP client. Trace its core through a focused source tree.</p><div class="metric"><strong>51</strong> modules&nbsp; · &nbsp;<strong>93</strong> connections</div></a>
       <a class="card" href="examples/hono.html"><div class="card-top"><h3>Hono</h3><span class="arrow" aria-hidden="true">↗</span></div><p>A larger framework. Explore circular imports, then follow each link to its source line.</p><div class="metric"><strong>247</strong> modules&nbsp; · &nbsp;<strong>676</strong> connections</div></a>
     </div>
@@ -106,6 +106,8 @@
     <div class="feature-grid">
       <div class="feature"><span class="feature-icon" aria-hidden="true">⌕</span><b>Search the whole project</b><p>Filter by module name, directory, or likely entry point. Use `/` to jump to search.</p></div>
       <div class="feature"><span class="feature-icon" aria-hidden="true">↳</span><b>Inspect real import syntax</b><p>Static imports, re-exports, type imports, literal dynamic imports, and literal require calls.</p></div>
+      <div class="feature"><span class="feature-icon" aria-hidden="true">⌘</span><b>Connect workspace packages</b><p>Resolve npm, Yarn, and pnpm workspace imports—including exported subpaths—to their TypeScript source.</p></div>
+      <div class="feature"><span class="feature-icon" aria-hidden="true">⚙</span><b>Respect project settings</b><p>Follow TypeScript aliases and the configured bundler, Node ESM, or CommonJS resolution mode.</p></div>
       <div class="feature"><span class="feature-icon" aria-hidden="true">⌁</span><b>Estimate change impact</b><p>Follow resolved internal imports backwards to map every direct and transitive dependent module.</p></div>
       <div class="feature"><span class="feature-icon" aria-hidden="true">⟳</span><b>Find circular imports</b><p>Isolate strongly connected module groups and trace the import edges that keep each cycle alive.</p></div>
       <div class="feature"><span class="feature-icon" aria-hidden="true">⇩</span><b>Share one portable file</b><p>Viewer and data are embedded. Open the exported map offline or send it to a teammate.</p></div>

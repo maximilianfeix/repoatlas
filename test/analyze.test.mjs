@@ -30,6 +30,84 @@ test('configured bundler, Node ESM and Node 10 resolution modes are honored',asy
     const atlas=await analyze(dir);assert.equal(atlas.edges[0].resolution,'internal',`${mode} resolves its supported TypeScript source`);assert.equal(atlas.edges[0].target,'src/target.ts');
   }
 });
+test('workspace packages resolve exported roots and subpaths to included TypeScript source',async t=>{
+  const dir=await fixture(t,{
+    'package.json':JSON.stringify({private:true,workspaces:{packages:['apps/*','packages/*','!packages/private']}}),
+    'packages/ui/package.json':JSON.stringify({name:'@demo/ui',source:'./src/index.ts',exports:{'.':{types:'./dist/index.d.ts',import:'./dist/index.js'},'./button':{types:'./dist/button.d.ts',import:'./dist/button.js'},'./components/*':{types:'./dist/components/*.d.ts',import:'./dist/components/*.js'},'./conditional':{browser:'./src/browser.ts',import:'./src/node.ts'},'./escape':'../shared.ts'}}),
+    'packages/ui/src/index.ts':'export const ui = true;',
+    'packages/ui/src/button.ts':'export const button = true;',
+    'packages/ui/src/components/Card.ts':'export const Card = true;',
+    'packages/ui/src/browser.ts':'export const browser = true;',
+    'packages/ui/src/node.ts':'export const node = true;',
+    'packages/ui/src/private.ts':'export const privateValue = true;',
+    'shared.ts':'export const shared = true;',
+    'packages/private/package.json':JSON.stringify({name:'@demo/private',source:'./src/index.ts'}),
+    'packages/private/src/index.ts':'export const hidden = true;',
+    'packages/closed/package.json':JSON.stringify({name:'@demo/closed',source:'./src/index.ts',exports:{}}),
+    'packages/closed/src/index.ts':'export const closed = true;',
+    'apps/web/package.json':JSON.stringify({name:'@demo/web'}),
+    'apps/web/tsconfig.json':JSON.stringify({compilerOptions:{module:'preserve',moduleResolution:'bundler',customConditions:['browser']}}),
+    'apps/web/src/index.ts':"import '@demo/ui';\nimport '@demo/ui/button';\nimport type {} from '@demo/ui/components/Card';\nimport '@demo/ui/conditional';\nimport '@demo/ui/private';\nimport '@demo/ui/escape';\nimport '@demo/private';\nimport '@demo/closed';\nimport 'left-pad';",
+  });
+  const atlas=await analyze(dir);
+  assert.deepEqual(atlas.edges.map(edge=>[edge.target,edge.resolution]),[
+    ['packages/ui/src/index.ts','internal'],
+    ['packages/ui/src/button.ts','internal'],
+    ['packages/ui/src/components/Card.ts','internal'],
+    ['packages/ui/src/browser.ts','internal'],
+    ['@demo/ui/private','external'],
+    ['@demo/ui/escape','external'],
+    ['@demo/private','external'],
+    ['@demo/closed','external'],
+    ['left-pad','external'],
+  ]);
+});
+test('pnpm workspace YAML patterns resolve workspace packages and honor exclusions',async t=>{
+  const dir=await fixture(t,{
+    'pnpm-workspace.yaml':"packages:\n  - '**/apps/*'\n  - '!**/apps/private'\n",
+    'apps/tool/package.json':JSON.stringify({name:'@demo/tool',source:'src/index.ts'}),
+    'apps/tool/src/index.ts':'export const tool = true;',
+    'apps/private/package.json':JSON.stringify({name:'@demo/private',source:'src/index.ts'}),
+    'apps/private/src/index.ts':'export const secret = true;',
+    'src/main.ts':"import '@demo/tool';\nimport '@demo/private';",
+  });
+  const atlas=await analyze(dir);
+  assert.deepEqual(atlas.edges.map(edge=>[edge.target,edge.resolution]),[
+    ['apps/tool/src/index.ts','internal'],
+    ['@demo/private','external'],
+  ]);
+});
+test('Yarn workspace export conditions follow inherited TypeScript settings and duplicate names stay unresolved',async t=>{
+  const dir=await fixture(t,{
+    'package.json':JSON.stringify({private:true,packageManager:'yarn@4.5.1',workspaces:['packages/**']}),
+    'tsconfig.base.json':JSON.stringify({compilerOptions:{module:'preserve',moduleResolution:'bundler',customConditions:['development']}}),
+    'packages/app/package.json':JSON.stringify({name:'@demo/app'}),
+    'packages/app/tsconfig.json':JSON.stringify({extends:'../../tsconfig.base.json'}),
+    'packages/app/src/index.ts':"import '@demo/tool/entry';\nimport '@demo/duplicate';",
+    'packages/tool/package.json':JSON.stringify({name:'@demo/tool',exports:{'./entry':{types:'./dist/entry.d.ts',development:'./src/dev.ts',default:'./src/prod.ts'}}}),
+    'packages/tool/src/dev.ts':'export const mode = "development";',
+    'packages/tool/src/prod.ts':'export const mode = "production";',
+    'packages/duplicate-a/package.json':JSON.stringify({name:'@demo/duplicate',source:'src/index.ts'}),
+    'packages/duplicate-a/src/index.ts':'export const first = true;',
+    'packages/duplicate-b/package.json':JSON.stringify({name:'@demo/duplicate',source:'src/index.ts'}),
+    'packages/duplicate-b/src/index.ts':'export const second = true;',
+  });
+  const atlas=await analyze(dir);
+  assert.deepEqual(atlas.edges.map(edge=>[edge.target,edge.resolution]),[
+    ['packages/tool/src/dev.ts','internal'],
+    ['@demo/duplicate','external'],
+  ]);
+  assert.ok(atlas.warnings.some(warning=>warning.includes('Multiple workspace packages use the name @demo/duplicate')));
+});
+test('a nested package not declared as a workspace is not assumed to be an internal dependency',async t=>{
+  const dir=await fixture(t,{
+    'packages/ui/package.json':JSON.stringify({name:'@demo/ui',source:'src/index.ts'}),
+    'packages/ui/src/index.ts':'export const ui = true;',
+    'src/main.ts':"import '@demo/ui';",
+  });
+  const atlas=await analyze(dir);
+  assert.deepEqual([atlas.edges[0].target,atlas.edges[0].resolution],['@demo/ui','external']);
+});
 test('cycles, missing imports and external packages remain explicit',async t=>{
   const dir=await fixture(t,{'a.ts':"import './b'; import './missing'; import 'node:fs';",'b.ts':"import './a'"});const atlas=await analyze(dir);
   assert.equal(atlas.edges.filter(e=>e.resolution==='internal').length,2);assert.equal(atlas.edges[1].resolution,'unresolved');assert.equal(atlas.edges[2].resolution,'external');

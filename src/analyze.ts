@@ -8,6 +8,21 @@ import type { Atlas, Edge } from './types.js';
 const ignored = new Set(['node_modules', '.git', 'dist', 'build', 'coverage', '.next', '.turbo', 'vendor']);
 const sourcePattern = /\.(?:ts|tsx|mts|cts)$/;
 const slash = (s: string) => s.split(path.sep).join('/');
+function workspaceMatch(pattern: string, directory: string): boolean {
+  let source='^';
+  for(let i=0;i<pattern.length;i++){
+    if(pattern[i]==='*'&&pattern[i+1]==='*'&&pattern[i+2]==='/'){source+='(?:.*/)?';i+=2;}
+    else if(pattern[i]==='*'&&pattern[i+1]==='*'){source+='.*';i++;}
+    else if(pattern[i]==='*')source+='[^/]*';
+    else source+=pattern[i]!.replace(/[|\\{}()[\]^$+?.]/g,'\\$&');
+  }
+  return new RegExp(`${source}$`).test(directory);
+}
+function isWorkspacePackage(directory: string, patterns: string[]): boolean {
+  const includes=patterns.filter(pattern=>!pattern.startsWith('!'));
+  const excludes=patterns.filter(pattern=>pattern.startsWith('!')).map(pattern=>pattern.slice(1));
+  return includes.some(pattern=>workspaceMatch(pattern,directory))&&!excludes.some(pattern=>workspaceMatch(pattern,directory));
+}
 export function githubURL(input: string): string {
   const u = new URL(input);
   if (u.protocol !== 'https:' || u.hostname !== 'github.com' || u.port || u.username || u.password || u.search || u.hash || !/^\/[\w.-]+\/[\w.-]+\/?$/.test(u.pathname)) {
@@ -60,6 +75,30 @@ export async function analyze(input: string, options: { includeTests?: boolean; 
   }
   await walk(root);
   if (!files.length) throw new Error('No TypeScript source files found. Try --include-tests or choose a TypeScript project.');
+  const rootPackage=packages.find(pkg=>pkg.dir===root);
+  const workspacePatterns: string[]=[];
+  const configuredWorkspaces=rootPackage?.data.workspaces;
+  const packageGlobs=Array.isArray(configuredWorkspaces)?configuredWorkspaces:configuredWorkspaces?.packages;
+  if(Array.isArray(packageGlobs))workspacePatterns.push(...packageGlobs.filter((pattern: unknown): pattern is string=>typeof pattern==='string'));
+  try {
+    const yaml=await readFile(path.join(root,'pnpm-workspace.yaml'),'utf8');
+    let inPackages=false;
+    for(const line of yaml.split(/\r?\n/)){
+      if(/^packages\s*:\s*(?:#.*)?$/.test(line)){inPackages=true;continue;}
+      if(inPackages&&/^\S/.test(line)&&!/^\s*#/.test(line))break;
+      if(!inPackages)continue;
+      const match=line.match(/^\s*-\s*(?:'([^']+)'|"([^"]+)"|([^#\s]+))/);
+      const pattern=match?.[1]??match?.[2]??match?.[3];
+      if(pattern)workspacePatterns.push(pattern);
+    }
+  } catch { /* pnpm workspace metadata is optional */ }
+  const workspacePackages=packages
+    .filter(pkg=>pkg.dir!==root&&typeof pkg.data.name==='string'&&isWorkspacePackage(slash(path.relative(root,pkg.dir)),workspacePatterns))
+    .sort((a,b)=>slash(a.dir).localeCompare(slash(b.dir)));
+  const workspaceNameCounts=new Map<string,number>();
+  for(const pkg of workspacePackages)workspaceNameCounts.set(pkg.data.name,(workspaceNameCounts.get(pkg.data.name)??0)+1);
+  const ambiguousWorkspaceNames=new Set([...workspaceNameCounts].filter(([,count])=>count>1).map(([name])=>name));
+  for(const name of [...ambiguousWorkspaceNames].sort())warnings.push(`Multiple workspace packages use the name ${name}; imports to that package are left unresolved.`);
   let repository = options.repository;
   if (!repository) {
     const remote = git(root, ['remote', 'get-url', 'origin']);
@@ -83,8 +122,83 @@ export async function analyze(input: string, options: { includeTests?: boolean; 
   }
   function sourceTarget(target: string, dir: string): string | undefined {
     const base = path.resolve(dir, target);
-    const candidates = [base, base.replace(/\.(?:js|jsx|mjs|cjs)$/, '.ts'), base.replace(/\.mjs$/, '.mts'), base.replace(/\.cjs$/, '.cts'), `${base}.ts`, `${base}.tsx`, path.join(base, 'index.ts')];
+    const candidates = [base, base.replace(/\.d\.ts$/, '.ts'), base.replace(/\.d\.mts$/, '.mts'), base.replace(/\.d\.cts$/, '.cts'), base.replace(/\.(?:js|jsx|mjs|cjs)$/, '.ts'), base.replace(/\.mjs$/, '.mts'), base.replace(/\.cjs$/, '.cts'), `${base}.ts`, `${base}.tsx`, path.join(base, 'index.ts')];
     return candidates.find(f => fileSet.has(f));
+  }
+  function workspaceFile(pkg: {dir:string;data:any}, target: string): string | undefined {
+    const file=sourceTarget(target,pkg.dir);
+    if(!file)return undefined;
+    const relative=path.relative(pkg.dir,file);
+    return relative!== '..'&&!relative.startsWith(`..${path.sep}`)&&!path.isAbsolute(relative)?file:undefined;
+  }
+  function conditionTargets(value: unknown, kind: Edge['kind'], customConditions: string[] = []): string[] {
+    if(typeof value==='string')return [value];
+    if(Array.isArray(value))return value.flatMap(item=>conditionTargets(item,kind,customConditions));
+    if(!value||typeof value!=='object')return [];
+    const record=value as Record<string,unknown>;
+    const preference=kind==='require'?['types',...customConditions,'require','node','default','import','source']:['types',...customConditions,'import','node','default','source','require'];
+    return [...preference,...Object.keys(record)].filter((key,index,all)=>all.indexOf(key)===index&&key in record).flatMap(key=>conditionTargets(record[key],kind,customConditions));
+  }
+  function workspaceTarget(specifier: string, kind: Edge['kind'], options: ts.CompilerOptions): string | undefined {
+    const customConditions=options.customConditions??[];
+    const segments=specifier.split('/');
+    const packageSegmentCount=segments[0]!.startsWith('@')?2:1;
+    const packageName=segments.slice(0,packageSegmentCount).join('/');
+    const packagePath=segments.slice(packageSegmentCount).join('/');
+    const matches=workspacePackages.filter(candidate=>candidate.data.name===packageName);
+    if(matches.length>1)return undefined;
+    const pkg=matches[0]??(rootPackage?.data.name===packageName?rootPackage:undefined);
+    if(!pkg)return undefined;
+    const subpath=packagePath;
+    const exportMap=pkg.data.exports;
+    let exportTargets: string[]=[];
+    let mappedSubpath=subpath;
+    if(exportMap!==undefined){
+      const exportPath=subpath?`./${subpath}`:'.';
+      if(typeof exportMap==='string'){
+        if(subpath)return undefined;
+        exportTargets=conditionTargets(exportMap,kind,customConditions);
+      }else if(Array.isArray(exportMap)){
+        if(subpath||!exportMap.length)return undefined;
+        exportTargets=conditionTargets(exportMap,kind);
+      }else if(exportMap&&typeof exportMap==='object'){
+        const entries=Object.entries(exportMap as Record<string,unknown>);
+        const subpathEntries=entries.filter(([key])=>key==='.'||key.startsWith('./'));
+        if(!subpathEntries.length){
+          if(subpath||!entries.length||entries.some(([key])=>key.startsWith('.')))return undefined;
+          exportTargets=conditionTargets(exportMap,kind,customConditions);
+        }else{
+          let found=subpathEntries.find(([key])=>key===exportPath);
+          let capture='';
+          if(!found){
+            const patterned=subpathEntries.map(([key,value])=>{
+              const star=key.indexOf('*');
+              if(star<0)return undefined;
+              const before=key.slice(0,star),after=key.slice(star+1);
+              if(!exportPath.startsWith(before)||!exportPath.endsWith(after))return undefined;
+              const middle=exportPath.slice(before.length,exportPath.length-after.length);
+              return {key,value,capture:middle,specificity:before.length+after.length};
+            }).filter((item):item is {key:string;value:unknown;capture:string;specificity:number}=>!!item).sort((a,b)=>b.specificity-a.specificity);
+            const match=patterned[0];
+            if(match){found=[match.key,match.value];capture=match.capture;}
+          }
+          if(!found)return undefined;
+          const [key,value]=found;
+          mappedSubpath=key.includes('*')?key.replace('*',capture).replace(/^\.\//,''):key==='.'?'':key.replace(/^\.\//,'');
+          exportTargets=conditionTargets(value,kind,customConditions).map(target=>target.replaceAll('*',capture));
+        }
+      }else return undefined;
+    }
+    for(const target of exportTargets){const resolved=workspaceFile(pkg,target);if(resolved)return resolved;}
+    if(typeof pkg.data.source==='string'){
+      const source=String(pkg.data.source).replace(/^\.\//,'');
+      const candidates=subpath?[path.join(path.dirname(source),mappedSubpath),path.join(path.dirname(source),subpath)]:[source];
+      for(const candidate of candidates){const resolved=workspaceFile(pkg,candidate);if(resolved)return resolved;}
+    }
+    const sourceRoot=typeof pkg.data.source==='string'?path.dirname(String(pkg.data.source).replace(/^\.\//,'')):'src';
+    const inferred=subpath?[path.join(sourceRoot,mappedSubpath),path.join(sourceRoot,subpath),subpath]:[path.join(sourceRoot,'index.ts'),'src/index.ts','index.ts'];
+    for(const candidate of inferred){const resolved=workspaceFile(pkg,candidate);if(resolved)return resolved;}
+    return undefined;
   }
   const entries = new Map<string, string[]>();
   function mark(target: unknown, dir: string, reason: string) {
@@ -105,8 +219,14 @@ export async function analyze(input: string, options: { includeTests?: boolean; 
       const resolved = ts.resolveModuleName(specifier, file, compilerOptions(file), host).resolvedModule;
       let target = resolved?.resolvedFileName;
       if (!target) {
+        target=workspaceTarget(specifier,kind,compilerOptions(file));
+      }
+      if (!target) {
         for (const pkg of packages) {
           if (pkg.data.name === specifier) {
+            if(ambiguousWorkspaceNames.has(pkg.data.name))break;
+            if(pkg.dir!==root&&!workspacePackages.includes(pkg))break;
+            if(pkg.data.exports!==undefined)break;
             target = sourceTarget(pkg.data.source || pkg.data.module || pkg.data.main || 'src/index.ts', pkg.dir);
             if (target) break;
           }
