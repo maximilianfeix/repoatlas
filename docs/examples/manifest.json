@@ -1,0 +1,32 @@
+[
+  {
+    "name": "hono",
+    "url": "https://github.com/honojs/hono",
+    "commit": "ee0622e14487444211942eec2f6ab7ccede4c6af",
+    "modules": 247,
+    "connections": 676,
+    "warnings": [
+      "6 imports could not be mapped to included TypeScript files. See the dependency inspector."
+    ]
+  },
+  {
+    "name": "zustand",
+    "url": "https://github.com/pmndrs/zustand",
+    "commit": "b57db4f86ef179285da216eeb291266da82c361c",
+    "modules": 18,
+    "connections": 23,
+    "warnings": [
+      "2 imports could not be mapped to included TypeScript files. See the dependency inspector."
+    ]
+  },
+  {
+    "name": "ky",
+    "url": "https://github.com/sindresorhus/ky",
+    "commit": "0d59458a0a58e1c3d7c6db0ab17ed5c7cd671e47",
+    "modules": 51,
+    "connections": 93,
+    "warnings": [
+      "tsconfig.json: File '@sindresorhus/tsconfig' not found."
+    ]
+  }
+]
