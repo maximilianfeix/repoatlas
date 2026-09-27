@@ -28,7 +28,8 @@ export function buildBoundaryMatrix(modules: Module[], edges: Edge[]): BoundaryM
     labels.set(id,module.workspace??(module.group==='.'?'.':module.group.split('/')[0]!));
     counts.set(id,(counts.get(id)??0)+1);
   }
-  const groups=[...counts].map(([id,modules])=>({id,label:labels.get(id)!,modules})).sort((a,b)=>a.label.localeCompare(b.label)||a.id.localeCompare(b.id));
+  const compare=(a:string,b:string)=>a<b?-1:a>b?1:0;
+  const groups=[...counts].map(([id,modules])=>({id,label:labels.get(id)!,modules})).sort((a,b)=>compare(a.label,b.label)||compare(a.id,b.id));
   const grouped=new Map<string,Edge[]>();
   for(const edge of edges){
     if(edge.resolution!=='internal')continue;

@@ -91,14 +91,13 @@ The Zustand demo includes a workspace boundary: `examples/starter/src/index.tsx`
 
 - **Project shape:** source modules, directories, and likely entry points.
 - **Dependencies:** static imports, re-exports, type imports, literal dynamic imports, and literal `require` calls.
-- **Monorepos:** resolve declared npm/Yarn or pnpm workspace packages, including `package.json` export subpaths, back to included TypeScript source.
 - **Evidence:** the exact import statement and line, with a commit-pinned GitHub link when the checkout is clean.
 - **Explore maps and assess change:** search, directory and entry-point filters, accessible pagination, Focus map for direct neighbors, and Impact map for every transitively dependent module.
 - **Check entry-point reachability:** find modules outside paths from detected entries; if RepoAtlas finds no entry point, reachability stays unknown instead of flagging every file.
-- **Inspect architecture boundaries:** compare imports between declared workspace packages and top-level source directories, then open any populated cell to inspect every exact import site.
+- **Map monorepo boundaries:** resolve declared npm/Yarn or pnpm workspace exports, compare imports between packages and source directories, and open each populated boundary cell to inspect exact import sites.
 - **Spot architecture risks:** isolate circular import groups, trace the exact cycle edges, and jump straight to the most depended-on modules.
 - **Compare snapshots:** report added or removed modules and dependency relationships, plus changed import specifiers, between two JSON maps; line shifts alone do not count as architecture drift.
-- **Portable output:** one offline HTML file, or the full graph as JSON for other tools.
+- **Portable output:** one offline HTML file, full graph JSON, a boundary SVG, or a concise CI text report.
 
 ```sh
 repoatlas https://github.com/honojs/hono --ref main -o hono-map.html
@@ -106,6 +105,8 @@ repoatlas . --include-tests -o project-map.html
 repoatlas . --json > graph.json
 repoatlas compare before.json after.json
 repoatlas compare before.json after.json --json > drift.json
+repoatlas report after.json --format svg --output boundaries.svg
+repoatlas report after.json --format text
 repoatlas --help
 ```
 
@@ -126,7 +127,7 @@ Use `--json` on the compare command to save the full machine-readable delta. Lin
 
 ## Scope and privacy
 
-RepoAtlas performs **static file-dependency analysis**. Entry-point reachability follows resolved imports from entries detected by package metadata and file conventions; entry detection is heuristic, so unreachable means “not found along these static paths,” not proof of dead code. If no entry is detected, reachability is unknown. The boundary matrix groups declared workspace packages separately and other files by their top-level directory; it counts resolved internal imports only. Matrices show at most 80 groups at once; use the existing search or directory filters to narrow larger projects. Impact map follows resolved internal imports backwards to show potential dependents; circular dependency groups use strongly connected components over the same resolved graph. Workspace links are followed only for packages declared by npm/Yarn workspaces or `pnpm-workspace.yaml` (common `*`, `**`, and exclusion patterns are supported), and export maps remain authoritative for package subpaths. These are source-level signals, not runtime or test-coverage guarantees. RepoAtlas does not execute project code, install target dependencies, or infer runtime calls, framework routes, or computed imports. Unresolved and external dependencies remain visible as unresolved or external.
+RepoAtlas performs **static file-dependency analysis**. Entry-point reachability follows resolved imports from entries detected by package metadata and file conventions; entry detection is heuristic, so unreachable means “not found along these static paths,” not proof of dead code. If no entry is detected, reachability is unknown. The boundary matrix groups declared workspace packages separately and other files by their top-level directory; it counts resolved internal imports only. Matrices and SVG exports show at most 80 groups; use the existing search or directory filters to narrow larger projects, or use the text report. Impact map follows resolved internal imports backwards to show potential dependents; circular dependency groups use strongly connected components over the same resolved graph. Workspace links are followed only for packages declared by npm/Yarn workspaces or `pnpm-workspace.yaml` (common `*`, `**`, and exclusion patterns are supported), and export maps remain authoritative for package subpaths. These are source-level signals, not runtime or test-coverage guarantees. RepoAtlas does not execute project code, install target dependencies, or infer runtime calls, framework routes, or computed imports. Unresolved and external dependencies remain visible as unresolved or external.
 
 Generated directories, declaration files, hidden files, and tests are excluded by default. Use `--include-tests` to include tests and fixtures. Analysis is limited to 5,000 files and 2 MB per source file; the interactive map displays 100 matching modules per page, with previous/next navigation, while JSON retains the full analyzed graph. Local edits disable GitHub source links, but source evidence remains embedded in the HTML.
 
