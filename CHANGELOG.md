@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.5.0] - 2026-09-27
+
+### Added
+
+- Trace static reachability from recognized TypeScript entry points, highlight modules outside those paths, and filter the map to inspect them.
+- Report reachability as unknown when no entry points are detected, avoiding false orphan claims.
+- Explain the heuristic entry-point basis in the inspector, module status, and README.
+- Refresh the Zustand, Ky, and Hono maps with the current viewer.
+
+### Quality
+
+- Added coverage for multiple entries, cycles, disconnected modules, unknown entry sets, and a 5,000-module traversal.
+- Browser-checked reachable and no-entry projects; verified 27 tests, TypeScript checks, cross-platform CI, and CodeQL.
+
 ## [0.4.0] - 2026-09-27
 
 ### Added
