@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 380 72" role="img" aria-labelledby="title desc">
+  <title id="title">RepoAtlas</title><desc id="desc">A map of connected code modules, with each edge backed by source evidence.</desc>
+  <defs><linearGradient id="g" x1="8" y1="8" x2="56" y2="56" gradientUnits="userSpaceOnUse"><stop stop-color="#91f2c9"/><stop offset="1" stop-color="#9cc8ff"/></linearGradient></defs>
+  <rect x="2" y="2" width="68" height="68" rx="20" fill="#101722" stroke="#2b394d" stroke-width="2"/>
+  <path d="M17 22h14l10 14h9M17 50h14l10-14" fill="none" stroke="url(#g)" stroke-linecap="round" stroke-linejoin="round" stroke-width="3.5"/>
+  <circle cx="16" cy="22" r="5" fill="#91f2c9"/><circle cx="16" cy="50" r="5" fill="#91f2c9"/><circle cx="50" cy="36" r="5" fill="#b5a2ff"/><circle cx="31" cy="36" r="4" fill="#dce8fa"/>
+  <text x="88" y="48" fill="#f1f5fb" font-family="Inter,ui-sans-serif,system-ui,-apple-system,Segoe UI,sans-serif" font-size="38" font-weight="720" letter-spacing="-1.8">RepoAtlas</text>
+</svg>
