@@ -1,8 +1,13 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 380 72" role="img" aria-labelledby="title desc">
-  <title id="title">RepoAtlas</title><desc id="desc">A map of connected code modules, with each edge backed by source evidence.</desc>
-  <defs><linearGradient id="g" x1="8" y1="8" x2="56" y2="56" gradientUnits="userSpaceOnUse"><stop stop-color="#91f2c9"/><stop offset="1" stop-color="#9cc8ff"/></linearGradient></defs>
-  <rect x="2" y="2" width="68" height="68" rx="20" fill="#101722" stroke="#2b394d" stroke-width="2"/>
-  <path d="M17 22h14l10 14h9M17 50h14l10-14" fill="none" stroke="url(#g)" stroke-linecap="round" stroke-linejoin="round" stroke-width="3.5"/>
-  <circle cx="16" cy="22" r="5" fill="#91f2c9"/><circle cx="16" cy="50" r="5" fill="#91f2c9"/><circle cx="50" cy="36" r="5" fill="#b5a2ff"/><circle cx="31" cy="36" r="4" fill="#dce8fa"/>
-  <text x="88" y="48" fill="#f1f5fb" font-family="Inter,ui-sans-serif,system-ui,-apple-system,Segoe UI,sans-serif" font-size="38" font-weight="720" letter-spacing="-1.8">RepoAtlas</text>
+<svg xmlns="http://www.w3.org/2000/svg" width="348" height="64" viewBox="0 0 348 64" role="img" aria-labelledby="title desc">
+  <title id="title">RepoAtlas</title>
+  <desc id="desc">Two source modules join through a verified dependency in the RepoAtlas mark.</desc>
+  <g fill="none" stroke-linecap="square" stroke-linejoin="miter">
+    <rect x="2" y="2" width="60" height="60" rx="16" fill="#101722" stroke="#334155" stroke-width="1.5"/>
+    <path d="M26 19h7v13h7M26 45h7V32" stroke="#8bdec1" stroke-width="2.5"/>
+    <rect x="13.5" y="13" width="12.5" height="12.5" rx="2.5" fill="#101722" stroke="#8bdec1" stroke-width="2.5"/>
+    <rect x="13.5" y="38.5" width="12.5" height="12.5" rx="2.5" fill="#101722" stroke="#8bdec1" stroke-width="2.5"/>
+    <rect x="40" y="25.75" width="12.5" height="12.5" rx="2.5" fill="#101722" stroke="#b8a9ef" stroke-width="2.5"/>
+    <circle cx="33" cy="32" r="2.5" fill="#e7edf6" stroke="none"/>
+  </g>
+  <text x="82" y="44" fill="#f1f5fb" font-family="Inter,ui-sans-serif,system-ui,-apple-system,'Segoe UI',sans-serif" font-size="35" font-weight="760" letter-spacing="-1.5"><tspan>Repo</tspan><tspan fill="#c8d2df" font-weight="540">Atlas</tspan></text>
 </svg>
