@@ -27,6 +27,29 @@ export function createCommand(value) {
 }
 
 if (typeof document !== 'undefined') {
+  const themeButton = document.querySelector('#theme-toggle');
+  const themeMeta = document.querySelector('meta[name="theme-color"]');
+  if (themeButton) {
+    let savedTheme;
+    try { savedTheme = localStorage.getItem('repoatlas-theme'); } catch { /* Storage can be unavailable in restricted browsers. */ }
+    const initialTheme = savedTheme === 'light' || savedTheme === 'dark'
+      ? savedTheme
+      : matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    const setTheme = theme => {
+      document.documentElement.dataset.theme = theme;
+      themeButton.setAttribute('aria-pressed', String(theme === 'dark'));
+      themeButton.setAttribute('aria-label', `Switch to ${theme === 'dark' ? 'light' : 'dark'} theme`);
+      themeButton.querySelector('.toggle-knob').textContent = theme === 'dark' ? '☀' : '☾';
+      if (themeMeta) themeMeta.content = theme === 'dark' ? '#111113' : '#efefec';
+    };
+    setTheme(initialTheme);
+    themeButton.addEventListener('click', () => {
+      const nextTheme = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
+      setTheme(nextTheme);
+      try { localStorage.setItem('repoatlas-theme', nextTheme); } catch { /* The current page theme still changes. */ }
+    });
+  }
+
   const form = document.querySelector('#repo-command-form');
   const input = document.querySelector('#repo-url');
   const preview = document.querySelector('#command-preview');
