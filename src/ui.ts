@@ -1,5 +1,5 @@
 import type { Atlas, Edge, Module } from './types.js';
-import { focusNeighborhood } from './focus.js';
+import { focusNeighborhood, impactNeighborhood } from './focus.js';
 const data: Atlas = JSON.parse(document.getElementById('atlas-data')!.textContent!);
 const $ = (id: string) => document.getElementById(id)!;
 function el(tag: string, text = '', cls = '') { const e = document.createElement(tag); e.textContent = text; if (cls) e.className = cls; return e; }
@@ -8,7 +8,7 @@ const NS = 'http://www.w3.org/2000/svg';
 function svg(tag: string, attrs: Record<string, string | number> = {}) { const e = document.createElementNS(NS,tag); for (const [k,v] of Object.entries(attrs)) e.setAttribute(k,String(v)); return e; }
 const internal = data.edges.filter(e => e.resolution === 'internal');
 const byId = new Map(data.modules.map(m => [m.id,m]));
-let selected: string | undefined, selectedEdge: Edge | undefined, entriesOnly = false, focusMap = false, zoom = 1;
+let selected: string | undefined, selectedEdge: Edge | undefined, entriesOnly = false, focusMap = false, impactMap = false, zoom = 1;
 $('repo-name').textContent = data.name;
 for (const [value,label] of [[data.modules.length,'modules'],[internal.length,'connections'],[data.modules.filter(m=>m.entry.length).length,'entry points']]) { const stat = el('div'); stat.append(el('strong',String(value)),el('span',String(label))); $('stats').append(stat); }
 for (const group of [...new Set(data.modules.map(m=>m.group))].sort()) { const opt = document.createElement('option'); opt.value = group; opt.textContent = group; $('group').append(opt); }
@@ -33,6 +33,18 @@ function choose(id: string) {
   const module=byId.get(id)!; const panel=$('inspector'); panel.replaceChildren(el('h2','Module inspector'),el('h3',id),el('p',`${module.lines} lines · ${module.group}`));
   for (const reason of module.entry) panel.append(el('span',reason,'pill'));
   if (module.url) panel.append(el('p'),link('Open module on GitHub ↗',module.url));
+  const directCount = new Set(internal.filter(edge => edge.target === id).map(edge => edge.source)).size;
+  const totalDependents = Math.max(0,impactNeighborhood(data.modules,internal,id).length-1);
+  const summary = el('div','','impact-summary');
+  summary.append(el('h2','Change impact'));
+  const metric = el('div','','impact-total');
+  metric.append(el('strong',String(totalDependents)),el('span','potential dependents'));
+  summary.append(metric,el('p',`${directCount} direct · ${totalDependents-directCount} indirect`),el('p','Based on resolved static imports.'));
+  const impactButton = el('button',impactMap ? 'Exit impact map' : 'Show impact map','button impact-link');
+  impactButton.id='impact-link';
+  impactButton.onclick=()=>{impactMap=!impactMap;focusMap=false;draw();choose(id);};
+  summary.append(impactButton);
+  panel.append(summary);
   for (const [label,edges] of [['Imports',data.edges.filter(e=>e.source===id)],['Imported by',data.edges.filter(e=>e.target===id && e.resolution==='internal')]] as [string,Edge[]][]) {
     panel.append(el('h3',`${label} · ${edges.length}`));
     if (!edges.length) panel.append(el('p','No static connections found.'));
@@ -44,15 +56,23 @@ function draw() {
   const query=($('search') as HTMLInputElement).value.toLowerCase();
   const group=($('group') as HTMLSelectElement).value;
   const focused=focusMap && selected ? focusNeighborhood(data.modules,internal,selected) : undefined;
-  const matches=focused ?? data.modules.filter(m=>(!query || m.id.toLowerCase().includes(query)) && (!group || m.group===group) && (!entriesOnly || m.entry.length));
+  const impacted=impactMap && selected ? impactNeighborhood(data.modules,internal,selected) : undefined;
+  const matches=focused ?? impacted ?? data.modules.filter(m=>(!query || m.id.toLowerCase().includes(query)) && (!group || m.group===group) && (!entriesOnly || m.entry.length));
   const scoped=matches;
   const visible=scoped.slice(0,100);
   $('focus').toggleAttribute('disabled',!selected);
   $('focus').classList.toggle('active',focusMap);
   $('focus').setAttribute('aria-pressed',String(focusMap));
-  $('view-count').textContent=`${visible.length} / ${scoped.length} ${focused ? 'connected' : 'matching'} modules${scoped.length>100 ? ' · refine filters' : ''}`;
+  $('impact').toggleAttribute('disabled',!selected);
+  $('impact').classList.toggle('active',impactMap);
+  $('impact').setAttribute('aria-pressed',String(impactMap));
+  const impactLink=document.getElementById('impact-link');
+  if(impactLink) impactLink.textContent=impactMap ? 'Exit impact map' : 'Show impact map';
+  const limited=scoped.length>100 ? (focused || impacted ? ' · first 100 shown' : ' · refine filters') : '';
+  $('view-count').textContent=`${visible.length} / ${scoped.length} ${focused ? 'connected' : impacted ? 'affected' : 'matching'} modules${limited}`;
+  $('view-description').textContent=impacted ? `Potential change impact for ${selected} · reverse imports` : focused ? `Direct neighborhood of ${selected}` : 'Click a connection for its code';
   const list=$('module-list'); list.replaceChildren();
-  for (const m of matches.slice(0,500)) { const b=el('button',`${m.entry.length ? '● ' : ''}${m.id}`,selected===m.id ? 'selected' : ''); b.onclick=()=>{ if(!visible.some(v=>v.id===m.id)){ ($('search') as HTMLInputElement).value=m.id; } choose(m.id); }; list.append(b); }
+  for (const m of matches.slice(0,500)) { const b=el('button',`${m.entry.length ? '● ' : ''}${m.id}`,selected===m.id ? 'selected' : ''); b.onclick=()=>{ if(!visible.some(v=>v.id===m.id)){ ($('search') as HTMLInputElement).value=m.id; focusMap=false; impactMap=false; } choose(m.id); }; list.append(b); }
   if (!matches.length) list.append(el('p','No matching modules.'));
   const graph=$('graph'); graph.replaceChildren();
   const ids=new Set(visible.map(m=>m.id));
@@ -81,8 +101,9 @@ function draw() {
 }
 $('search').addEventListener('input',draw);$('group').addEventListener('change',draw);
 $('entries').onclick=()=>{entriesOnly=!entriesOnly;$('entries').classList.toggle('active',entriesOnly);$('entries').setAttribute('aria-pressed',String(entriesOnly));draw();};
-$('focus').onclick=()=>{if(selected){focusMap=!focusMap;draw();}};
-$('reset').onclick=()=>{($('search') as HTMLInputElement).value='';($('group') as HTMLSelectElement).value='';entriesOnly=false;focusMap=false;selected=undefined;selectedEdge=undefined;zoom=1;$('entries').classList.remove('active');$('entries').setAttribute('aria-pressed','false');intro();draw();};
+$('impact').onclick=()=>{if(selected){impactMap=!impactMap;focusMap=false;draw();}};
+$('focus').onclick=()=>{if(selected){focusMap=!focusMap;impactMap=false;draw();}};
+$('reset').onclick=()=>{($('search') as HTMLInputElement).value='';($('group') as HTMLSelectElement).value='';entriesOnly=false;focusMap=false;impactMap=false;selected=undefined;selectedEdge=undefined;zoom=1;$('entries').classList.remove('active');$('entries').setAttribute('aria-pressed','false');intro();draw();};
 $('zoom-in').onclick=()=>{zoom=Math.min(2,zoom+0.2);draw();};$('zoom-out').onclick=()=>{zoom=Math.max(0.4,zoom-0.2);draw();};
 document.addEventListener('keydown',e=>{if(e.key==='/' && !(e.target instanceof HTMLInputElement)){e.preventDefault();$('search').focus();}});
 intro();draw();
