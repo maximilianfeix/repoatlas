@@ -82,7 +82,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: maximilianfeix/repoatlas@v1.8.0
+      - uses: maximilianfeix/repoatlas@v1.9.0
         with:
           output: repoatlas-map.html
 ```
@@ -113,6 +113,7 @@ The Zustand demo includes a workspace boundary: `examples/starter/src/index.tsx`
 - **Evidence:** the exact import statement and line, with a commit-pinned GitHub link when the checkout is clean.
 - **Share discoveries:** copy a direct link to a module, external package, or exact import edge inside the same portable HTML map.
 - **Explore maps and assess change:** search, directory and entry-point filters, accessible pagination, Focus map for direct neighbors, and Impact map for every transitively dependent module.
+- **Read dense graphs:** parallel imports share one countable connector while every exact import site remains available in a keyboard-accessible evidence list.
 - **Check entry-point reachability:** find modules outside paths from detected entries; if RepoAtlas finds no entry point, reachability stays unknown instead of flagging every file.
 - **Trace entry paths:** follow the shortest resolved-import route from a detected entry point to a reachable module, then click each highlighted edge for its exact source evidence.
 - **Map monorepo boundaries:** resolve declared npm/Yarn or pnpm workspace exports, compare imports between packages and source directories, and open each populated boundary cell to inspect exact import sites.
@@ -123,7 +124,7 @@ The Zustand demo includes a workspace boundary: `examples/starter/src/index.tsx`
 - **Navigate large maps:** page through 100 modules at a time, group modules by workspace or top-level directory, and use the overview to jump across wide graph pages.
 - **Portable output:** one offline HTML file, full graph JSON, a boundary SVG, or a concise CI text report.
 
-[![Inspect external package usage in a real Hono architecture map](docs/assets/external-package-usage.png)](https://maximilianfeix.github.io/repoatlas/examples/hono.html)
+[![Inspect bundled import counts and source evidence in a real Hono architecture map](docs/assets/bundled-import-evidence.png)](https://maximilianfeix.github.io/repoatlas/examples/hono.html)
 
 ```sh
 repoatlas https://github.com/honojs/hono --ref main -o hono-map.html

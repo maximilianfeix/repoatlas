@@ -1,6 +1,6 @@
 {
   "name": "@maximilianfeix/repoatlas",
-  "version": "1.8.0",
+  "version": "1.9.0",
   "description": "Understand any TypeScript repo in one interactive map. Every edge has evidence.",
   "type": "module",
   "bin": {
