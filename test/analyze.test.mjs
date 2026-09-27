@@ -36,6 +36,14 @@ test('computed dynamic imports and require calls remain visible as unresolved so
   assert.equal(atlas.edges[3].resolution,'internal');
   assert.ok(atlas.warnings.some(warning=>warning.includes('3 computed import expressions')&&warning.includes('targets are not inferred')));
 });
+test('external imports are classified and scoped package subpaths are grouped without registry access',async t=>{
+  const dir=await fixture(t,{'src/index.ts':["import fs from 'node:fs';","import {readFile} from 'node:fs/promises';","import path from 'path';","import clone from 'lodash/clone';","import thing from '@scope/tool/subpath';","import remote from 'https://cdn.example.test/lib.js';"].join('\n')});
+  const atlas=await analyze(dir);
+  const externals=atlas.edges.filter(edge=>edge.resolution==='external');
+  assert.deepEqual(externals.map(edge=>[edge.externalKind,edge.externalName]),[
+    ['builtin','fs'],['builtin','fs'],['builtin','path'],['package','lodash'],['package','@scope/tool'],['url','https://cdn.example.test']
+  ]);
+});
 test('JavaScript analysis is opt-in and links TS, JSX, ESM and CommonJS modules',async t=>{
   const dir=await fixture(t,{
     'tsconfig.json':JSON.stringify({compilerOptions:{allowJs:false,moduleResolution:'Bundler'}}),

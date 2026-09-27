@@ -3,12 +3,27 @@ import { readdir, readFile, lstat, realpath } from 'node:fs/promises';
 import { existsSync, lstatSync, readFileSync, realpathSync } from 'node:fs';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
+import { builtinModules } from 'node:module';
 import type { Atlas, Edge } from './types.js';
 
 const ignored = new Set(['node_modules', '.git', 'dist', 'build', 'coverage', '.next', '.turbo', 'vendor']);
 const typeScriptPattern = /\.(?:ts|tsx|mts|cts)$/;
 const javaScriptPattern = /\.(?:js|jsx|mjs|cjs)$/;
+const builtins = new Set(builtinModules.flatMap(name => [name, name.replace(/^node:/, '')]));
 const slash = (s: string) => s.split(path.sep).join('/');
+function externalDependency(specifier: string): {kind: NonNullable<Edge['externalKind']>; name: string} {
+  if (builtins.has(specifier) || (specifier.startsWith('node:') && builtins.has(specifier.slice(5)))) {
+    return {kind:'builtin',name:specifier.replace(/^node:/,'').split('/')[0]!};
+  }
+  if (/^(?:[A-Za-z][\w+.-]*:|\/\/)/.test(specifier)) {
+    let name=specifier;
+    try { const url=new URL(specifier); name=url.origin==='null'?`${url.protocol}//${url.pathname.split('/')[1]??''}`:url.origin; } catch { /* retain source spelling */ }
+    return {kind:'url',name};
+  }
+  if (specifier.startsWith('#') || !specifier) return {kind:'other',name:specifier||'(empty specifier)'};
+  const scoped=specifier.match(/^(@[^/]+\/[^/]+)/);
+  return {kind:'package',name:scoped?.[1]??specifier.split('/')[0]!};
+}
 function workspaceMatch(pattern: string, directory: string): boolean {
   let source='^';
   for(let i=0;i<pattern.length;i++){
@@ -239,7 +254,8 @@ export async function analyze(input: string, options: { includeTests?: boolean; 
       const resolution = internal ? 'internal' : specifier.startsWith('.') || specifier.startsWith('/') || (target && inside(target) && !target.includes('node_modules')) ? 'unresolved' : 'external';
       const line = sf.getLineAndCharacterOfPosition(node.getStart(sf)).line + 1;
       const end = sf.getLineAndCharacterOfPosition(node.end).line + 1;
-      edges.push({source:id(file), target: internal ? id(target!) : specifier, specifier, kind, line, code:lines.slice(line-1, Math.min(end,line+7)).join('\n').slice(0,3000), url:url(file,line), resolution});
+      const dependency=resolution==='external'?externalDependency(specifier):undefined;
+      edges.push({source:id(file), target: internal ? id(target!) : specifier, specifier, kind, line, code:lines.slice(line-1, Math.min(end,line+7)).join('\n').slice(0,3000), url:url(file,line), resolution, ...(dependency?{externalKind:dependency.kind,externalName:dependency.name}:{})});
     }
     function addComputed(expression: ts.Expression, node: ts.Node, kind: Edge['kind']) {
       const specifier = expression.getText(sf);

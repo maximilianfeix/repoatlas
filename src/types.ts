@@ -7,6 +7,8 @@ export interface Edge {
   line: number; code: string; url?: string;
   resolution: 'internal' | 'external' | 'unresolved';
   computed?: true;
+  externalKind?: 'package' | 'builtin' | 'url' | 'other';
+  externalName?: string;
 }
 export interface Atlas {
   schemaVersion: 1; name: string; repository?: string; commit?: string;

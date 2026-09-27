@@ -1,5 +1,19 @@
 # Changelog
 
+## [1.6.0] - 2026-09-27
+
+### Added
+
+- Add a source-backed external dependency inventory grouped into npm packages, Node built-ins, URL imports, and other specifiers.
+- Group scoped package subpaths by package name and report import-site and distinct-module counts without fetching registry metadata.
+- Let users open every exact external import site from the offline viewer, with keyboard-accessible browsing and 50-site paging.
+- Advertise optional computed-import and external-dependency classification fields in the additive v1 snapshot schema.
+
+### Quality
+
+- Test scoped package grouping, Node built-ins, URLs, repeat imports, deterministic ordering, older snapshots, and evidence-site preservation.
+- Regenerate the real Hono, Zustand, and Ky maps with categorized dependency evidence.
+
 ## [1.5.0] - 2026-09-27
 
 ### Added
