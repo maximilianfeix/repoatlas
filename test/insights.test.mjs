@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { findCycles } from '../dist/insights.js';
+import { analyzeReachability, findCycles } from '../dist/insights.js';
 
 const modules = ['entry.ts', 'a.ts', 'b.ts', 'self.ts', 'free.ts', 'outside.ts'].map(id => ({ id }));
 
@@ -32,4 +32,26 @@ test('handles an import chain at the analysis file limit without using the call 
   const longChain = Array.from({ length: 5000 }, (_, index) => ({ id: `${index}.ts` }));
   const edges = longChain.slice(0, -1).map((module, index) => ({ source: module.id, target: longChain[index + 1].id, resolution: 'internal' }));
   assert.deepEqual(findCycles(longChain, edges), []);
+});
+
+test('marks modules outside all recognized entry paths, including cycles and multiple entries', () => {
+  const modules=['main.ts','admin.ts','shared.ts','cycle-a.ts','cycle-b.ts','orphan.ts'].map(id=>({id,entry:['main.ts','admin.ts'].includes(id)?['package.json main']:[]}));
+  const edge=(source,target,resolution='internal')=>({source,target,resolution});
+  const result=analyzeReachability(modules,[edge('main.ts','shared.ts'),edge('shared.ts','cycle-a.ts'),edge('cycle-a.ts','cycle-b.ts'),edge('cycle-b.ts','cycle-a.ts'),edge('admin.ts','orphan.ts','external')]);
+  assert.equal(result.known,true);
+  assert.deepEqual([...result.reachable],['main.ts','admin.ts','shared.ts','cycle-a.ts','cycle-b.ts']);
+  assert.deepEqual([...result.unreachable],['orphan.ts']);
+});
+
+test('does not claim reachability when no entry points were detected', () => {
+  const result=analyzeReachability([{id:'a.ts',entry:[]},{id:'b.ts',entry:[]}],[]);
+  assert.deepEqual(result,{known:false,reachable:new Set(),unreachable:new Set()});
+});
+
+test('computes reachability iteratively for the full analysis file limit', () => {
+  const modules=Array.from({length:5000},(_,index)=>({id:`${index}.ts`,entry:index===0?['filename convention']:[]}));
+  const edges=modules.slice(0,-1).map((module,index)=>({source:module.id,target:modules[index+1].id,resolution:'internal'}));
+  const result=analyzeReachability(modules,edges);
+  assert.equal(result.reachable.size,5000);
+  assert.equal(result.unreachable.size,0);
 });
