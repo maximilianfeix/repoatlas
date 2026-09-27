@@ -28,6 +28,14 @@
 
 RepoAtlas creates a **standalone, interactive architecture map** from a TypeScript project. Unlike a diagram inferred from prose, each internal connection comes from a parsed import and can be checked against its exact source line. The exported HTML works offline and can be shared as one file.
 
+## See architecture boundaries
+
+The boundary view compares workspace packages and source directories. Each count opens the exact imports behind it.
+
+<p align="center">
+  <a href="https://maximilianfeix.github.io/repoatlas/examples/hono.html"><img src="docs/assets/boundary-matrix-preview.png" alt="Hono dependency boundary matrix with directory groups, import counts, and unreachable-module insight" width="1100"></a>
+</p>
+
 ## Quickstart
 
 Requires **Node.js 22+** and **Git**. Map a public GitHub repository:
@@ -58,7 +66,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: maximilianfeix/repoatlas@v0.5.0
+      - uses: maximilianfeix/repoatlas@v0.6.0
         with:
           output: repoatlas-map.html
 ```
