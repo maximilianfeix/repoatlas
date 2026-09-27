@@ -12,7 +12,8 @@ jobs:
         with:
           path: .
           output: repoatlas-smoke-map.html
+          include-js: true
           artifact-name: repoatlas-smoke-map
           retention-days: 1
       - name: Verify map output
-        run: test -s repoatlas-smoke-map.html && grep -q 'RepoAtlas' repoatlas-smoke-map.html
+        run: test -s repoatlas-smoke-map.html && grep -q 'RepoAtlas' repoatlas-smoke-map.html && grep -q 'scripts/examples.mjs' repoatlas-smoke-map.html

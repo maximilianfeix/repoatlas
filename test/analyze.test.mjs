@@ -19,6 +19,29 @@ test('AST edges retain exact lines; aliases, ESM extensions, reexports, types an
   assert.ok(atlas.edges.every(e=>e.target==='src/a.ts'&&e.resolution==='internal'));assert.deepEqual(atlas.edges.map(e=>e.line),[2,3,4,5,6,7]);assert.match(atlas.edges[0].code,/@\/a/);assert.ok(atlas.modules.find(m=>m.id==='src/index.ts').entry.includes('package.json source'));
   assert.equal((await analyze(dir,{includeTests:true})).modules.length,3);
 });
+test('JavaScript analysis is opt-in and links TS, JSX, ESM and CommonJS modules',async t=>{
+  const dir=await fixture(t,{
+    'tsconfig.json':JSON.stringify({compilerOptions:{allowJs:false,moduleResolution:'Bundler'}}),
+    'src/index.ts':"import { legacy } from './legacy.js'; export const result=legacy;",
+    'src/legacy.js':"import { helper } from './helper.mjs'; export const legacy=helper;",
+    'src/helper.mjs':'export const helper=1;',
+    'src/view.jsx':"import { legacy } from './legacy.js'; export default legacy;",
+    'src/legacy.cjs':"const helper=require('./helper.mjs'); module.exports=helper;",
+    'src/ignored.test.js':'export const testOnly=1;'
+  });
+  const typescriptOnly=await analyze(dir);
+  assert.deepEqual(typescriptOnly.modules.map(module=>module.id),['src/index.ts']);
+  assert.equal(typescriptOnly.edges[0].resolution,'unresolved');
+  const mixed=await analyze(dir,{includeJS:true});
+  assert.deepEqual(mixed.modules.map(module=>module.id),['src/helper.mjs','src/index.ts','src/legacy.cjs','src/legacy.js','src/view.jsx']);
+  assert.ok(mixed.edges.filter(edge=>edge.resolution==='internal').length>=4);
+  assert.ok(mixed.edges.some(edge=>edge.source==='src/index.ts'&&edge.target==='src/legacy.js'));
+  assert.ok(mixed.edges.some(edge=>edge.source==='src/legacy.js'&&edge.target==='src/helper.mjs'));
+  assert.ok(mixed.edges.some(edge=>edge.source==='src/view.jsx'&&edge.target==='src/legacy.js'));
+  assert.ok(mixed.edges.some(edge=>edge.source==='src/legacy.cjs'&&edge.target==='src/helper.mjs'));
+  const withTests=await analyze(dir,{includeJS:true,includeTests:true});
+  assert.ok(withTests.modules.some(module=>module.id==='src/ignored.test.js'));
+});
 test('configured bundler, Node ESM and Node 10 resolution modes are honored',async t=>{
   for (const [mode,options,specifier] of [
     ['bundler',{module:'preserve',moduleResolution:'bundler'},'./target'],
@@ -150,5 +173,12 @@ test('CLI runs outside project, returns JSON, and refuses accidental overwrite',
   const html=await readFile(path.join(dir,'repoatlas.html'),'utf8');
   assert.match(html,/RepoAtlas/);assert.match(html,/id="clusters"/);assert.match(html,/id="overview-svg"/);assert.match(html,/Center map/);
   const bad=run('--bad','--json');assert.equal(bad.status,1);assert.ok(JSON.parse(bad.stderr).error);
+});
+test('CLI enables mixed TypeScript and JavaScript analysis explicitly',async t=>{
+  const dir=await fixture(t,{'src/index.ts':"import './helper.js';",'src/helper.js':'export const value=1;'});
+  const run=spawnSync(process.execPath,[cli,'.','--include-js','--json'],{cwd:dir,encoding:'utf8'});
+  assert.equal(run.status,0);const atlas=JSON.parse(run.stdout);
+  assert.ok(atlas.modules.some(module=>module.id==='src/helper.js'));
+  assert.ok(atlas.edges.some(edge=>edge.resolution==='internal'&&edge.target==='src/helper.js'));
 });
 test('empty projects fail clearly',async t=>{await assert.rejects(()=>fixture(t,{}).then(dir=>analyze(dir)),/No TypeScript/);});

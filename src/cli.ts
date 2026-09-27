@@ -24,6 +24,7 @@ const program = new Command().name('repoatlas').version(packageVersion).descript
   .option('-o, --out <file>', 'write a standalone HTML map', 'repoatlas.html')
   .option('--json', 'emit the complete graph as JSON; do not write HTML')
   .option('--include-tests', 'include test files, fixtures and test directories')
+  .option('--include-js', 'include JavaScript and JSX modules in mixed repositories')
   .option('--force', 'replace an existing output file')
   .option('--ref <ref>', 'Git branch or tag to clone')
   .action(async (source: string | undefined, opts) => {
@@ -41,7 +42,7 @@ const program = new Command().name('repoatlas').version(packageVersion).descript
           execFileSync('git',['-c','core.hooksPath=/dev/null','-c','protocol.file.allow=never','clone','--quiet','--depth','1','--single-branch',...(opts.ref ? ['--branch',opts.ref] : []),'--',repository,root], {stdio:['ignore','pipe','pipe'],timeout:120000,env:{...process.env,GIT_TERMINAL_PROMPT:'0',GIT_LFS_SKIP_SMUDGE:'1'}});
         } catch { throw new Error('Could not clone repository. Check its URL, Git credentials, network and --ref.'); }
       } else if (opts.ref) throw new Error('--ref is supported only with a GitHub URL.');
-      const atlas = await analyze(root, {includeTests: opts.includeTests,repository});
+      const atlas = await analyze(root, {includeTests: opts.includeTests,includeJS:opts.includeJs,repository});
       if (opts.json) process.stdout.write(JSON.stringify(atlas,null,2)+'\n');
       else {
         const out = path.resolve(opts.out);

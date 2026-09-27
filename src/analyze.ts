@@ -6,7 +6,8 @@ import { execFileSync } from 'node:child_process';
 import type { Atlas, Edge } from './types.js';
 
 const ignored = new Set(['node_modules', '.git', 'dist', 'build', 'coverage', '.next', '.turbo', 'vendor']);
-const sourcePattern = /\.(?:ts|tsx|mts|cts)$/;
+const typeScriptPattern = /\.(?:ts|tsx|mts|cts)$/;
+const javaScriptPattern = /\.(?:js|jsx|mjs|cjs)$/;
 const slash = (s: string) => s.split(path.sep).join('/');
 function workspaceMatch(pattern: string, directory: string): boolean {
   let source='^';
@@ -34,7 +35,7 @@ function git(root: string, args: string[]): string | undefined {
   try { return execFileSync('git', ['-C', root, ...args], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'], timeout: 10000 }).trim(); } catch { return undefined; }
 }
 
-export async function analyze(input: string, options: { includeTests?: boolean; repository?: string } = {}): Promise<Atlas> {
+export async function analyze(input: string, options: { includeTests?: boolean; includeJS?: boolean; repository?: string } = {}): Promise<Atlas> {
   const root = await realpath(input);
   if (!(await lstat(root)).isDirectory()) throw new Error('Input must be a directory.');
   const files: string[] = [], configs = new Map<string, ts.CompilerOptions>(), packages: {dir: string; data: any}[] = [];
@@ -65,16 +66,16 @@ export async function analyze(input: string, options: { includeTests?: boolean; 
             for (const error of config.errors.filter(e => e.code !== 18003)) warnings.push(`${slash(path.relative(root, file))}: ${ts.flattenDiagnosticMessageText(error.messageText, ' ')}`);
           }
         }
-        if (sourcePattern.test(ent.name) && !/\.d\.(?:ts|mts|cts)$/.test(ent.name) && (options.includeTests || !/\.(?:test|spec)\.[^.]+$/.test(ent.name))) {
+        if ((typeScriptPattern.test(ent.name) || (options.includeJS && javaScriptPattern.test(ent.name))) && !/\.d\.(?:ts|mts|cts)$/.test(ent.name) && (options.includeTests || !/\.(?:test|spec)\.[^.]+$/.test(ent.name))) {
           if ((await lstat(file)).size > 2_000_000) { warnings.push(`Skipped large file: ${slash(path.relative(root,file))}`); continue; }
           files.push(file);
-          if (files.length > 5000) throw new Error('Repository exceeds the v1 limit of 5,000 TypeScript files. Analyze a subdirectory.');
+          if (files.length > 5000) throw new Error('Repository exceeds the v1 limit of 5,000 source files. Analyze a subdirectory.');
         }
       }
     }
   }
   await walk(root);
-  if (!files.length) throw new Error('No TypeScript source files found. Try --include-tests or choose a TypeScript project.');
+  if (!files.length) throw new Error(options.includeJS ? 'No TypeScript or JavaScript source files found. Try --include-tests or choose a source directory.' : 'No TypeScript source files found. Try --include-tests or choose a TypeScript project.');
   const rootPackage=packages.find(pkg=>pkg.dir===root);
   const workspacePatterns: string[]=[];
   const configuredWorkspaces=rootPackage?.data.workspaces;
@@ -114,10 +115,10 @@ export async function analyze(input: string, options: { includeTests?: boolean; 
   const id = (f: string) => slash(path.relative(root, f));
   const url = (f: string, line = 1) => repository && commit && !dirty && tracked.has(id(f)) ? `${repository}/blob/${commit}/${(prefix + id(f)).split('/').map(encodeURIComponent).join('/')}#L${line}` : undefined;
   const fileSet = new Set(files);
-  const defaults: ts.CompilerOptions = { moduleResolution: ts.ModuleResolutionKind.Bundler, module: ts.ModuleKind.ESNext, allowJs: false, resolveJsonModule: true };
+  const defaults: ts.CompilerOptions = { moduleResolution: ts.ModuleResolutionKind.Bundler, module: ts.ModuleKind.ESNext, allowJs: options.includeJS ?? false, resolveJsonModule: true };
   function compilerOptions(file: string) {
     let dir = path.dirname(file);
-    while (inside(dir)) { if (configs.has(dir)) return { ...defaults, ...configs.get(dir) }; if (dir === root) break; dir = path.dirname(dir); }
+    while (inside(dir)) { if (configs.has(dir)) return { ...defaults, ...configs.get(dir), allowJs: options.includeJS ? true : (configs.get(dir)!.allowJs ?? defaults.allowJs) }; if (dir === root) break; dir = path.dirname(dir); }
     return defaults;
   }
   function sourceTarget(target: string, dir: string): string | undefined {
@@ -250,6 +251,6 @@ export async function analyze(input: string, options: { includeTests?: boolean; 
     visit(sf);
   }
   const unresolved = edges.filter(e => e.resolution === 'unresolved').length;
-  if (unresolved) warnings.push(`${unresolved} imports could not be mapped to included TypeScript files. See the dependency inspector.`);
+  if (unresolved) warnings.push(`${unresolved} imports could not be mapped to included source files. See the dependency inspector.`);
   return {schemaVersion:1, name: repository?.split('/').slice(-2).join('/') || path.basename(root), repository, commit, modules, edges, warnings};
 }
