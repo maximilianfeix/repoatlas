@@ -184,7 +184,7 @@ export async function analyze(input: string, options: { includeTests?: boolean; 
           }
           if(!found)return undefined;
           const [key,value]=found;
-          mappedSubpath=key.includes('*')?key.replace('*',capture).replace(/^\.\//,''):key==='.'?'':key.replace(/^\.\//,'');
+          mappedSubpath=key.includes('*')?key.replaceAll('*',capture).replace(/^\.\//,''):key==='.'?'':key.replace(/^\.\//,'');
           exportTargets=conditionTargets(value,kind,customConditions).map(target=>target.replaceAll('*',capture));
         }
       }else return undefined;
