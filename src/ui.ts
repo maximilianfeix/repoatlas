@@ -3,10 +3,26 @@ import { focusNeighborhood, impactNeighborhood } from './focus.js';
 import { buildBoundaryMatrix, type BoundaryCell } from './boundaries.js';
 import { analyzeReachability, findCycles, findEntryPath } from './insights.js';
 import { groupExternalDependencies, type ExternalUsage } from './packages.js';
+import { encodeInspectorRoute, resolveInspectorRoute } from './routes.js';
 const data: Atlas = JSON.parse(document.getElementById('atlas-data')!.textContent!);
 const $ = (id: string) => document.getElementById(id)!;
 function el(tag: string, text = '', cls = '') { const e = document.createElement(tag); e.textContent = text; if (cls) e.className = cls; return e; }
 function link(text: string, url: string) { const a = el('a',text) as HTMLAnchorElement; a.href = url; a.target = '_blank'; a.rel = 'noopener noreferrer'; return a; }
+function setInspectorRoute(route: Parameters<typeof encodeInspectorRoute>[0]) {
+  const hash=encodeInspectorRoute(route);
+  if(location.hash===hash)return;
+  try{history.pushState({repoatlas:true},'',hash||`${location.pathname}${location.search}`);}
+  catch{if(hash)location.hash=hash.slice(1);else location.hash='';}
+}
+function addShareControl(panel:HTMLElement) {
+  const row=el('div','','share-control'),button=el('button','Copy share link','button') as HTMLButtonElement,status=el('span','','share-status');
+  status.setAttribute('aria-live','polite');
+  button.onclick=async()=>{
+    try{if(!navigator.clipboard)throw new Error('Clipboard unavailable');await navigator.clipboard.writeText(location.href);status.textContent='Link copied.';}
+    catch{const field=el('input') as HTMLInputElement;field.type='text';field.readOnly=true;field.value=location.href;field.setAttribute('aria-label','Shareable map link');row.append(field);field.focus();field.select();status.textContent='Copy is unavailable; the link is selected below.';}
+  };
+  row.append(button,status);panel.append(row);
+}
 const NS = 'http://www.w3.org/2000/svg';
 function svg(tag: string, attrs: Record<string, string | number> = {}) { const e = document.createElementNS(NS,tag); for (const [k,v] of Object.entries(attrs)) e.setAttribute(k,String(v)); return e; }
 const internal = data.edges.filter(e => e.resolution === 'internal');
@@ -30,7 +46,7 @@ const allCyclesOption=document.createElement('option'); allCyclesOption.value='-
 cycleGroups.forEach((cycle,index)=>{const option=document.createElement('option');option.value=String(index);option.textContent=`Cycle ${index+1} · ${cycle.length} modules`;$('cycle-group').append(option);});
 $('notice').textContent = data.warnings.join(' ');
 if (data.warnings.length) $('notice').className = 'warning';
-function intro() {
+function intro(syncRoute=true) {
   const panel = $('inspector'); panel.replaceChildren(el('h2','The source of truth'),el('h3','Architecture you can verify.'),el('p','Select a module to explore its imports and dependents. Select any connection to see the exact code that created it.'));
   panel.append(el('p',`${data.edges.filter(e=>e.resolution==='external').length} external imports · ${data.edges.filter(e=>e.resolution==='unresolved').length} unresolved imports`));
   if (data.commit) panel.append(el('p',`Snapshot ${data.commit.slice(0,10)}`));
@@ -40,7 +56,7 @@ function intro() {
     summary.append(el('h2','External dependencies'),el('p',`${packages.length} npm packages · ${data.edges.filter(edge=>edge.resolution==='external').length} external import sites`));
     for(const usage of packages.slice(0,5)) summary.append(externalButton(usage));
     const browse=el('button','Browse all external dependencies','button insight-link');
-    browse.onclick=externalInventory;
+    browse.onclick=()=>externalInventory();
     summary.append(browse);
     panel.append(summary);
   }
@@ -66,6 +82,7 @@ function intro() {
   panel.append(signals);
   panel.append(el('h2','Start exploring'));
   data.modules.filter(m=>m.entry.length).slice(0,8).forEach(m=>{ const b=el('button',m.id,'dep'); b.onclick=()=>choose(m.id); panel.append(b); });
+  if(syncRoute)setInspectorRoute({type:'overview'});
 }
 function externalButton(usage: ExternalUsage) {
   const button=el('button',usage.name,'dep');
@@ -73,10 +90,12 @@ function externalButton(usage: ExternalUsage) {
   button.onclick=()=>externalDetail(usage,0);
   return button;
 }
-function externalInventory() {
+function externalInventory(syncRoute=true) {
   const panel=$('inspector');
   panel.replaceChildren(el('h2','External dependency inventory'),el('p','Grouped from source import statements; no registry metadata or project code is fetched.'));
-  const back=el('button','← Back to overview','dep');back.onclick=intro;panel.append(back);
+  if(syncRoute)setInspectorRoute({type:'external-list'});
+  addShareControl(panel);
+  const back=el('button','← Back to overview','dep');back.onclick=()=>intro();panel.append(back);
   const labels:Record<ExternalUsage['kind'],string>={package:'npm packages',builtin:'Node built-ins',url:'URL imports',other:'Other external specifiers'};
   for(const kind of ['package','builtin','url','other'] as const){
     const usages=external.filter(usage=>usage.kind===kind);
@@ -85,11 +104,13 @@ function externalInventory() {
     for(const usage of usages)panel.append(externalButton(usage));
   }
 }
-function externalDetail(usage: ExternalUsage,page: number) {
+function externalDetail(usage: ExternalUsage,page: number,syncRoute=true) {
   const panel=$('inspector'),pageSize=50,pages=Math.max(1,Math.ceil(usage.edges.length/pageSize));
   const start=page*pageSize;
   panel.replaceChildren(el('h2','External dependency'),el('h3',usage.name),el('p',`${usage.edges.length} import ${usage.edges.length===1?'site':'sites'} across ${usage.moduleCount} source ${usage.moduleCount===1?'module':'modules'}.`));
-  const back=el('button','← Back to external dependencies','dep');back.onclick=externalInventory;panel.append(back);
+  if(syncRoute)setInspectorRoute({type:'external-package',kind:usage.kind,name:usage.name,page});
+  addShareControl(panel);
+  const back=el('button','← Back to external dependencies','dep');back.onclick=()=>externalInventory();panel.append(back);
   panel.append(el('h3',`Import sites · ${start+1}–${Math.min(start+pageSize,usage.edges.length)} of ${usage.edges.length}`));
   for(const edge of usage.edges.slice(start,start+pageSize)){
     const button=el('button',`${edge.source}:${edge.line} → ${edge.specifier}`,'dep');
@@ -103,18 +124,22 @@ function externalDetail(usage: ExternalUsage,page: number) {
     nav.append(previous,status,next);panel.append(nav);
   }
 }
-function edgeDetail(edge: Edge) {
+function edgeDetail(edge: Edge,syncRoute=true) {
   selectedEdge=edge; const panel=$('inspector'); panel.replaceChildren(el('h2','Connection evidence'),el('h3',`${edge.source} → ${edge.target}`),el('span',edge.kind,'pill'),el('span',edge.resolution,'pill'),el('p',`${edge.source}:${edge.line}`),el('pre',edge.code));
+  if(syncRoute)setInspectorRoute({type:'edge',edge});
+  addShareControl(panel);
   if (edge.computed) panel.append(el('p','Computed import: the expression is shown as source evidence; RepoAtlas cannot determine its runtime target.'));
   if (edge.url) panel.append(link(`Open source on GitHub ↗ (line ${edge.line})`,edge.url));
   else panel.append(el('p','Embedded source evidence. A clean GitHub checkout is needed for a permanent source link.'));
   const b=el('button','← Back to module','dep'); b.onclick=()=>choose(edge.source); panel.append(b);
   draw();
 }
-function choose(id: string) {
+function choose(id: string,syncRoute=true) {
   if(selected!==id)entryPathView=false;
   selected=id; selectedEdge=undefined;
   const module=byId.get(id)!; const panel=$('inspector'); panel.replaceChildren(el('h2','Module inspector'),el('h3',id),el('p',`${module.lines} lines · ${module.group}`));
+  if(syncRoute)setInspectorRoute({type:'module',id});
+  addShareControl(panel);
   if(reachability.known)panel.append(el('span',reachability.unreachable.has(id)?'Outside detected entry-point paths':'Reachable from detected entry points',`pill${reachability.unreachable.has(id)?' orphan-pill':''}`));
   for (const reason of module.entry) panel.append(el('span',reason,'pill'));
   const cycleIndex=cycleByModule.get(id);
@@ -323,4 +348,17 @@ $('zoom-in').onclick=()=>{zoom=Math.min(2,zoom+0.2);draw();};$('zoom-out').oncli
 $('overview-center').addEventListener('click',()=>{const canvas=$('graph').parentElement!;canvas.scrollTo({left:Math.max(0,(canvas.scrollWidth-canvas.clientWidth)/2),top:Math.max(0,(canvas.scrollHeight-canvas.clientHeight)/2),behavior:'smooth'});});
 $('graph').parentElement!.addEventListener('scroll',updateOverviewViewport);
 document.addEventListener('keydown',e=>{if(e.key==='/' && !(e.target instanceof HTMLInputElement)){e.preventDefault();$('search').focus();}});
-intro();draw();
+function restoreInspectorRoute() {
+  const route=resolveInspectorRoute(location.hash,data,external);
+  if(route.type==='module')choose(route.id,false);
+  else if(route.type==='edge')edgeDetail(route.edge,false);
+  else if(route.type==='external-list')externalInventory(false);
+  else if(route.type==='external-package'){
+    const usage=external.find(item=>item.kind===route.kind&&item.name===route.name);
+    if(usage)externalDetail(usage,route.page,false);else intro(false);
+  }else intro(false);
+  draw();
+}
+window.addEventListener('popstate',restoreInspectorRoute);
+window.addEventListener('hashchange',restoreInspectorRoute);
+restoreInspectorRoute();

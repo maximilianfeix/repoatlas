@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.8.0] - 2026-09-27
+
+### Added
+
+- Add shareable URL-hash routes for selected modules, external packages, and exact import evidence.
+- Restore routes from the same offline HTML file and support browser Back/Forward navigation.
+- Add an accessible copy-link control with a selectable-URL fallback when clipboard access is unavailable.
+
+### Quality
+
+- Test encoded source paths and specifiers, stale and malformed routes, and external-package pagination bounds.
+- Browser-check real Hono source links, direct routes, navigation history, and responsive layouts.
+
 ## [1.7.0] - 2026-09-27
 
 ### Fixed

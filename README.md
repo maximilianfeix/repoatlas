@@ -82,7 +82,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: maximilianfeix/repoatlas@v1.7.0
+      - uses: maximilianfeix/repoatlas@v1.8.0
         with:
           output: repoatlas-map.html
 ```
@@ -111,6 +111,7 @@ The Zustand demo includes a workspace boundary: `examples/starter/src/index.tsx`
 - **External packages:** browse npm package usage, Node built-ins, and URL imports separately, with import-site counts and clickable source evidence for every usage.
 - **Mixed repositories:** opt into `.js`, `.jsx`, `.mjs`, and `.cjs` modules with `--include-js`; TypeScript-only stays the default.
 - **Evidence:** the exact import statement and line, with a commit-pinned GitHub link when the checkout is clean.
+- **Share discoveries:** copy a direct link to a module, external package, or exact import edge inside the same portable HTML map.
 - **Explore maps and assess change:** search, directory and entry-point filters, accessible pagination, Focus map for direct neighbors, and Impact map for every transitively dependent module.
 - **Check entry-point reachability:** find modules outside paths from detected entries; if RepoAtlas finds no entry point, reachability stays unknown instead of flagging every file.
 - **Trace entry paths:** follow the shortest resolved-import route from a detected entry point to a reachable module, then click each highlighted edge for its exact source evidence.
