@@ -1,0 +1,25 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
+import { spawnSync } from 'node:child_process';
+import { parseAtlas } from '../dist/compare.js';
+
+test('published JSON Schemas are valid JSON and exposed by the CLI',async()=>{
+  const cli=process.execPath,entry='dist/cli.js';
+  for(const format of ['snapshot','config']){
+    const schema=JSON.parse(await readFile(`schemas/${format}.schema.json`,'utf8'));
+    assert.equal(schema.$schema,'https://json-schema.org/draft/2020-12/schema');
+    const result=spawnSync(cli,[entry,'schema',format],{encoding:'utf8'});
+    assert.equal(result.status,0);assert.deepEqual(JSON.parse(result.stdout),schema);
+  }
+  const invalid=spawnSync(cli,[entry,'schema','unknown'],{encoding:'utf8'});
+  assert.equal(invalid.status,1);assert.match(invalid.stderr,/Schema format must be either snapshot or config/);
+});
+
+test('snapshot schema validation rejects fractional or negative source counts and lines',()=>{
+  const base={schemaVersion:1,name:'Fixture',modules:[{id:'a.ts',group:'.',lines:1,entry:[]}],edges:[{source:'a.ts',target:'b.ts',specifier:'./b',kind:'import',line:1,code:"import './b';",resolution:'unresolved'}],warnings:[]};
+  for(const mutate of [value=>value.modules[0].lines=1.5,value=>value.modules[0].lines=-1,value=>value.edges[0].line=0,value=>value.edges[0].line=2.5]){
+    const snapshot=structuredClone(base);mutate(snapshot);
+    assert.throws(()=>parseAtlas(snapshot),/malformed (module record|dependency edge)/);
+  }
+});

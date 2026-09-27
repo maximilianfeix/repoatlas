@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.0.0] - 2026-09-27
+
+### Added
+
+- Publish draft 2020-12 JSON Schemas for RepoAtlas snapshots and architecture-rule configuration; expose them with `repoatlas schema snapshot|config`.
+- Define v1 snapshot compatibility: required graph fields retain their meaning, additive metadata is allowed, and breaking changes require a new schema version.
+- Document Node.js and CI platform support plus snapshot migration guidance.
+
+### Quality
+
+- Tighten snapshot integer validation to match the published schema and add CLI/schema compatibility tests.
+- Verified package includes schema files and the CLI can read them from the packed layout.
+
 ## [0.9.0] - 2026-09-27
 
 ### Added

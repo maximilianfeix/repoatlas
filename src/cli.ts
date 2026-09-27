@@ -108,6 +108,13 @@ program.command('check').description('Fail CI when configured architecture rules
     else process.stdout.write(renderRuleReport(result));
     if(!result.passed)process.exitCode=1;
   });
+program.command('schema').description('Print a published JSON Schema for a RepoAtlas file format')
+  .argument('<format>', 'snapshot or config')
+  .action((format:string) => {
+    if(format!=='snapshot'&&format!=='config')throw new Error('Schema format must be either snapshot or config.');
+    const schema=readFileSync(new URL(`../schemas/${format}.schema.json`,import.meta.url),'utf8');
+    process.stdout.write(schema.trimEnd()+'\n');
+  });
 program.configureOutput({outputError: (str, write) => write(process.argv.includes('--json') ? JSON.stringify({error:str.trim()})+'\n' : str)});
 program.parseAsync().catch((error: Error) => {
   const message = 'code' in error && error.code === 'EEXIST' ? 'Output exists. Choose another --out path or pass --force.' : error.message;

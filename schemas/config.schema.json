@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://maximilianfeix.github.io/repoatlas/schemas/config.schema.json",
+  "title": "RepoAtlas architecture rules",
+  "description": "Configuration consumed by `repoatlas check`.",
+  "type": "object",
+  "properties": {
+    "forbiddenImports": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["from", "to"],
+        "properties": {
+          "from": { "type": "string", "minLength": 1 },
+          "to": { "type": "string", "minLength": 1 }
+        },
+        "additionalProperties": false
+      },
+      "uniqueItems": true
+    },
+    "limits": {
+      "type": "object",
+      "properties": {
+        "cycleGroups": { "type": "integer", "minimum": 0 },
+        "unreachableModules": { "type": "integer", "minimum": 0 }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

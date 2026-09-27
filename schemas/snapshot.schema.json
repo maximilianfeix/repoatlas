@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://maximilianfeix.github.io/repoatlas/schemas/snapshot.schema.json",
+  "title": "RepoAtlas snapshot",
+  "description": "Version 1 RepoAtlas static TypeScript dependency graph. Additional properties are reserved for additive metadata.",
+  "type": "object",
+  "required": ["schemaVersion", "name", "modules", "edges", "warnings"],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "name": { "type": "string" },
+    "repository": { "type": "string" },
+    "commit": { "type": "string" },
+    "modules": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "group", "lines", "entry"],
+        "properties": {
+          "id": { "type": "string" },
+          "group": { "type": "string" },
+          "lines": { "type": "integer", "minimum": 0 },
+          "entry": { "type": "array", "items": { "type": "string" } },
+          "url": { "type": "string" },
+          "workspace": { "type": "string" }
+        },
+        "additionalProperties": true
+      }
+    },
+    "edges": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["source", "target", "specifier", "kind", "line", "code", "resolution"],
+        "properties": {
+          "source": { "type": "string" },
+          "target": { "type": "string" },
+          "specifier": { "type": "string" },
+          "kind": { "enum": ["import", "type", "export", "dynamic", "require"] },
+          "line": { "type": "integer", "minimum": 1 },
+          "code": { "type": "string" },
+          "url": { "type": "string" },
+          "resolution": { "enum": ["internal", "external", "unresolved"] }
+        },
+        "additionalProperties": true
+      }
+    },
+    "warnings": { "type": "array", "items": { "type": "string" } }
+  },
+  "additionalProperties": true
+}

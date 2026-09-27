@@ -66,7 +66,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: maximilianfeix/repoatlas@v0.9.0
+      - uses: maximilianfeix/repoatlas@v1.0.0
         with:
           output: repoatlas-map.html
 ```
@@ -98,6 +98,7 @@ The Zustand demo includes a workspace boundary: `examples/starter/src/index.tsx`
 - **Spot architecture risks:** isolate circular import groups, trace the exact cycle edges, and jump straight to the most depended-on modules.
 - **Compare snapshots:** report added or removed modules and dependency relationships, plus changed import specifiers, between two JSON maps; line shifts alone do not count as architecture drift.
 - **Enforce architecture in CI:** fail a workflow on forbidden workspace/directory imports, excess circular groups, or modules outside detected entry paths, with source-line evidence in JSON output.
+- **Integrate with stable formats:** inspect the versioned snapshot/config JSON Schemas from the CLI; v1 preserves required graph fields and allows additive snapshot metadata.
 - **Portable output:** one offline HTML file, full graph JSON, a boundary SVG, or a concise CI text report.
 
 ```sh
@@ -109,6 +110,7 @@ repoatlas compare before.json after.json --json > drift.json
 repoatlas report after.json --format svg --output boundaries.svg
 repoatlas report after.json --format text
 repoatlas check after.json --config repoatlas.config.json
+repoatlas schema snapshot > repoatlas-snapshot.schema.json
 repoatlas check after.json --config repoatlas.config.json
 repoatlas --help
 ```
@@ -157,6 +159,8 @@ In GitHub Actions, generate and check the snapshot in one step so a violation fa
     npx --yes --package=github:maximilianfeix/repoatlas -- repoatlas . --json > atlas.json
     npx --yes --package=github:maximilianfeix/repoatlas -- repoatlas check atlas.json --config repoatlas.config.json --json
 ```
+
+RepoAtlas v1 snapshots use `schemaVersion: 1`. Generate the full JSON Schema at any time with `repoatlas schema snapshot`; use `repoatlas schema config` for the rules file format. Compatibility and migration policy is described in [`SCHEMA.md`](SCHEMA.md).
 
 ## Scope and privacy
 
