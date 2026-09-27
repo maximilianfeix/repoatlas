@@ -36,7 +36,7 @@ function metadata(atlas:Atlas):SnapshotMetadata {
   return {name:atlas.name,...(atlas.repository?{repository:atlas.repository}:{}),...(atlas.commit?{commit:atlas.commit}:{})};
 }
 function edgeKey(edge:Edge):string { return JSON.stringify([edge.source,edge.target,edge.specifier,edge.kind,edge.resolution]); }
-function edgeOrder(a:Edge,b:Edge):number { return a.source.localeCompare(b.source)||a.target.localeCompare(b.target)||a.kind.localeCompare(b.kind)||a.specifier.localeCompare(b.specifier)||a.line-b.line; }
+function edgeOrder(a:Edge,b:Edge):number { const compare=(left:string,right:string)=>left<right?-1:left>right?1:0;return compare(a.source,b.source)||compare(a.target,b.target)||compare(a.kind,b.kind)||compare(a.specifier,b.specifier)||a.line-b.line; }
 
 /** Compare graph relationships while ignoring source line shifts and code formatting. */
 export function compareAtlases(base:Atlas,head:Atlas):AtlasComparison {

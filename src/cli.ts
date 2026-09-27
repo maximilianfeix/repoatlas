@@ -8,8 +8,16 @@ import path from 'node:path';
 import { analyze, githubURL } from './analyze.js';
 import { render } from './render.js';
 import { compareAtlases, parseAtlas } from './compare.js';
+import { renderBoundarySvg, renderTextReport } from './report.js';
 
 const packageVersion=JSON.parse(readFileSync(new URL('../package.json',import.meta.url),'utf8')).version as string;
+async function loadSnapshot(file:string) {
+  let contents:string;
+  try{contents=await readFile(path.resolve(file),'utf8');}catch{throw new Error(`Could not read snapshot file: ${file}`);}
+  let value:unknown;
+  try{value=JSON.parse(contents);}catch{throw new Error(`Snapshot is not valid JSON: ${file}`);}
+  return parseAtlas(value);
+}
 const program = new Command().name('repoatlas').version(packageVersion).description('Understand a TypeScript repo in one interactive map. Every edge has evidence.')
   .argument('[source]', 'GitHub HTTPS repository URL or local directory')
   .option('-o, --out <file>', 'write a standalone HTML map', 'repoatlas.html')
@@ -54,13 +62,6 @@ program.command('compare').description('Compare two RepoAtlas JSON snapshots for
   .argument('<head>', 'current RepoAtlas JSON file')
   .option('--json', 'emit machine-readable JSON instead of text')
   .action(async (baseFile:string,headFile:string,opts) => {
-    const loadSnapshot=async(file:string)=>{
-      let contents:string;
-      try{contents=await readFile(path.resolve(file),'utf8');}catch{throw new Error(`Could not read snapshot file: ${file}`);}
-      let value:unknown;
-      try{value=JSON.parse(contents);}catch{throw new Error(`Snapshot is not valid JSON: ${file}`);}
-      return parseAtlas(value);
-    };
     const [base,head]=await Promise.all([loadSnapshot(baseFile),loadSnapshot(headFile)]);
     const comparison=compareAtlases(base,head);
     if(opts.json||program.opts().json||process.argv.includes('--json')){process.stdout.write(JSON.stringify(comparison,null,2)+'\n');return;}
@@ -76,6 +77,21 @@ program.command('compare').description('Compare two RepoAtlas JSON snapshots for
     for(const change of comparison.dependencies.changedSpecifier.slice(0,20))process.stdout.write(`  ~ ${change.before.source}: ${change.before.specifier} → ${change.after.specifier}\n`);
     const omitted=Math.max(0,comparison.modules.added.length-20)+Math.max(0,comparison.modules.removed.length-20)+Math.max(0,comparison.dependencies.added.length-20)+Math.max(0,comparison.dependencies.removed.length-20)+Math.max(0,comparison.dependencies.changedSpecifier.length-20);
     if(omitted)process.stdout.write(`  … ${omitted} more changes (use --json for the full report)\n`);
+  });
+program.command('report').description('Export a concise text report or workspace/directory boundary SVG')
+  .argument('<snapshot>', 'RepoAtlas JSON snapshot')
+  .option('--format <format>', 'text or svg', 'text')
+  .option('--output <file>', 'write the report to a file instead of stdout')
+  .option('--overwrite', 'replace an existing --output file')
+  .action(async (snapshotFile:string,opts) => {
+    if(opts.format!=='text'&&opts.format!=='svg')throw new Error('--format must be either text or svg.');
+    if(opts.overwrite&&!opts.output)throw new Error('--overwrite requires --output.');
+    const atlas=await loadSnapshot(snapshotFile);
+    const content=opts.format==='svg'?renderBoundarySvg(atlas):renderTextReport(atlas);
+    if(opts.output){
+      const output=path.resolve(opts.output);await writeFile(output,content,{flag:opts.overwrite?'w':'wx'});
+      process.stdout.write(`Report saved: ${output}\n`);
+    }else process.stdout.write(content);
   });
 program.configureOutput({outputError: (str, write) => write(process.argv.includes('--json') ? JSON.stringify({error:str.trim()})+'\n' : str)});
 program.parseAsync().catch((error: Error) => {
