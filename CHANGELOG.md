@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.3.0] - 2026-09-27
+
+### Added
+
+- Add opt-in `--include-js` analysis for `.js`, `.jsx`, `.mjs`, and `.cjs` modules in mixed TypeScript repositories.
+- Resolve static TS↔JS, ESM, JSX, and CommonJS imports to included source modules while retaining TypeScript-only defaults.
+- Add `include-js` to the GitHub Action and exercise it in the action smoke workflow.
+- Clarify that source-file count limits apply across included languages.
+
+### Quality
+
+- Test mixed-language imports, default exclusions, test-file opt-in, and the CLI flag.
+
 ## [1.2.0] - 2026-09-27
 
 ### Added

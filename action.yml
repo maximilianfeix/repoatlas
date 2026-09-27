@@ -14,6 +14,10 @@ inputs:
     description: Include tests and fixtures in the map
     required: false
     default: 'false'
+  include-js:
+    description: Include JavaScript and JSX modules in mixed repositories
+    required: false
+    default: 'false'
   artifact-name:
     description: Name of the downloadable workflow artifact
     required: false
@@ -47,10 +51,12 @@ runs:
         REPOATLAS_PATH: ${{ inputs.path }}
         REPOATLAS_OUTPUT: ${{ inputs.output }}
         REPOATLAS_INCLUDE_TESTS: ${{ inputs.include-tests }}
+        REPOATLAS_INCLUDE_JS: ${{ inputs.include-js }}
         REPOATLAS_CLI: ${{ github.action_path }}/dist/cli.js
       run: |
         args=()
         if [[ "$REPOATLAS_INCLUDE_TESTS" == "true" ]]; then args+=(--include-tests); fi
+        if [[ "$REPOATLAS_INCLUDE_JS" == "true" ]]; then args+=(--include-js); fi
         node "$REPOATLAS_CLI" "$REPOATLAS_PATH" -o "$REPOATLAS_OUTPUT" "${args[@]}"
     - name: Upload architecture map
       id: upload
