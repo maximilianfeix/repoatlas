@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-labelledby="title">
+  <title id="title">RepoAtlas connected map mark</title>
+  <defs><linearGradient id="g" x1="8" y1="8" x2="56" y2="56" gradientUnits="userSpaceOnUse"><stop stop-color="#91f2c9"/><stop offset="1" stop-color="#9cc8ff"/></linearGradient></defs>
+  <rect x="3" y="3" width="58" height="58" rx="18" fill="#101722" stroke="#2b394d" stroke-width="2"/>
+  <path d="M18 20h13l9 12h8M18 44h13l9-12" fill="none" stroke="url(#g)" stroke-linecap="round" stroke-linejoin="round" stroke-width="3.5"/>
+  <circle cx="17" cy="20" r="5" fill="#91f2c9"/><circle cx="17" cy="44" r="5" fill="#91f2c9"/><circle cx="48" cy="32" r="5" fill="#b5a2ff"/><circle cx="32" cy="32" r="4" fill="#dce8fa"/>
+</svg>
