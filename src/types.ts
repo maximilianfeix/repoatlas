@@ -1,5 +1,5 @@
 export interface Module {
-  id: string; group: string; lines: number; entry: string[]; url?: string;
+  id: string; group: string; lines: number; entry: string[]; url?: string; workspace?: string;
 }
 export interface Edge {
   source: string; target: string; specifier: string;

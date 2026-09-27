@@ -213,7 +213,8 @@ export async function analyze(input: string, options: { includeTests?: boolean; 
     const lines = content.split(/\r?\n/);
     const reasons = entries.get(file) || [];
     if (/^(?:index|main|app|server|cli)\.(?:ts|tsx|mts|cts)$/.test(path.basename(file))) reasons.push('filename convention (heuristic)');
-    modules.push({id: id(file), group: slash(path.relative(root,path.dirname(file))) || '.', lines: lines.length, entry: [...new Set(reasons)], url: url(file)});
+    const workspace=workspacePackages.filter(pkg=>file.startsWith(`${pkg.dir}${path.sep}`)).sort((a,b)=>b.dir.length-a.dir.length)[0];
+    modules.push({id: id(file), group: slash(path.relative(root,path.dirname(file))) || '.', lines: lines.length, entry: [...new Set(reasons)], url: url(file), ...(workspace?{workspace:slash(path.relative(root,workspace.dir))}:{})});
     function add(literal: ts.StringLiteralLike, node: ts.Node, kind: Edge['kind']) {
       const specifier = literal.text;
       const resolved = ts.resolveModuleName(specifier, file, compilerOptions(file), host).resolvedModule;
