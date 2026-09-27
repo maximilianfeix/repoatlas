@@ -36,7 +36,7 @@ test('boundary SVG is deterministic, script-free, and escapes untrusted labels',
   const svg=renderBoundarySvg(value);
   assert.equal(svg,renderBoundarySvg(value));
   assert.match(svg,/&lt;script&gt;alert\(&quot;x&quot;\)&lt;\/script&gt; &amp; project/);
-  assert.doesNotMatch(svg,/<script>/);
+  assert.equal(svg.toLowerCase().includes('<script'),false);
   assert.match(svg,/src imports packages\/ui: 1 resolved static dependencies/);
   assert.match(svg,/not runtime calls/);
 });
