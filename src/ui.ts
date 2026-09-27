@@ -20,7 +20,7 @@ for (const edge of internal) {
   importers.add(edge.source);
   importerSets.set(edge.target,importers);
 }
-let selected: string | undefined, selectedEdge: Edge | undefined, entriesOnly = false, focusMap = false, impactMap = false, cyclesOnly = false, orphansOnly = false, boundaryView = false, cycleGroupIndex = 0, pageIndex = 0, zoom = 1;
+let selected: string | undefined, selectedEdge: Edge | undefined, entriesOnly = false, focusMap = false, impactMap = false, cyclesOnly = false, orphansOnly = false, boundaryView = false, clusterView = false, cycleGroupIndex = 0, pageIndex = 0, zoom = 1;
 $('repo-name').textContent = data.name;
 for (const [value,label] of [[data.modules.length,'modules'],[internal.length,'connections'],[data.modules.filter(m=>m.entry.length).length,'entry points']]) { const stat = el('div'); stat.append(el('strong',String(value)),el('span',String(label))); $('stats').append(stat); }
 for (const group of [...new Set(data.modules.map(m=>m.group))].sort()) { const opt = document.createElement('option'); opt.value = group; opt.textContent = group; $('group').append(opt); }
@@ -93,6 +93,33 @@ function boundaryDetail(cell: BoundaryCell, source: string, target: string) {
   const panel=$('inspector');panel.replaceChildren(el('h2','Boundary evidence'),el('h3',`${source} → ${target}`),el('p',`${cell.edges.length} resolved static imports across this boundary.`));
   for(const edge of cell.edges){const b=el('button',`${edge.source}:${edge.line} → ${edge.target}`,'dep');b.append(el('small',`${edge.kind} · ${edge.code}`));b.onclick=()=>edgeDetail(edge);panel.append(b);}
 }
+function updateOverviewViewport() {
+  const overview=$('overview-svg'), canvas=$('graph').parentElement!;
+  const viewport=overview.querySelector('.overview-viewport');
+  if(!viewport)return;
+  const width=Number($('graph').getAttribute('viewBox')?.split(' ')[2]??0),height=Number($('graph').getAttribute('viewBox')?.split(' ')[3]??0);
+  const visibleWidth=Math.min(width,canvas.clientWidth/zoom),visibleHeight=Math.min(height,canvas.clientHeight/zoom);
+  viewport.setAttribute('x',String(Math.max(0,Math.min(width-visibleWidth,canvas.scrollLeft/zoom))));
+  viewport.setAttribute('y',String(Math.max(0,Math.min(height-visibleHeight,canvas.scrollTop/zoom))));
+  viewport.setAttribute('width',String(visibleWidth));viewport.setAttribute('height',String(visibleHeight));
+}
+function buildOverview(width:number,height:number,positions:Map<string,{x:number;y:number}>,visible:Module[],edges:Edge[],pageCount:number) {
+  const root=$('overview'),mini=$('overview-svg'),canvas=$('graph').parentElement!;
+  mini.replaceChildren();root.hidden=visible.length<=50;
+  if(root.hidden)return;
+  $('overview-status').textContent=`Page ${pageIndex+1} of ${pageCount} · ${visible.length} modules`;
+  mini.setAttribute('viewBox',`0 0 ${width} ${height}`);
+  mini.setAttribute('preserveAspectRatio','none');
+  const ids=new Set(visible.map(module=>module.id));
+  for(const edge of edges){if(!ids.has(edge.source)||!ids.has(edge.target))continue;const a=positions.get(edge.source)!,b=positions.get(edge.target)!;mini.append(svg('line',{x1:a.x+120,y1:a.y+29,x2:b.x+120,y2:b.y+29,class:'overview-edge'}));}
+  for(const module of visible){const point=positions.get(module.id)!;mini.append(svg('circle',{cx:point.x+120,cy:point.y+29,r:16,class:`overview-node${module.entry.length?' entry':''}${module.id===selected?' selected':''}`}));}
+  mini.append(svg('rect',{x:0,y:0,width:1,height:1,class:'overview-viewport'}));
+  mini.onclick=(event)=>{
+    const bounds=mini.getBoundingClientRect();const x=(event.clientX-bounds.left)/bounds.width*width,y=(event.clientY-bounds.top)/bounds.height*height;
+    canvas.scrollTo({left:Math.max(0,x*zoom-canvas.clientWidth/2),top:Math.max(0,y*zoom-canvas.clientHeight/2),behavior:'smooth'});
+  };
+  updateOverviewViewport();
+}
 function draw() {
   const query=($('search') as HTMLInputElement).value.toLowerCase();
   const group=($('group') as HTMLSelectElement).value;
@@ -117,6 +144,9 @@ function draw() {
   $('orphans').setAttribute('aria-pressed',String(orphansOnly));
   $('boundaries').classList.toggle('active',boundaryView);
   $('boundaries').setAttribute('aria-pressed',String(boundaryView));
+  $('clusters').classList.toggle('active',clusterView);
+  $('clusters').setAttribute('aria-pressed',String(clusterView));
+  $('clusters').toggleAttribute('disabled',boundaryView);
   const cycleSelect=$('cycle-group') as HTMLSelectElement;
   cycleSelect.hidden=!cyclesOnly;
   cycleSelect.value=String(cycleGroupIndex);
@@ -131,11 +161,11 @@ function draw() {
   ($('page-previous') as HTMLButtonElement).disabled=pageIndex===0;
   ($('page-next') as HTMLButtonElement).disabled=pageIndex>=pageCount-1;
   $('view-count').textContent=boundaryView ? 'Boundary matrix' : cyclesOnly ? `${visible.length} modules · ${cycleGroupIndex<0 ? `all ${cycleGroups.length} cycles` : `cycle ${cycleGroupIndex+1}/${cycleGroups.length}`}` : `${visible.length} / ${scoped.length} ${orphansOnly ? 'unreachable' : focused ? 'connected' : impacted ? 'affected' : 'matching'} modules`;
-  $('view-description').textContent=boundaryView ? 'Rows are importers · columns are imported boundaries · choose a count for line-level evidence' : cyclesOnly ? `${cycleGroupIndex<0 ? `${cycleGroups.length} circular groups` : `Cycle group ${cycleGroupIndex+1} of ${cycleGroups.length}`} · amber links are part of a cycle` : orphansOnly ? 'Outside paths from detected entry points · entry detection is heuristic' : impacted ? `Potential change impact for ${selected} · reverse imports` : focused ? `Direct neighborhood of ${selected}` : 'Click a connection for its code';
+  $('view-description').textContent=boundaryView ? 'Rows are importers · columns are imported boundaries · choose a count for line-level evidence' : cyclesOnly ? `${cycleGroupIndex<0 ? `${cycleGroups.length} circular groups` : `Cycle group ${cycleGroupIndex+1} of ${cycleGroups.length}`} · amber links are part of a cycle` : orphansOnly ? 'Outside paths from detected entry points · entry detection is heuristic' : impacted ? `Potential change impact for ${selected} · reverse imports` : focused ? `Direct neighborhood of ${selected}` : clusterView ? 'Grouped by workspace package or top-level directory · click a connection for its code' : 'Click a connection for its code';
   const list=$('module-list'); list.replaceChildren();
   for (const m of visible) { const b=el('button',`${m.entry.length ? '● ' : ''}${m.id}`,selected===m.id ? 'selected' : ''); b.onclick=()=>choose(m.id); list.append(b); }
   if (!matches.length) list.append(el('p','No matching modules.'));
-  const graph=$('graph'); graph.replaceChildren();
+  const graph=$('graph'); graph.replaceChildren();$('overview-svg').replaceChildren();$('overview').hidden=true;
   const matrixRoot=$('boundary-map');matrixRoot.replaceChildren();
   graph.hidden=boundaryView;matrixRoot.hidden=!boundaryView;
   if(boundaryView){
@@ -158,20 +188,38 @@ function draw() {
   // Three stable columns: likely entry points, connecting modules, leaf modules.
   const buckets: Module[][]=[[],[],[]];
   for(const m of visible) buckets[m.entry.length ? 0 : modulesWithImports.has(m.id) ? 1 : 2].push(m);
+  const clusterKey=(module:Module)=>module.workspace?`package:${module.workspace}`:`directory:${module.group==='.'?'.':module.group.split('/')[0]}`;
+  const compareText=(a:string,b:string)=>a<b?-1:a>b?1:0;
+  if(clusterView)for(const bucket of buckets)bucket.sort((a,b)=>compareText(clusterKey(a),clusterKey(b))||compareText(a.id,b.id));
   const labels=['ENTRY POINTS','MODULES','LEAVES'];
   const columns:{modules:Module[];label:string}[]=[];
   buckets.forEach((bucket,index)=>{for(let start=0;start<bucket.length;start+=20){const lane=start/20;columns.push({modules:bucket.slice(start,start+20),label:lane?`${labels[index]} · ${lane+1}`:labels[index]!});}});
-  const circleCycles=cyclesOnly && visible.length>1 && visible.length<=10;
+  const circleCycles=cyclesOnly && !clusterView && visible.length>1 && visible.length<=10;
   const radius=circleCycles ? Math.max(150,250/(2*Math.sin(Math.PI/visible.length))) : 0;
   const width=circleCycles ? Math.max(920,2*(radius+160)) : Math.max(920,columns.length*300+20);
-  const height=circleCycles ? Math.max(450,2*(radius+95)) : Math.max(450,Math.max(...columns.map(column=>column.modules.length),0)*88+90);
+  const rowHeight=clusterView?104:88,nodeOffset=clusterView?65:55;
+  const height=circleCycles ? Math.max(450,2*(radius+95)) : Math.max(450,Math.max(...columns.map(column=>column.modules.length),0)*rowHeight+90);
   graph.setAttribute('viewBox',`0 0 ${width} ${height}`); graph.setAttribute('width',String(width*zoom)); graph.setAttribute('height',String(height*zoom));
   const defs=svg('defs'), marker=svg('marker',{id:'arrow',viewBox:'0 0 10 10',refX:9,refY:5,markerWidth:5,markerHeight:5,orient:'auto-start-reverse'}); marker.append(svg('path',{d:'M 0 0 L 10 5 L 0 10 z',fill:'#8190a8'}));defs.append(marker);graph.append(defs);
   const positions=new Map<string,{x:number;y:number}>();
   if(circleCycles){
     const label=svg('text',{x:25,y:30,class:'graph-label'});label.textContent=`CIRCULAR DEPENDENCY · ${visible.length} MODULES`;graph.append(label);
     visible.forEach((m,index)=>{const angle=-Math.PI/2+index*2*Math.PI/visible.length;positions.set(m.id,{x:width/2+radius*Math.cos(angle)-120,y:height/2+radius*Math.sin(angle)-29});});
-  }else columns.forEach((column,col)=>{const label=svg('text',{x:col*300+25,y:30,class:'graph-label'});label.textContent=column.label;graph.append(label);column.modules.forEach((m,row)=>positions.set(m.id,{x:col*300+25,y:row*88+55}));});
+  }else columns.forEach((column,col)=>{
+    const label=svg('text',{x:col*300+25,y:30,class:'graph-label'});label.textContent=column.label;graph.append(label);
+    column.modules.forEach((m,row)=>positions.set(m.id,{x:col*300+25,y:row*rowHeight+nodeOffset}));
+    if(clusterView){
+      let start=0;
+      while(start<column.modules.length){
+        const key=clusterKey(column.modules[start]!);let end=start+1;
+        while(end<column.modules.length&&clusterKey(column.modules[end]!)===key)end++;
+        const box=svg('rect',{x:col*300+9,y:start*rowHeight+38,width:272,height:(end-start)*rowHeight-20,rx:10,class:'cluster-box','aria-hidden':'true'});graph.insertBefore(box,graph.children[1]??null);
+        const groupLabel=svg('text',{x:col*300+22,y:start*rowHeight+55,class:'cluster-label','aria-hidden':'true'});
+        const name=key.replace(/^(package|directory):/,'');groupLabel.textContent=`${key.startsWith('package:')?'PACKAGE':'DIRECTORY'} · ${name.length>27?'…'+name.slice(-26):name}`;graph.insertBefore(groupLabel,graph.children[2]??null);
+        start=end;
+      }
+    }
+  });
   for (const edge of edges) {
     const a=positions.get(edge.source)!,b=positions.get(edge.target)!;
     let d:string;
@@ -195,17 +243,21 @@ function draw() {
     const meta=svg('text',{x:12,y:43,class:'meta'});meta.textContent=m.group.length>32?'…'+m.group.slice(-31):m.group;g.append(text,meta);
     g.addEventListener('click',()=>choose(m.id));g.addEventListener('keydown',(e)=>{if((e as KeyboardEvent).key==='Enter')choose(m.id);});graph.append(g);
   }
+  buildOverview(width,height,positions,visible,edges,pageCount);
 }
 for(const id of ['page-previous','page-next']) $(id).addEventListener('click',()=>{pageIndex+=id==='page-next'?1:-1;draw();});
 $('search').addEventListener('input',()=>{pageIndex=0;draw();});$('group').addEventListener('change',()=>{pageIndex=0;draw();});
 $('entries').onclick=()=>{entriesOnly=!entriesOnly;orphansOnly=false;pageIndex=0;$('entries').classList.toggle('active',entriesOnly);$('entries').setAttribute('aria-pressed',String(entriesOnly));draw();};
 $('orphans').onclick=()=>{if(reachability.known&&reachability.unreachable.size){orphansOnly=!orphansOnly;entriesOnly=false;focusMap=false;impactMap=false;cyclesOnly=false;pageIndex=0;draw();}};
 $('boundaries').onclick=()=>{boundaryView=!boundaryView;pageIndex=0;draw();};
+$('clusters').onclick=()=>{clusterView=!clusterView;draw();};
 $('impact').onclick=()=>{if(selected){impactMap=!impactMap;focusMap=false;cyclesOnly=false;orphansOnly=false;pageIndex=0;draw();}};
 $('focus').onclick=()=>{if(selected){focusMap=!focusMap;impactMap=false;cyclesOnly=false;orphansOnly=false;pageIndex=0;draw();}};
 $('cycles').onclick=()=>{cyclesOnly=!cyclesOnly;focusMap=false;impactMap=false;orphansOnly=false;pageIndex=0;draw();};
 $('cycle-group').addEventListener('change',()=>{cycleGroupIndex=Number(($('cycle-group') as HTMLSelectElement).value);pageIndex=0;draw();});
-$('reset').onclick=()=>{($('search') as HTMLInputElement).value='';($('group') as HTMLSelectElement).value='';entriesOnly=false;focusMap=false;impactMap=false;cyclesOnly=false;orphansOnly=false;boundaryView=false;cycleGroupIndex=0;pageIndex=0;selected=undefined;selectedEdge=undefined;zoom=1;$('entries').classList.remove('active');$('entries').setAttribute('aria-pressed','false');intro();draw();};
+$('reset').onclick=()=>{($('search') as HTMLInputElement).value='';($('group') as HTMLSelectElement).value='';entriesOnly=false;focusMap=false;impactMap=false;cyclesOnly=false;orphansOnly=false;boundaryView=false;clusterView=false;cycleGroupIndex=0;pageIndex=0;selected=undefined;selectedEdge=undefined;zoom=1;$('entries').classList.remove('active');$('entries').setAttribute('aria-pressed','false');intro();draw();};
 $('zoom-in').onclick=()=>{zoom=Math.min(2,zoom+0.2);draw();};$('zoom-out').onclick=()=>{zoom=Math.max(0.4,zoom-0.2);draw();};
+$('overview-center').addEventListener('click',()=>{const canvas=$('graph').parentElement!;canvas.scrollTo({left:Math.max(0,(canvas.scrollWidth-canvas.clientWidth)/2),top:Math.max(0,(canvas.scrollHeight-canvas.clientHeight)/2),behavior:'smooth'});});
+$('graph').parentElement!.addEventListener('scroll',updateOverviewViewport);
 document.addEventListener('keydown',e=>{if(e.key==='/' && !(e.target instanceof HTMLInputElement)){e.preventDefault();$('search').focus();}});
 intro();draw();
