@@ -19,7 +19,7 @@
     "build": "tsc && node scripts/build-ui.mjs",
     "test": "npm run build && node --test test/*.test.mjs",
     "check": "tsc --noEmit",
-    "check:ts7": "node_modules/typescript7/bin/tsc --noEmit",
+    "check:ts7": "node ./node_modules/typescript7/bin/tsc --noEmit",
     "prepack": "npm run build",
     "examples": "node scripts/examples.mjs"
   },
