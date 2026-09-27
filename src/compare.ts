@@ -25,9 +25,9 @@ const record=(value:unknown):value is Record<string,unknown>=>typeof value==='ob
 /** Validate only stable graph fields, allowing additive optional module metadata. */
 export function parseAtlas(value: unknown): Atlas {
   if(!record(value)||value.schemaVersion!==1||typeof value.name!=='string'||!Array.isArray(value.modules)||!Array.isArray(value.edges)||!Array.isArray(value.warnings))throw new Error('Invalid RepoAtlas snapshot: expected schemaVersion 1 with modules, edges, and warnings.');
-  for(const module of value.modules){if(!record(module)||typeof module.id!=='string'||typeof module.group!=='string'||typeof module.lines!=='number'||!Array.isArray(module.entry)||!module.entry.every(item=>typeof item==='string')||('workspace'in module&&typeof module.workspace!=='string'))throw new Error('Invalid RepoAtlas snapshot: malformed module record.');}
+  for(const module of value.modules){if(!record(module)||typeof module.id!=='string'||typeof module.group!=='string'||!Number.isSafeInteger(module.lines)||Number(module.lines)<0||!Array.isArray(module.entry)||!module.entry.every(item=>typeof item==='string')||('workspace'in module&&typeof module.workspace!=='string'))throw new Error('Invalid RepoAtlas snapshot: malformed module record.');}
   if(('repository'in value&&typeof value.repository!=='string')||('commit'in value&&typeof value.commit!=='string'))throw new Error('Invalid RepoAtlas snapshot: malformed snapshot metadata.');
-  for(const edge of value.edges){if(!record(edge)||typeof edge.source!=='string'||typeof edge.target!=='string'||typeof edge.specifier!=='string'||!kinds.has(String(edge.kind))||typeof edge.line!=='number'||typeof edge.code!=='string'||!resolutions.has(String(edge.resolution)))throw new Error('Invalid RepoAtlas snapshot: malformed dependency edge.');}
+  for(const edge of value.edges){if(!record(edge)||typeof edge.source!=='string'||typeof edge.target!=='string'||typeof edge.specifier!=='string'||!kinds.has(String(edge.kind))||!Number.isSafeInteger(edge.line)||Number(edge.line)<1||typeof edge.code!=='string'||!resolutions.has(String(edge.resolution)))throw new Error('Invalid RepoAtlas snapshot: malformed dependency edge.');}
   if(!value.warnings.every(item=>typeof item==='string'))throw new Error('Invalid RepoAtlas snapshot: malformed warnings.');
   return value as unknown as Atlas;
 }
