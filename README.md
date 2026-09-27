@@ -82,7 +82,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: maximilianfeix/repoatlas@v1.9.0
+      - uses: maximilianfeix/repoatlas@v1.10.0
         with:
           output: repoatlas-map.html
 ```
@@ -114,6 +114,7 @@ The Zustand demo includes a workspace boundary: `examples/starter/src/index.tsx`
 - **Share discoveries:** copy a direct link to a module, external package, or exact import edge inside the same portable HTML map.
 - **Explore maps and assess change:** search, directory and entry-point filters, accessible pagination, Focus map for direct neighbors, and Impact map for every transitively dependent module.
 - **Read dense graphs:** parallel imports share one countable connector while every exact import site remains available in a keyboard-accessible evidence list.
+- **Navigate entirely by keyboard:** SVG module and connection controls activate with Enter or Space and show a clear focus ring.
 - **Check entry-point reachability:** find modules outside paths from detected entries; if RepoAtlas finds no entry point, reachability stays unknown instead of flagging every file.
 - **Trace entry paths:** follow the shortest resolved-import route from a detected entry point to a reachable module, then click each highlighted edge for its exact source evidence.
 - **Map monorepo boundaries:** resolve declared npm/Yarn or pnpm workspace exports, compare imports between packages and source directories, and open each populated boundary cell to inspect exact import sites.
@@ -198,7 +199,7 @@ Repository credentials are not copied into the map. Files are read from the sele
 <details>
 <summary>Implementation and compatibility notes</summary>
 
-RepoAtlas requires Node.js 22 or newer and uses the TypeScript 6.0.3 compiler API. TypeScript 7 compatibility is tracked in [issue #5](https://github.com/maximilianfeix/repoatlas/issues/5). The generated viewer uses a hash-based Content Security Policy for its inline scripts and styles. Known limits and requests are tracked in [GitHub Issues](https://github.com/maximilianfeix/repoatlas/issues).
+RepoAtlas requires Node.js 22 or newer and uses the TypeScript 6.0.3 compiler API. CI also checks the source with the stable TypeScript 7.0.2 CLI; TypeScript 7 does not expose a programmatic API yet, so API adoption remains tracked in [issue #5](https://github.com/maximilianfeix/repoatlas/issues/5). The generated viewer uses a hash-based Content Security Policy for its inline scripts and styles. Known limits and requests are tracked in [GitHub Issues](https://github.com/maximilianfeix/repoatlas/issues).
 
 </details>
 

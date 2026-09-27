@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.10.0] - 2026-09-27
+
+### Added
+
+- Give SVG module controls keyboard activation with both Enter and Space, matching the connection controls and preventing accidental page scroll.
+- Show a high-contrast focus ring on keyboard-focused graph modules.
+- Check the source with both the TypeScript 6.0.3 compiler API toolchain and stable TypeScript 7.0.2 CLI in CI.
+
+### Quality
+
+- Add regression tests for activation keys and unrelated key input.
+- Run both compiler checks across the existing Node 22/24 and Linux/macOS/Windows CI matrix.
+
 ## [1.9.0] - 2026-09-27
 
 ### Added
