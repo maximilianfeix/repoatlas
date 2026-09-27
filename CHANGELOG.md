@@ -20,6 +20,7 @@
 - Test group ranking, import-site counts, snapshot diff rendering, safe source links, and no-overwrite behavior.
 - Browser-check package drill-down, line-level evidence, search, and diff filters.
 - Run tests on Node.js 22 and 24 across Linux, macOS, and Windows, plus stable TypeScript 7 CLI validation.
+- Make `npm run examples` fetch the exact commits from the example manifest, keeping screenshots, counts, and source links reproducible.
 
 ## [1.10.0] - 2026-09-27
 
