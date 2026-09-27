@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.6.0] - 2026-09-27
+
+### Added
+
+- Add a package/directory boundary matrix showing resolved internal imports by direction and count.
+- Open any populated matrix cell to inspect the individual source files, lines, and import statements behind it.
+- Include an optional repository-relative `workspace` path on modules in declared workspaces in JSON and HTML data.
+- Refresh the Hono, Ky, and Zustand examples with the current boundary viewer.
+
+### Quality
+
+- Test same- and cross-boundary imports, workspace grouping, isolated directories, and exclusion of external, unresolved, or missing endpoints.
+- Manually inspect the matrix and exact source evidence in a browser; verify 29 tests, TypeScript checks, and npm packaging.
+
 ## [0.5.0] - 2026-09-27
 
 ### Added
