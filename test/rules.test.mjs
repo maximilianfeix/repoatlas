@@ -4,7 +4,7 @@ import { mkdtemp, writeFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
-import { checkArchitecture, parseArchitectureConfig, renderRuleReport } from '../dist/rules.js';
+import { checkArchitecture, parseArchitectureConfig, renderGitHubAnnotations, renderRuleReport } from '../dist/rules.js';
 
 const atlas={schemaVersion:1,name:'Fixture',modules:[
   {id:'src/main.ts',group:'src',lines:4,entry:['package script']},
@@ -43,13 +43,31 @@ test('config validation rejects unknown keys, invalid limits and malformed bound
   assert.throws(()=>checkArchitecture(atlas,{forbiddenImports:[{from:'directory:typo',to:'package:packages/ui'}]}),/unknown boundary/);
 });
 
+test('GitHub annotations attach source lines and escape workflow command metacharacters',()=>{
+  const result={passed:false,metrics:{cycleGroups:1,unreachableModules:null},violations:[
+    {rule:'forbidden-import',message:'bad%, line\nforged::warning',edge:{source:'src/a:\r\n:b,%.ts',line:7}},
+    {rule:'max-cycle-groups',message:'Found 1% cycle\ngroup; maximum is 0.'},
+  ]};
+  assert.equal(renderGitHubAnnotations(result),'::error file=src/a%3A%0D%0A%3Ab%2C%25.ts,line=7,title=RepoAtlas forbidden import::bad%25, line%0Aforged::warning\n::error title=RepoAtlas architecture rule::Found 1%25 cycle%0Agroup; maximum is 0.\n');
+  assert.equal(renderGitHubAnnotations({...result,violations:[]}), '');
+});
+
 test('check CLI emits JSON and a failing exit code, and succeeds when rules pass',async t=>{
   const dir=await mkdtemp(path.join(tmpdir(),'atlas-check-'));t.after(()=>rm(dir,{recursive:true,force:true}));
   const snapshot=path.join(dir,'snapshot.json'),config=path.join(dir,'rules.json');await writeFile(snapshot,JSON.stringify(atlas));
   const cli=path.resolve('dist/cli.js'),run=()=>spawnSync(process.execPath,[cli,'check',snapshot,'--config',config,'--json'],{encoding:'utf8'});
   await writeFile(config,JSON.stringify({limits:{cycleGroups:0}}));
   const failed=run();assert.equal(failed.status,1);assert.equal(JSON.parse(failed.stdout).violations[0].rule,'max-cycle-groups');
+  await writeFile(config,JSON.stringify({forbiddenImports:[{from:'directory:src',to:'package:packages/ui'}]}));
+  const failedAnnotation=spawnSync(process.execPath,[cli,'check',snapshot,'--config',config,'--format','github'],{encoding:'utf8'});
+  assert.equal(failedAnnotation.status,1);assert.match(failedAnnotation.stdout,/::error file=src\/main\.ts,line=2,title=RepoAtlas forbidden import::/);
   await writeFile(config,JSON.stringify({limits:{cycleGroups:1,unreachableModules:1}}));
   const passed=run();assert.equal(passed.status,0);assert.equal(JSON.parse(passed.stdout).passed,true);
+  const annotation=spawnSync(process.execPath,[cli,'check',snapshot,'--config',config,'--format','github'],{encoding:'utf8'});
+  assert.equal(annotation.status,0);assert.equal(annotation.stdout,'');
+  const formatJson=spawnSync(process.execPath,[cli,'check',snapshot,'--config',config,'--format','json'],{encoding:'utf8'});
+  assert.equal(formatJson.status,0);assert.equal(JSON.parse(formatJson.stdout).passed,true);
+  const conflict=spawnSync(process.execPath,[cli,'check',snapshot,'--config',config,'--json','--format','github'],{encoding:'utf8'});
+  assert.equal(conflict.status,1);assert.match(conflict.stderr,/Choose either --json or --format/);
   await writeFile(config,'{');const invalid=run();assert.equal(invalid.status,1);assert.match(invalid.stderr,/not valid JSON/);
 });

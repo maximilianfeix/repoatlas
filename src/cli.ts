@@ -9,7 +9,7 @@ import { analyze, githubURL } from './analyze.js';
 import { render } from './render.js';
 import { compareAtlases, parseAtlas } from './compare.js';
 import { renderBoundarySvg, renderTextReport } from './report.js';
-import { checkArchitecture, parseArchitectureConfig, renderRuleReport } from './rules.js';
+import { checkArchitecture, parseArchitectureConfig, renderGitHubAnnotations, renderRuleReport } from './rules.js';
 
 const packageVersion=JSON.parse(readFileSync(new URL('../package.json',import.meta.url),'utf8')).version as string;
 async function loadSnapshot(file:string) {
@@ -98,13 +98,18 @@ program.command('check').description('Fail CI when configured architecture rules
   .argument('<snapshot>', 'RepoAtlas JSON snapshot')
   .requiredOption('-c, --config <file>', 'JSON architecture rules configuration')
   .option('--json', 'emit machine-readable results')
+  .option('--format <format>', 'text, json, or GitHub Actions annotations', 'text')
   .action(async (snapshotFile:string,opts) => {
+    if(!['text','json','github'].includes(opts.format))throw new Error('--format must be text, json, or github.');
     let configText:string;
     try{configText=await readFile(path.resolve(opts.config),'utf8');}catch{throw new Error(`Could not read config file: ${opts.config}`);}
     let configValue:unknown;
     try{configValue=JSON.parse(configText);}catch{throw new Error(`Config is not valid JSON: ${opts.config}`);}
     const result=checkArchitecture(await loadSnapshot(snapshotFile),parseArchitectureConfig(configValue));
-    if(opts.json||program.opts().json||process.argv.includes('--json'))process.stdout.write(JSON.stringify(result,null,2)+'\n');
+    const json=opts.json||program.opts().json||process.argv.includes('--json');
+    if(json&&opts.format!=='text')throw new Error('Choose either --json or --format, not both.');
+    if(json||opts.format==='json')process.stdout.write(JSON.stringify(result,null,2)+'\n');
+    else if(opts.format==='github')process.stdout.write(renderGitHubAnnotations(result));
     else process.stdout.write(renderRuleReport(result));
     if(!result.passed)process.exitCode=1;
   });

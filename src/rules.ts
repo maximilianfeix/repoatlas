@@ -97,3 +97,13 @@ export function renderRuleReport(result: RuleResult): string {
   else for (const violation of result.violations) lines.push(`FAIL ${violation.message}`);
   return lines.join('\n') + '\n';
 }
+
+/** Render GitHub workflow commands with all untrusted paths/messages safely escaped. */
+export function renderGitHubAnnotations(result: RuleResult): string {
+  const escapeProperty=(value:string)=>value.replace(/[%\r\n:,]/g,char=>({ '%':'%25','\r':'%0D','\n':'%0A',':':'%3A',',':'%2C' }[char]!));
+  const escapeData=(value:string)=>value.replace(/[%\r\n]/g,char=>({ '%':'%25','\r':'%0D','\n':'%0A' }[char]!));
+  return result.violations.map(violation=>{
+    const properties=violation.edge?` file=${escapeProperty(violation.edge.source)},line=${violation.edge.line},title=RepoAtlas forbidden import`:' title=RepoAtlas architecture rule';
+    return `::error${properties}::${escapeData(violation.message)}`;
+  }).join('\n')+(result.violations.length?'\n':'');
+}
