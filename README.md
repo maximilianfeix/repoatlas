@@ -35,7 +35,7 @@
   </tr>
 </table>
 
-<p align="center"><sub>Measured from the <a href="https://github.com/honojs/hono/tree/52f6c7ec865b31001a14eed9b323a0235f0a3156">pinned Hono snapshot</a>. Counts describe that example, not a benchmark.</sub></p>
+<p align="center"><sub>Hono at <a href="https://github.com/honojs/hono/tree/52f6c7ec865b31001a14eed9b323a0235f0a3156">commit 52f6c7e</a>; counts come from this pinned source revision.</sub></p>
 
 RepoAtlas reads source files without running the project. It resolves static TypeScript imports into a dependency graph and exports the result as one offline HTML file. Every resolved connection can be traced back to its import line; uncertain imports stay marked unresolved instead of being guessed.
 
@@ -44,16 +44,18 @@ RepoAtlas reads source files without running the project. It resolves static Typ
 Requires **Node.js 22 or later** and **Git**. Generate a map from a public GitHub repository:
 
 ```sh
-npx --yes --package=github:maximilianfeix/repoatlas#v1.10.0 -- repoatlas https://github.com/pmndrs/zustand --out zustand-map.html
+npx --yes --package=github:maximilianfeix/repoatlas#v1.10.0 -- \
+  repoatlas https://github.com/pmndrs/zustand --out zustand-map.html
 ```
 
 Open `zustand-map.html` in a browser. To map a local checkout instead:
 
 ```sh
-repoatlas ./my-project --out architecture.html
+npx --yes --package=github:maximilianfeix/repoatlas#v1.10.0 -- \
+  repoatlas ./my-project --out architecture.html
 ```
 
-The first command installs the CLI from the versioned GitHub release. It needs no global install, API key, or access token for a public repository.
+The CLI is fetched from the versioned GitHub release; no global install, API key, or access token for a public repository is needed.
 
 ## GitHub Actions
 
