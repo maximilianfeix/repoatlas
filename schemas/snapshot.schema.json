@@ -39,7 +39,10 @@
           "line": { "type": "integer", "minimum": 1 },
           "code": { "type": "string" },
           "url": { "type": "string" },
-          "resolution": { "enum": ["internal", "external", "unresolved"] }
+          "resolution": { "enum": ["internal", "external", "unresolved"] },
+          "computed": { "const": true },
+          "externalKind": { "enum": ["package", "builtin", "url", "other"] },
+          "externalName": { "type": "string" }
         },
         "additionalProperties": true
       }

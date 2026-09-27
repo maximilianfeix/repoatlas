@@ -82,7 +82,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: maximilianfeix/repoatlas@v1.5.0
+      - uses: maximilianfeix/repoatlas@v1.6.0
         with:
           output: repoatlas-map.html
 ```
@@ -107,6 +107,7 @@ The Zustand demo includes a workspace boundary: `examples/starter/src/index.tsx`
 
 - **Project shape:** source modules, directories, and likely entry points.
 - **Dependencies:** static imports, re-exports, type imports, and literal dynamic imports or `require` calls. Computed calls remain visible as unresolved source evidence; their targets are never guessed.
+- **External packages:** browse npm package usage, Node built-ins, and URL imports separately, with import-site counts and clickable source evidence for every usage.
 - **Mixed repositories:** opt into `.js`, `.jsx`, `.mjs`, and `.cjs` modules with `--include-js`; TypeScript-only stays the default.
 - **Evidence:** the exact import statement and line, with a commit-pinned GitHub link when the checkout is clean.
 - **Explore maps and assess change:** search, directory and entry-point filters, accessible pagination, Focus map for direct neighbors, and Impact map for every transitively dependent module.
@@ -116,9 +117,11 @@ The Zustand demo includes a workspace boundary: `examples/starter/src/index.tsx`
 - **Spot architecture risks:** isolate circular import groups, trace the exact cycle edges, and jump straight to the most depended-on modules.
 - **Compare snapshots:** report added or removed modules and dependency relationships, plus changed import specifiers, between two JSON maps; line shifts alone do not count as architecture drift.
 - **Enforce architecture in CI:** fail a workflow on forbidden workspace/directory imports, excess circular groups, or modules outside detected entry paths; emit line-aware GitHub Actions annotations or JSON.
-- **Integrate with stable formats:** inspect the versioned snapshot/config JSON Schemas from the CLI; v1 preserves required graph fields and allows additive snapshot metadata.
+- **Integrate with stable formats:** inspect the versioned snapshot/config JSON Schemas from the CLI; v1 preserves required graph fields and advertises additive computed-import and external-dependency metadata.
 - **Navigate large maps:** page through 100 modules at a time, group modules by workspace or top-level directory, and use the overview to jump across wide graph pages.
 - **Portable output:** one offline HTML file, full graph JSON, a boundary SVG, or a concise CI text report.
+
+[![Inspect external package usage in a real Hono architecture map](docs/assets/external-package-usage.png)](https://maximilianfeix.github.io/repoatlas/examples/hono.html)
 
 ```sh
 repoatlas https://github.com/honojs/hono --ref main -o hono-map.html

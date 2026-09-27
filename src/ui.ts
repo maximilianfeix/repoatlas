@@ -2,6 +2,7 @@ import type { Atlas, Edge, Module } from './types.js';
 import { focusNeighborhood, impactNeighborhood } from './focus.js';
 import { buildBoundaryMatrix, type BoundaryCell } from './boundaries.js';
 import { analyzeReachability, findCycles, findEntryPath } from './insights.js';
+import { groupExternalDependencies, type ExternalUsage } from './packages.js';
 const data: Atlas = JSON.parse(document.getElementById('atlas-data')!.textContent!);
 const $ = (id: string) => document.getElementById(id)!;
 function el(tag: string, text = '', cls = '') { const e = document.createElement(tag); e.textContent = text; if (cls) e.className = cls; return e; }
@@ -9,6 +10,7 @@ function link(text: string, url: string) { const a = el('a',text) as HTMLAnchorE
 const NS = 'http://www.w3.org/2000/svg';
 function svg(tag: string, attrs: Record<string, string | number> = {}) { const e = document.createElementNS(NS,tag); for (const [k,v] of Object.entries(attrs)) e.setAttribute(k,String(v)); return e; }
 const internal = data.edges.filter(e => e.resolution === 'internal');
+const external = groupExternalDependencies(data.edges);
 const byId = new Map(data.modules.map(m => [m.id,m]));
 const cycleGroups = findCycles(data.modules, internal);
 const reachability = analyzeReachability(data.modules,internal);
@@ -32,6 +34,16 @@ function intro() {
   const panel = $('inspector'); panel.replaceChildren(el('h2','The source of truth'),el('h3','Architecture you can verify.'),el('p','Select a module to explore its imports and dependents. Select any connection to see the exact code that created it.'));
   panel.append(el('p',`${data.edges.filter(e=>e.resolution==='external').length} external imports · ${data.edges.filter(e=>e.resolution==='unresolved').length} unresolved imports`));
   if (data.commit) panel.append(el('p',`Snapshot ${data.commit.slice(0,10)}`));
+  if (external.length) {
+    const packages=external.filter(usage=>usage.kind==='package');
+    const summary=el('div','','insight-summary');
+    summary.append(el('h2','External dependencies'),el('p',`${packages.length} npm packages · ${data.edges.filter(edge=>edge.resolution==='external').length} external import sites`));
+    for(const usage of packages.slice(0,5)) summary.append(externalButton(usage));
+    const browse=el('button','Browse all external dependencies','button insight-link');
+    browse.onclick=externalInventory;
+    summary.append(browse);
+    panel.append(summary);
+  }
   const signals = el('div','','insight-summary');
   signals.append(el('h2','Architecture signals'),el('p',`${cycleGroups.length} circular dependency groups · ${cycleByModule.size} modules involved.`));
   if(reachability.known){
@@ -54,6 +66,42 @@ function intro() {
   panel.append(signals);
   panel.append(el('h2','Start exploring'));
   data.modules.filter(m=>m.entry.length).slice(0,8).forEach(m=>{ const b=el('button',m.id,'dep'); b.onclick=()=>choose(m.id); panel.append(b); });
+}
+function externalButton(usage: ExternalUsage) {
+  const button=el('button',usage.name,'dep');
+  button.append(el('small',`${usage.edges.length} import ${usage.edges.length===1?'site':'sites'} · ${usage.moduleCount} ${usage.moduleCount===1?'module':'modules'}`));
+  button.onclick=()=>externalDetail(usage,0);
+  return button;
+}
+function externalInventory() {
+  const panel=$('inspector');
+  panel.replaceChildren(el('h2','External dependency inventory'),el('p','Grouped from source import statements; no registry metadata or project code is fetched.'));
+  const back=el('button','← Back to overview','dep');back.onclick=intro;panel.append(back);
+  const labels:Record<ExternalUsage['kind'],string>={package:'npm packages',builtin:'Node built-ins',url:'URL imports',other:'Other external specifiers'};
+  for(const kind of ['package','builtin','url','other'] as const){
+    const usages=external.filter(usage=>usage.kind===kind);
+    panel.append(el('h3',`${labels[kind]} · ${usages.length}`));
+    if(!usages.length)panel.append(el('p',`No ${labels[kind].toLowerCase()} found.`));
+    for(const usage of usages)panel.append(externalButton(usage));
+  }
+}
+function externalDetail(usage: ExternalUsage,page: number) {
+  const panel=$('inspector'),pageSize=50,pages=Math.max(1,Math.ceil(usage.edges.length/pageSize));
+  const start=page*pageSize;
+  panel.replaceChildren(el('h2','External dependency'),el('h3',usage.name),el('p',`${usage.edges.length} import ${usage.edges.length===1?'site':'sites'} across ${usage.moduleCount} source ${usage.moduleCount===1?'module':'modules'}.`));
+  const back=el('button','← Back to external dependencies','dep');back.onclick=externalInventory;panel.append(back);
+  panel.append(el('h3',`Import sites · ${start+1}–${Math.min(start+pageSize,usage.edges.length)} of ${usage.edges.length}`));
+  for(const edge of usage.edges.slice(start,start+pageSize)){
+    const button=el('button',`${edge.source}:${edge.line} → ${edge.specifier}`,'dep');
+    button.append(el('small',`${edge.kind} · ${edge.resolution}`));button.onclick=()=>edgeDetail(edge);panel.append(button);
+  }
+  if(pages>1){
+    const nav=el('div','','external-pages');
+    const previous=el('button','← Previous 50','button') as HTMLButtonElement;previous.disabled=page===0;previous.onclick=()=>externalDetail(usage,page-1);
+    const status=el('span',`Page ${page+1} of ${pages}`,'badge');
+    const next=el('button','Next 50 →','button') as HTMLButtonElement;next.disabled=page+1===pages;next.onclick=()=>externalDetail(usage,page+1);
+    nav.append(previous,status,next);panel.append(nav);
+  }
 }
 function edgeDetail(edge: Edge) {
   selectedEdge=edge; const panel=$('inspector'); panel.replaceChildren(el('h2','Connection evidence'),el('h3',`${edge.source} → ${edge.target}`),el('span',edge.kind,'pill'),el('span',edge.resolution,'pill'),el('p',`${edge.source}:${edge.line}`),el('pre',edge.code));
