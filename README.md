@@ -61,7 +61,9 @@ TypeScript compiler AST + module resolution
 Graph with source evidence → standalone interactive HTML
 ```
 
-The analyzer uses the stable **TypeScript 5.9 compiler API**, pinned deliberately. It does not install a target repo's dependencies or execute its application/build scripts. Symlinked files and directories are skipped; resolver reads are confined to the selected directory. HTML data is escaped and the viewer makes no network requests.
+The analyzer uses the stable **TypeScript 5.9 compiler API**, pinned deliberately. TypeScript's `moduleResolution` setting models different hosts: `bundler` allows extensionless relative imports, while Node ESM modes apply different rules. RepoAtlas honors a project's nearest tsconfig and uses `bundler` only when no setting exists. See the [TypeScript module-resolution reference](https://www.typescriptlang.org/tsconfig/moduleResolution) and [module theory](https://www.typescriptlang.org/docs/handbook/modules/theory.html). We pin 5.9 because a future major compiler API may change module-resolution entry points; [TypeScript API issue #64069](https://github.com/microsoft/TypeScript/issues/64069) tracks this work.
+
+It does not install a target repo's dependencies or execute its application/build scripts. Symlinked files and directories are skipped; resolver reads are confined to the selected directory. HTML data is escaped and the viewer makes no network requests. Its inline viewer and CSS are protected by exact SHA-256 CSP hashes; no broad inline-script or inline-style exception is enabled. Hashes are recalculated for every generated viewer as recommended by the [CSP guide](https://developer.mozilla.org/en-US/docs/Web/HTTP/Guides/CSP).
 
 ## Honest v1 boundaries
 

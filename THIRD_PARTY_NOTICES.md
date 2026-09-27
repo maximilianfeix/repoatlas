@@ -4,7 +4,7 @@ The example maps contain short source excerpts from these MIT-licensed projects.
 
 ## honojs/hono
 
-Source: https://github.com/honojs/hono/tree/ee0622e14487444211942eec2f6ab7ccede4c6af
+Source: https://github.com/honojs/hono/tree/52f6c7ec865b31001a14eed9b323a0235f0a3156
 
 ```text
 MIT License

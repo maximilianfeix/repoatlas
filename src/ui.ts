@@ -55,7 +55,7 @@ function draw() {
   const buckets: Module[][]=[[],[],[]];
   for(const m of visible) buckets[m.entry.length ? 0 : internal.some(e=>e.source===m.id) ? 1 : 2].push(m);
   const width=920,height=Math.max(450,Math.max(...buckets.map(b=>b.length))*88+90);
-  graph.setAttribute('viewBox',`0 0 ${width} ${height}`); graph.style.width=`${width*zoom}px`; graph.style.height=`${height*zoom}px`;
+  graph.setAttribute('viewBox',`0 0 ${width} ${height}`); graph.setAttribute('width',String(width*zoom)); graph.setAttribute('height',String(height*zoom));
   const defs=svg('defs'), marker=svg('marker',{id:'arrow',viewBox:'0 0 10 10',refX:9,refY:5,markerWidth:5,markerHeight:5,orient:'auto-start-reverse'}); marker.append(svg('path',{d:'M 0 0 L 10 5 L 0 10 z',fill:'#8190a8'}));defs.append(marker);graph.append(defs);
   const positions=new Map<string,{x:number;y:number}>();
   buckets.forEach((bucket,col)=>{const label=svg('text',{x:col*300+25,y:30,class:'graph-label'});label.textContent=['ENTRY POINTS','MODULES','LEAVES'][col];graph.append(label);bucket.forEach((m,row)=>positions.set(m.id,{x:col*300+25,y:row*88+55}));});

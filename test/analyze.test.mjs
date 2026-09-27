@@ -1,5 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import { mkdtemp, mkdir, writeFile, rm, symlink, readFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -33,9 +34,18 @@ test('GitHub evidence is commit-pinned and disabled for dirty working trees',asy
   const atlas=await analyze(dir);assert.equal(atlas.edges[0].url,`https://github.com/example/example/blob/${git('rev-parse','HEAD')}/a.ts#L1`);
   await writeFile(path.join(dir,'a.ts'),"\nimport './b';");assert.equal((await analyze(dir)).edges[0].url,undefined);
 });
+test('GitHub evidence preserves unusual tracked paths',async t=>{
+  const dir=await fixture(t,{'entry.ts':'import "./space dir/雪";','space dir/雪.ts':'export const snow = true;'});
+  const git=(...args)=>execFileSync('git',['-C',dir,...args],{stdio:'pipe'}).toString().trim();
+  git('init');git('add','-A');git('-c','user.name=Test','-c','user.email=test@example.com','commit','-m','fixture');git('remote','add','origin','https://github.com/example/example.git');
+  const atlas=await analyze(dir);assert.equal(atlas.edges[0].resolution,'internal');assert.equal(atlas.modules.find(m=>m.id==='space dir/雪.ts').url,`https://github.com/example/example/blob/${git('rev-parse','HEAD')}/space%20dir/%E9%9B%AA.ts#L1`);
+});
 test('HTML embeds untrusted repository text without script breakout',async t=>{
   const dir=await fixture(t,{'a.ts':"import '</script><script>alert(1)</script>';"});const atlas=await analyze(dir);atlas.name='</script><script>alert(1)</script>';
-  const html=render(atlas);assert.ok(!html.includes(atlas.name));assert.ok(html.includes('\\u003c/script>'));assert.match(html,/Content-Security-Policy/);assert.ok(!html.includes('/*ATLAS_'));
+  const html=render(atlas);assert.ok(!html.includes(atlas.name));assert.ok(html.includes('\\u003c/script>'));assert.match(html,/Content-Security-Policy/);assert.doesNotMatch(html,/script-src 'unsafe-inline'/);assert.doesNotMatch(html,/style-src 'unsafe-inline'/);assert.match(html,/object-src 'none'/);assert.doesNotMatch(html,/frame-ancestors/);assert.ok(!html.includes('/*ATLAS_'));
+  const script=html.match(/<script>([\s\S]*?)<\/script>/)[1],style=html.match(/<style>([\s\S]*?)<\/style>/)[1],csp=html.match(/http-equiv="Content-Security-Policy" content="([^"]+)"/)[1];
+  const hash=value=>`'sha256-${createHash('sha256').update(value).digest('base64')}'`;
+  assert.ok(csp.includes(`script-src ${hash(script)}`));assert.ok(csp.includes(`style-src ${hash(style)}`));
 });
 test('GitHub URL validation rejects credentials, flags, other hosts and extra paths',()=>{
   assert.equal(githubURL('https://github.com/a/b.git'),'https://github.com/a/b');

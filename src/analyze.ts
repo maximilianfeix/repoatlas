@@ -70,7 +70,8 @@ export async function analyze(input: string, options: { includeTests?: boolean; 
   const dirty = git(root, ['status', '--porcelain', '--untracked-files=all']);
   if (dirty) warnings.push('Working tree has changes: GitHub links are disabled; embedded evidence reflects local files.');
   const prefix = git(root, ['rev-parse', '--show-prefix']) || '';
-  const tracked = new Set((git(root, ['ls-files']) || '').split('\n'));
+  let tracked = new Set<string>();
+  try { tracked = new Set(execFileSync('git', ['-C', root, 'ls-files', '-z'], { encoding: 'buffer', stdio: ['ignore', 'pipe', 'ignore'], timeout: 10000 }).toString('utf8').split('\0')); } catch { /* not a Git repository */ }
   const id = (f: string) => slash(path.relative(root, f));
   const url = (f: string, line = 1) => repository && commit && !dirty && tracked.has(id(f)) ? `${repository}/blob/${commit}/${(prefix + id(f)).split('/').map(encodeURIComponent).join('/')}#L${line}` : undefined;
   const fileSet = new Set(files);

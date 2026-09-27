@@ -2,7 +2,7 @@
   {
     "name": "hono",
     "url": "https://github.com/honojs/hono",
-    "commit": "ee0622e14487444211942eec2f6ab7ccede4c6af",
+    "commit": "52f6c7ec865b31001a14eed9b323a0235f0a3156",
     "modules": 247,
     "connections": 676,
     "warnings": [
