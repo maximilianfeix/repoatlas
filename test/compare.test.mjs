@@ -6,6 +6,7 @@ import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { compareAtlases, parseAtlas } from '../dist/compare.js';
+import { renderComparisonHtml } from '../dist/compare-render.js';
 
 const atlas=(modules,edges,commit='')=>({schemaVersion:1,name:'demo',repository:'https://github.com/example/demo',...(commit?{commit}:{}),modules:modules.map(id=>({id,group:id.split('/').slice(0,-1).join('/')||'.',lines:4,entry:id==='src/main.ts'?['filename convention']:[]})),edges,warnings:[]});
 const edge=(source,target,specifier,extra={})=>({source,target,specifier,kind:'import',line:1,code:`import '${specifier}';`,resolution:'internal',...extra});
@@ -41,13 +42,25 @@ test('ignores line and code shifts when the dependency relationship is unchanged
   assert.deepEqual(compareAtlases(before,after).dependencies,{added:[],removed:[],changedSpecifier:[]});
 });
 
+test('renders an offline, searchable HTML diff with exact source evidence and escaped input',()=>{
+  const base=atlas(['a.ts','b.ts'],[edge('a.ts','b.ts','./b',{line:3,url:'https://github.com/example/demo/blob/old/a.ts#L3'})],'old');
+  const head=atlas(['a.ts','c.ts'],[edge('a.ts','c.ts','</script><script>alert(1)</script>',{line:8,code:"import '</script><script>alert(1)</script>';",url:'https://github.com/example/demo/blob/new/a.ts#L8'})],'new');
+  head.edges[0].url='javascript:alert(3)';
+  head.name='demo <script>alert(2)</script>';
+  const html=renderComparisonHtml(compareAtlases(base,head));
+  assert.match(html,/Architecture report/);assert.match(html,/type="application\/json"/);
+  assert.match(html,/\\u003c\/script>/);assert.doesNotMatch(html,/<script>alert\([12]\)<\/script>/);
+  assert.match(html,/blob\/old\/a\.ts#L3/);assert.doesNotMatch(html,/href="javascript:/);
+  assert.match(html,/aria-label="Search architecture changes"/);assert.match(html,/No tracking or network requests/);
+});
+
 test('validates snapshot structure and allows additive workspace metadata',()=>{
   const value=atlas(['packages/ui/src/index.ts'],[]);value.modules[0].workspace='packages/ui';
   assert.equal(parseAtlas(value).modules[0].workspace,'packages/ui');
   for(const invalid of [null,{}, {...value,schemaVersion:2}, {...value,modules:[{id:'x'}]}, {...value,edges:[{source:'a'}]}])assert.throws(()=>parseAtlas(invalid),/Invalid RepoAtlas snapshot/);
 });
 
-test('compare CLI emits text and JSON and rejects malformed snapshot files',async t=>{
+test('compare CLI emits text, JSON and a safe standalone HTML file, refuses overwrite, and rejects malformed input',async t=>{
   const dir=await mkdtemp(path.join(tmpdir(),'atlas-compare-'));t.after(()=>rm(dir,{recursive:true,force:true}));
   const base=path.join(dir,'base.json'),head=path.join(dir,'head.json'),bad=path.join(dir,'bad.json');
   await writeFile(base,JSON.stringify(atlas(['a.ts'],[],'base')));
@@ -59,6 +72,13 @@ test('compare CLI emits text and JSON and rejects malformed snapshot files',asyn
   assert.equal(json.status,0);assert.deepEqual(JSON.parse(json.stdout).modules,{added:['b.ts'],removed:[]});
   const text=spawnSync(process.execPath,[cli,'compare',base,head],{encoding:'utf8'});
   assert.equal(text.status,0);assert.match(text.stdout,/Architecture drift: demo \(base\) → demo \(head\)/);assert.match(text.stdout,/Modules: \+1 added · −0 removed/);
+  const htmlFile=path.join(dir,'diff.html');
+  const html=spawnSync(process.execPath,[cli,'compare',base,head,'--format','html','--output',htmlFile],{encoding:'utf8'});
+  assert.equal(html.status,0);assert.match(readFileSync(htmlFile,'utf8'),/What changed in the architecture/);
+  const overwrite=spawnSync(process.execPath,[cli,'compare',base,head,'--format','html','--output',htmlFile],{encoding:'utf8'});
+  assert.equal(overwrite.status,1);assert.match(overwrite.stderr,/Output exists/);
+  const invalidFormat=spawnSync(process.execPath,[cli,'compare',base,head,'--format','html'],{encoding:'utf8'});
+  assert.equal(invalidFormat.status,1);assert.match(invalidFormat.stderr,/requires --output/);
   const invalid=spawnSync(process.execPath,[cli,'compare',base,bad],{encoding:'utf8'});
   assert.equal(invalid.status,1);assert.match(invalid.stderr,/Snapshot is not valid JSON/);
 });

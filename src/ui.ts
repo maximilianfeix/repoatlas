@@ -1,6 +1,7 @@
 import type { Atlas, Edge, Module } from './types.js';
 import { focusNeighborhood, impactNeighborhood } from './focus.js';
-import { buildBoundaryMatrix, type BoundaryCell } from './boundaries.js';
+import { boundaryGroup, buildBoundaryMatrix, type BoundaryCell } from './boundaries.js';
+import { buildArchitectureOverview } from './overview.js';
 import { analyzeReachability, findCycles, findEntryPath } from './insights.js';
 import { groupExternalDependencies, type ExternalUsage } from './packages.js';
 import { encodeInspectorRoute, resolveInspectorRoute } from './routes.js';
@@ -41,7 +42,7 @@ for (const edge of internal) {
   importers.add(edge.source);
   importerSets.set(edge.target,importers);
 }
-let selected: string | undefined, selectedEdge: Edge | undefined, entriesOnly = false, focusMap = false, impactMap = false, entryPathView = false, cyclesOnly = false, orphansOnly = false, boundaryView = false, clusterView = false, cycleGroupIndex = 0, pageIndex = 0, zoom = 1;
+let selected: string | undefined, selectedEdge: Edge | undefined, entriesOnly = false, focusMap = false, impactMap = false, entryPathView = false, cyclesOnly = false, orphansOnly = false, boundaryView = false, architectureView = false, architectureGroup: string | undefined, clusterView = false, cycleGroupIndex = 0, pageIndex = 0, zoom = 1;
 $('repo-name').textContent = data.name;
 for (const [value,label] of [[data.modules.length,'modules'],[internal.length,'connections'],[data.modules.filter(m=>m.entry.length).length,'entry points']]) { const stat = el('div'); stat.append(el('strong',String(value)),el('span',String(label))); $('stats').append(stat); }
 for (const group of [...new Set(data.modules.map(m=>m.group))].sort()) { const opt = document.createElement('option'); opt.value = group; opt.textContent = group; $('group').append(opt); }
@@ -233,7 +234,7 @@ function draw() {
   const impacted=impactMap && selected ? impactNeighborhood(data.modules,internal,selected) : undefined;
   const entryPath=entryPathView&&selected?findEntryPath(data.modules,internal,selected):null;
   const entryPathModules=new Set(entryPath?.modules??[]),entryPathEdges=new Set(entryPath?.edges??[]);
-  const matches=entryPathView&&entryPath ? data.modules.filter(module=>entryPathModules.has(module.id)) : cyclesOnly ? data.modules.filter(m=>cycleByModule.has(m.id) && (cycleGroupIndex<0 || cycleByModule.get(m.id)===cycleGroupIndex)) : focused ?? impacted ?? data.modules.filter(m=>(!query || m.id.toLowerCase().includes(query)) && (!group || m.group===group) && (!entriesOnly || m.entry.length) && (!orphansOnly || reachability.unreachable.has(m.id)));
+  const matches=entryPathView&&entryPath ? data.modules.filter(module=>entryPathModules.has(module.id)) : cyclesOnly ? data.modules.filter(m=>cycleByModule.has(m.id) && (cycleGroupIndex<0 || cycleByModule.get(m.id)===cycleGroupIndex)) : focused ?? impacted ?? data.modules.filter(m=>(!query || m.id.toLowerCase().includes(query)) && (!group || m.group===group) && (!architectureGroup || boundaryGroup(m).id===architectureGroup) && (!entriesOnly || m.entry.length) && (!orphansOnly || reachability.unreachable.has(m.id)));
   const scoped=matches;
   const pageCount=Math.max(1,Math.ceil(scoped.length/100));
   pageIndex=Math.min(pageIndex,pageCount-1);
@@ -252,9 +253,12 @@ function draw() {
   $('orphans').setAttribute('aria-pressed',String(orphansOnly));
   $('boundaries').classList.toggle('active',boundaryView);
   $('boundaries').setAttribute('aria-pressed',String(boundaryView));
+  $('architecture').classList.toggle('active',architectureView);
+  $('architecture').setAttribute('aria-pressed',String(architectureView));
+  $('architecture').textContent=architectureGroup ? '← Packages' : 'Packages';
   $('clusters').classList.toggle('active',clusterView);
   $('clusters').setAttribute('aria-pressed',String(clusterView));
-  $('clusters').toggleAttribute('disabled',boundaryView);
+  $('clusters').toggleAttribute('disabled',boundaryView||architectureView);
   const cycleSelect=$('cycle-group') as HTMLSelectElement;
   cycleSelect.hidden=!cyclesOnly;
   cycleSelect.value=String(cycleGroupIndex);
@@ -264,18 +268,36 @@ function draw() {
   if(impactLink) impactLink.textContent=impactMap ? 'Exit impact map' : 'Show impact map';
   const pageStatus=$('page-status');
   pageStatus.textContent=scoped.length>100 ? `${pageIndex*100+1}–${Math.min((pageIndex+1)*100,scoped.length)} of ${scoped.length}` : `${scoped.length} modules`;
-  pageStatus.hidden=boundaryView||scoped.length<=100;
-  $('page-previous').hidden=boundaryView;$('page-next').hidden=boundaryView;
+  pageStatus.hidden=boundaryView||architectureView||scoped.length<=100;
+  $('page-previous').hidden=boundaryView||architectureView;$('page-next').hidden=boundaryView||architectureView;
   ($('page-previous') as HTMLButtonElement).disabled=pageIndex===0;
   ($('page-next') as HTMLButtonElement).disabled=pageIndex>=pageCount-1;
-  $('view-count').textContent=boundaryView ? 'Boundary matrix' : entryPathView&&entryPath ? `Entry path · ${visible.length} modules` : cyclesOnly ? `${visible.length} modules · ${cycleGroupIndex<0 ? `all ${cycleGroups.length} cycles` : `cycle ${cycleGroupIndex+1}/${cycleGroups.length}`}` : `${visible.length} / ${scoped.length} ${orphansOnly ? 'unreachable' : focused ? 'connected' : impacted ? 'affected' : 'matching'} modules`;
-  $('view-description').textContent=boundaryView ? 'Rows are importers · columns are imported boundaries · choose a count for line-level evidence' : entryPathView&&entryPath ? `Shortest path from ${entryPath.entry} to ${selected} · click a highlighted import for its source line` : cyclesOnly ? `${cycleGroupIndex<0 ? `${cycleGroups.length} circular groups` : `Cycle group ${cycleGroupIndex+1} of ${cycleGroups.length}`} · amber links are part of a cycle` : orphansOnly ? 'Outside paths from detected entry points · entry detection is heuristic' : impacted ? `Potential change impact for ${selected} · reverse imports` : focused ? `Direct neighborhood of ${selected}` : clusterView ? 'Grouped by workspace package or top-level directory · click a connection for its code' : 'Click a connection for its code';
+  const architecture=buildArchitectureOverview(scoped,internal);
+  $('view-count').textContent=architectureView ? `${architecture.groups.length} packages / directories` : boundaryView ? 'Boundary matrix' : entryPathView&&entryPath ? `Entry path · ${visible.length} modules` : cyclesOnly ? `${visible.length} modules · ${cycleGroupIndex<0 ? `all ${cycleGroups.length} cycles` : `cycle ${cycleGroupIndex+1}/${cycleGroups.length}`}` : `${visible.length} / ${scoped.length} ${orphansOnly ? 'unreachable' : focused ? 'connected' : impacted ? 'affected' : 'matching'} modules`;
+  $('view-description').textContent=architectureView ? 'Start with package boundaries · click a package to explore its modules or a count for source evidence' : boundaryView ? 'Rows are importers · columns are imported boundaries · choose a count for line-level evidence' : entryPathView&&entryPath ? `Shortest path from ${entryPath.entry} to ${selected} · click a highlighted import for its source line` : cyclesOnly ? `${cycleGroupIndex<0 ? `${cycleGroups.length} circular groups` : `Cycle group ${cycleGroupIndex+1} of ${cycleGroups.length}`} · amber links are part of a cycle` : orphansOnly ? 'Outside paths from detected entry points · entry detection is heuristic' : impacted ? `Potential change impact for ${selected} · reverse imports` : focused ? `Direct neighborhood of ${selected}` : clusterView ? 'Grouped by workspace package or top-level directory · click a connection for its code' : 'Click a connection for its code';
   const list=$('module-list'); list.replaceChildren();
   for (const m of visible) { const b=el('button',`${m.entry.length ? '● ' : ''}${m.id}`,selected===m.id ? 'selected' : ''); b.onclick=()=>choose(m.id); list.append(b); }
   if (!matches.length) list.append(el('p','No matching modules.'));
   const graph=$('graph'); graph.replaceChildren();$('overview-svg').replaceChildren();$('overview').hidden=true;
   const matrixRoot=$('boundary-map');matrixRoot.replaceChildren();
-  graph.hidden=boundaryView;matrixRoot.hidden=!boundaryView;
+  const architectureRoot=$('architecture-overview');architectureRoot.replaceChildren();
+  graph.hidden=boundaryView||architectureView;matrixRoot.hidden=!boundaryView;architectureRoot.hidden=!architectureView;
+  if(architectureView){
+    architectureRoot.append(el('p','A package-level view of resolved static imports. Counts represent import sites; select a package to inspect its files, or a count to trace the exact source lines.'));
+    if(!architecture.groups.length){architectureRoot.append(el('p','No packages or directories match the current filters.','architecture-empty'));return;}
+    const groupSection=document.createElement('section');groupSection.append(el('h2','PACKAGES & DIRECTORIES'));
+    const groupTable=document.createElement('table');groupTable.className='architecture-table';
+    const groupCaption=el('caption','Packages and top-level directories ranked by boundary connections.','sr-only');groupTable.append(groupCaption);
+    const groupHead=document.createElement('thead'),groupHeadRow=document.createElement('tr');
+    for(const [label,scope] of [['Package / directory','col'],['Modules','col'],['Internal imports','col'],['Dependencies','col'],['Dependents','col']]){const th=el('th',label);th.setAttribute('scope',scope);groupHeadRow.append(th);}groupHead.append(groupHeadRow);groupTable.append(groupHead);
+    const groupBody=document.createElement('tbody');
+    for(const item of architecture.groups){const row=document.createElement('tr'),nameCell=document.createElement('th');nameCell.setAttribute('scope','row');const explore=el('button',item.label,'architecture-action');explore.setAttribute('aria-label',`Explore ${item.label}`);explore.onclick=()=>{architectureGroup=item.id;architectureView=false;boundaryView=false;selected=undefined;selectedEdge=undefined;pageIndex=0;draw();intro();};nameCell.append(explore);row.append(nameCell);for(const value of [item.modules,item.internalImports,item.dependencies,item.dependents]){const td=el('td',String(value));row.append(td);}groupBody.append(row);}
+    groupTable.append(groupBody);groupSection.append(groupTable);architectureRoot.append(groupSection);
+    const dependencySection=document.createElement('section');dependencySection.append(el('h2','CROSS-PACKAGE IMPORTS'));
+    if(!architecture.dependencies.length)dependencySection.append(el('p','No imports cross package or directory boundaries.','architecture-empty'));
+    else{const dependencyTable=document.createElement('table');dependencyTable.className='architecture-table';const dependencyHead=document.createElement('thead'),dependencyHeadRow=document.createElement('tr');for(const label of ['Imports from','Imports into','Source sites']){const th=el('th',label);th.setAttribute('scope','col');dependencyHeadRow.append(th);}dependencyHead.append(dependencyHeadRow);dependencyTable.append(dependencyHead);const dependencyBody=document.createElement('tbody');for(const cell of architecture.dependencies){const source=architecture.groups.find(item=>item.id===cell.source)!,target=architecture.groups.find(item=>item.id===cell.target)!,row=document.createElement('tr');row.append(el('td',source.label),el('td',target.label));const count=document.createElement('td'),button=el('button',String(cell.edges.length),'architecture-evidence');button.setAttribute('aria-label',`${cell.edges.length} imports from ${source.label} to ${target.label}; inspect source lines`);button.onclick=()=>boundaryDetail(cell,source.label,target.label);count.append(button);row.append(count);dependencyBody.append(row);}dependencyTable.append(dependencyBody);dependencySection.append(dependencyTable);}
+    architectureRoot.append(dependencySection);return;
+  }
   if(boundaryView){
     const matrix=buildBoundaryMatrix(scoped,internal);
     if(matrix.groups.length>80){matrixRoot.append(el('p',`${matrix.groups.length} boundaries found. Filter to 80 or fewer directories/packages to render the matrix.`));return;}
@@ -296,7 +318,7 @@ function draw() {
   // Three stable columns: likely entry points, connecting modules, leaf modules.
   const buckets: Module[][]=[[],[],[]];
   for(const m of visible) buckets[m.entry.length ? 0 : modulesWithImports.has(m.id) ? 1 : 2].push(m);
-  const clusterKey=(module:Module)=>module.workspace?`package:${module.workspace}`:`directory:${module.group==='.'?'.':module.group.split('/')[0]}`;
+  const clusterKey=(module:Module)=>boundaryGroup(module).id;
   const compareText=(a:string,b:string)=>a<b?-1:a>b?1:0;
   if(clusterView)for(const bucket of buckets)bucket.sort((a,b)=>compareText(clusterKey(a),clusterKey(b))||compareText(a.id,b.id));
   const labels=['ENTRY POINTS','MODULES','LEAVES'];
@@ -379,13 +401,14 @@ for(const id of ['page-previous','page-next']) $(id).addEventListener('click',()
 $('search').addEventListener('input',()=>{pageIndex=0;draw();});$('group').addEventListener('change',()=>{pageIndex=0;draw();});
 $('entries').onclick=()=>{entriesOnly=!entriesOnly;entryPathView=false;orphansOnly=false;pageIndex=0;$('entries').classList.toggle('active',entriesOnly);$('entries').setAttribute('aria-pressed',String(entriesOnly));draw();};
 $('orphans').onclick=()=>{if(reachability.known&&reachability.unreachable.size){orphansOnly=!orphansOnly;entryPathView=false;entriesOnly=false;focusMap=false;impactMap=false;cyclesOnly=false;pageIndex=0;draw();}};
-$('boundaries').onclick=()=>{boundaryView=!boundaryView;entryPathView=false;pageIndex=0;draw();};
+$('boundaries').onclick=()=>{boundaryView=!boundaryView;architectureView=false;architectureGroup=undefined;entryPathView=false;pageIndex=0;draw();};
+$('architecture').onclick=()=>{boundaryView=false;if(architectureGroup){architectureGroup=undefined;architectureView=true;}else architectureView=!architectureView;pageIndex=0;draw();};
 $('clusters').onclick=()=>{clusterView=!clusterView;draw();};
 $('impact').onclick=()=>{if(selected){impactMap=!impactMap;entryPathView=false;focusMap=false;cyclesOnly=false;orphansOnly=false;pageIndex=0;draw();}};
 $('focus').onclick=()=>{if(selected){focusMap=!focusMap;entryPathView=false;impactMap=false;cyclesOnly=false;orphansOnly=false;pageIndex=0;draw();}};
 $('cycles').onclick=()=>{cyclesOnly=!cyclesOnly;entryPathView=false;focusMap=false;impactMap=false;orphansOnly=false;pageIndex=0;draw();};
 $('cycle-group').addEventListener('change',()=>{cycleGroupIndex=Number(($('cycle-group') as HTMLSelectElement).value);pageIndex=0;draw();});
-$('reset').onclick=()=>{($('search') as HTMLInputElement).value='';($('group') as HTMLSelectElement).value='';entriesOnly=false;focusMap=false;impactMap=false;entryPathView=false;cyclesOnly=false;orphansOnly=false;boundaryView=false;clusterView=false;cycleGroupIndex=0;pageIndex=0;selected=undefined;selectedEdge=undefined;zoom=1;$('entries').classList.remove('active');$('entries').setAttribute('aria-pressed','false');intro();draw();};
+$('reset').onclick=()=>{($('search') as HTMLInputElement).value='';($('group') as HTMLSelectElement).value='';entriesOnly=false;focusMap=false;impactMap=false;entryPathView=false;cyclesOnly=false;orphansOnly=false;boundaryView=false;architectureView=false;architectureGroup=undefined;clusterView=false;cycleGroupIndex=0;pageIndex=0;selected=undefined;selectedEdge=undefined;zoom=1;$('entries').classList.remove('active');$('entries').setAttribute('aria-pressed','false');intro();draw();};
 $('zoom-in').onclick=()=>{zoom=Math.min(2,zoom+0.2);draw();};$('zoom-out').onclick=()=>{zoom=Math.max(0.4,zoom-0.2);draw();};
 $('overview-center').addEventListener('click',()=>{const canvas=$('graph').parentElement!;canvas.scrollTo({left:Math.max(0,(canvas.scrollWidth-canvas.clientWidth)/2),top:Math.max(0,(canvas.scrollHeight-canvas.clientHeight)/2),behavior:'smooth'});});
 $('graph').parentElement!.addEventListener('scroll',updateOverviewViewport);
