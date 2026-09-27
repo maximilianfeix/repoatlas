@@ -14,7 +14,7 @@
     "url": "https://github.com/pmndrs/zustand",
     "commit": "b57db4f86ef179285da216eeb291266da82c361c",
     "modules": 18,
-    "connections": 23,
+    "connections": 24,
     "warnings": [
       "2 imports could not be mapped to included TypeScript files. See the dependency inspector."
     ]
