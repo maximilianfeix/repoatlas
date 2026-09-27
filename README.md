@@ -23,7 +23,7 @@
 </p>
 
 <p align="center">
-  <a href="https://maximilianfeix.github.io/repoatlas/examples/zustand.html"><img src="docs/assets/architecture-map-preview.png" alt="RepoAtlas impact map for Zustand's vanilla store, showing direct and indirect dependent modules" width="1100"></a>
+  <a href="https://maximilianfeix.github.io/repoatlas/examples/hono.html"><img src="docs/assets/architecture-map-preview.png" alt="RepoAtlas isolates a six-module circular dependency group in Hono, highlighting each import edge" width="1100"></a>
 </p>
 
 RepoAtlas creates a **standalone, interactive architecture map** from a TypeScript project. Unlike a diagram inferred from prose, each internal connection comes from a parsed import and can be checked against its exact source line. The exported HTML works offline and can be shared as one file.
@@ -83,6 +83,7 @@ The analyzed commits, warnings, and upstream license notices are listed in [`doc
 - **Dependencies:** static imports, re-exports, type imports, literal dynamic imports, and literal `require` calls.
 - **Evidence:** the exact import statement and line, with a commit-pinned GitHub link when the checkout is clean.
 - **Explore and assess change:** search, directory and entry-point filters, Focus map for direct neighbors, and Impact map for every transitively dependent module.
+- **Spot architecture risks:** isolate circular import groups, trace the exact cycle edges, and jump straight to the most depended-on modules.
 - **Portable output:** one offline HTML file, or the full graph as JSON for other tools.
 
 ```sh
@@ -94,7 +95,7 @@ repoatlas --help
 
 ## Scope and privacy
 
-RepoAtlas performs **static file-dependency analysis**. Impact map follows resolved internal imports backwards to show potential dependents; it is a source-level estimate, not a runtime or test-coverage guarantee. RepoAtlas does not execute project code, install target dependencies, or infer runtime calls, framework routes, or computed imports. Unresolved and external dependencies remain visible as unresolved or external.
+RepoAtlas performs **static file-dependency analysis**. Impact map follows resolved internal imports backwards to show potential dependents; circular dependency groups use strongly connected components over the same resolved graph. These are source-level signals, not runtime or test-coverage guarantees. RepoAtlas does not execute project code, install target dependencies, or infer runtime calls, framework routes, or computed imports. Unresolved and external dependencies remain visible as unresolved or external.
 
 Generated directories, declaration files, hidden files, and tests are excluded by default. Use `--include-tests` to include tests and fixtures. Analysis is limited to 5,000 files and 2 MB per source file; the interactive map displays up to 100 matching modules at a time, while JSON retains the full analyzed graph. Local edits disable GitHub source links, but source evidence remains embedded in the HTML.
 
