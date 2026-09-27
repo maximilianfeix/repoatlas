@@ -1,5 +1,27 @@
 # Changelog
 
+## [2.0.0] - 2026-09-27
+
+### Added
+
+- Add a package and top-level directory overview ranked by dependency connections, with drill-down into each module graph.
+- Trace every cross-package count to its contributing import statements and exact source lines.
+- Export snapshot comparisons as a searchable, filterable standalone HTML report with commit-pinned source links.
+- Ship the first-party RepoAtlas 1.10 → 2.0 comparison as a live, reproducible example.
+- Publish a versioned GitHub release workflow that runs tests and compiler checks and attaches the installable package tarball.
+
+### Compatibility
+
+- Preserve the v1 snapshot format and all existing CLI defaults. The compare HTML format is opt-in with `--format html --output <file>`.
+- Keep TypeScript 6 as the runtime compiler until TypeScript 7.1 exposes a stable programmatic API.
+
+### Quality
+
+- Test group ranking, import-site counts, snapshot diff rendering, safe source links, and no-overwrite behavior.
+- Browser-check package drill-down, line-level evidence, search, and diff filters.
+- Run tests on Node.js 22 and 24 across Linux, macOS, and Windows, plus stable TypeScript 7 CLI validation.
+- Make `npm run examples` fetch the exact commits from the example manifest, keeping screenshots, counts, and source links reproducible.
+
 ## [1.10.0] - 2026-09-27
 
 ### Added

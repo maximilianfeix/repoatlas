@@ -72,6 +72,7 @@
       <a class="demo-row" href="examples/zustand.html"><span class="demo-name">Zustand</span><span class="demo-desc">Workspace packages and boundaries</span><span class="demo-meta">18 modules · 24 connections</span><span class="demo-open">Open map ↗</span></a>
       <a class="demo-row" href="examples/ky.html"><span class="demo-name">Ky</span><span class="demo-desc">External packages and import sites</span><span class="demo-meta">51 modules · 93 connections</span><span class="demo-open">Open map ↗</span></a>
       <a class="demo-row" href="examples/hono.html"><span class="demo-name">Hono</span><span class="demo-desc">Entry paths, cycles, bundled imports</span><span class="demo-meta">247 modules · 676 connections</span><span class="demo-open">Open map ↗</span></a>
+      <a class="demo-row" href="examples/repoatlas-v1-to-v2.html"><span class="demo-name">RepoAtlas 1.10 → 2.0</span><span class="demo-desc">A real snapshot comparison with source links</span><span class="demo-meta">2 modules · 5 imports added</span><span class="demo-open">Open HTML diff ↗</span></a>
     </div>
   </section>
 
@@ -80,8 +81,9 @@
     <div class="features">
       <article class="feature-row"><h3>Trace an import</h3><p>Inspect the specifier and source line for any resolved edge. Bundled connectors retain each individual import site.</p></article>
       <article class="feature-row"><h3>Find your way in</h3><p>Explore detected entries, shortest paths, cycles, reachability, external packages, and change impact.</p></article>
-      <article class="feature-row"><h3>See project boundaries</h3><p>Compare imports across declared npm, Yarn, and pnpm workspaces or top-level source directories.</p></article>
-      <article class="feature-row"><h3>Keep it portable</h3><p>Share a single offline HTML map, compare JSON snapshots, or enforce architecture rules in GitHub Actions.</p></article>
+      <article class="feature-row"><h3>See project boundaries</h3><p>Start with a ranked package overview, drill into a workspace, or open an import count to inspect every contributing source line.</p></article>
+      <article class="feature-row"><h3>Review architecture drift</h3><p>Compare snapshots in a searchable standalone HTML report and follow each changed dependency back to its pinned source.</p></article>
+      <article class="feature-row"><h3>Keep it portable</h3><p>Share one offline HTML map, an architecture diff, a boundary SVG, or enforced rules in GitHub Actions.</p></article>
     </div>
   </section>
 
@@ -89,7 +91,7 @@
     <div><div class="kicker">In your workflow</div><h2 id="workflow-title">Keep the architecture in reach.</h2><p>Generate a map on every push, then download it from the workflow run. RepoAtlas needs read-only access.</p><a href="https://github.com/maximilianfeix/repoatlas#github-actions">See the complete GitHub Actions setup →</a></div>
     <pre class="code-sample"><code><span class="comment"># .github/workflows/architecture.yml</span>
 - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 <span class="comment"># v7.0.1</span>
-<span class="mark">- uses:</span> maximilianfeix/repoatlas@v1.10.0
+<span class="mark">- uses:</span> maximilianfeix/repoatlas@v2.0.0
   with:
     output: repoatlas-map.html</code></pre>
   </section>

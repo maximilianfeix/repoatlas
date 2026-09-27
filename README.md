@@ -64,18 +64,19 @@ RepoAtlas turns a TypeScript repository into a map you can investigate. Follow a
 Requires **Node.js 22 or later** and **Git**. Point RepoAtlas at a public GitHub repository:
 
 ```sh
-npx --yes --package=github:maximilianfeix/repoatlas#v1.10.0 -- \
+npx --yes --package=github:maximilianfeix/repoatlas#v2.0.0 -- \
   repoatlas https://github.com/pmndrs/zustand --out zustand-map.html
 ```
 
 Open `zustand-map.html` in your browser. RepoAtlas also analyzes a local checkout:
 
 ```sh
-npx --yes --package=github:maximilianfeix/repoatlas#v1.10.0 -- \
+npx --yes --package=github:maximilianfeix/repoatlas#v2.0.0 -- \
   repoatlas ./my-project --out architecture.html
 ```
 
 It downloads the versioned CLI from GitHub. No global install, API key, or token for a public repository is needed.
+Each GitHub release also includes an installable `.tgz` package for direct downloads or private registries.
 
 ## GitHub Actions
 
@@ -91,7 +92,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: maximilianfeix/repoatlas@v1.10.0
+      - uses: maximilianfeix/repoatlas@v2.0.0
         with:
           output: repoatlas-map.html
 ```
@@ -104,6 +105,7 @@ Each example below was generated from a pinned upstream commit. The counts and e
 
 | Project snapshot | Modules | Connections | Useful views |
 | --- | ---: | ---: | --- |
+| [RepoAtlas 1.10 → 2.0](https://github.com/maximilianfeix/repoatlas/compare/ee977687527b806925ff2a31f2311dce65d320ad...95bded201295c1c4b4e2330263fc26060c641073) | 15 → 17 | 29 → 34 | [Open the real HTML diff](https://maximilianfeix.github.io/repoatlas/examples/repoatlas-v1-to-v2.html) · added modules and imports |
 | [honojs/hono](https://github.com/honojs/hono/tree/52f6c7ec865b31001a14eed9b323a0235f0a3156) | 247 | 676 | [Open map](https://maximilianfeix.github.io/repoatlas/examples/hono.html) · entry paths, cycles, bundled imports |
 | [sindresorhus/ky](https://github.com/sindresorhus/ky/tree/0d59458a0a58e1c3d7c6db0ab17ed5c7cd671e47) | 51 | 93 | [Open map](https://maximilianfeix.github.io/repoatlas/examples/ky.html) · external packages, import sites |
 | [pmndrs/zustand](https://github.com/pmndrs/zustand/tree/b57db4f86ef179285da216eeb291266da82c361c) | 18 | 24 | [Open map](https://maximilianfeix.github.io/repoatlas/examples/zustand.html) · workspace boundaries |
@@ -113,9 +115,17 @@ Each example below was generated from a pinned upstream commit. The counts and e
     <td width="50%" valign="top"><a href="https://maximilianfeix.github.io/repoatlas/examples/hono.html"><img src="docs/assets/entry-path-trace.png" alt="A highlighted shortest import path from a detected Hono entry point to a selected module" width="100%"></a><sub>Follow the shortest path from an entry point.</sub></td>
     <td width="50%" valign="top"><a href="https://maximilianfeix.github.io/repoatlas/examples/hono.html"><img src="docs/assets/boundary-matrix-preview.png" alt="A directory boundary matrix showing source-backed imports between parts of Hono" width="100%"></a><sub>See which package and directory boundaries imports cross.</sub></td>
   </tr>
+  <tr>
+    <td colspan="2" valign="top"><a href="https://maximilianfeix.github.io/repoatlas/examples/hono.html"><img src="docs/assets/package-overview.png" alt="The package overview for Hono ranks source directories by dependency connections and shows cross-package import counts" width="100%"></a><sub>Start broad, then drill into a package or open a count to inspect its exact source imports.</sub></td>
+  </tr>
+  <tr>
+    <td colspan="2" valign="top"><a href="https://maximilianfeix.github.io/repoatlas/examples/repoatlas-v1-to-v2.html"><img src="docs/assets/architecture-diff.png" alt="A searchable architecture comparison between real RepoAtlas v1.10 and v2 snapshots, showing added modules and imports" width="100%"></a><sub>A real RepoAtlas 1.10 → 2.0 comparison. Expand an import to trace its source line in the pinned snapshot.</sub></td>
+  </tr>
 </table>
 
 The analyzed revisions and upstream license notices are recorded in [`docs/examples/manifest.json`](docs/examples/manifest.json) and [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md).
+
+The RepoAtlas comparison uses real snapshots from [v1.10.0](https://github.com/maximilianfeix/repoatlas/tree/ee977687527b806925ff2a31f2311dce65d320ad) and [the v2 feature commit](https://github.com/maximilianfeix/repoatlas/tree/95bded201295c1c4b4e2330263fc26060c641073). Its source links are pinned to those commits.
 
 ## Features
 
