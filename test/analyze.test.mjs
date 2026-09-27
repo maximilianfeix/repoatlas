@@ -50,6 +50,7 @@ test('workspace packages resolve exported roots and subpaths to included TypeScr
     'apps/web/src/index.ts':"import '@demo/ui';\nimport '@demo/ui/button';\nimport type {} from '@demo/ui/components/Card';\nimport '@demo/ui/conditional';\nimport '@demo/ui/private';\nimport '@demo/ui/escape';\nimport '@demo/private';\nimport '@demo/closed';\nimport 'left-pad';",
   });
   const atlas=await analyze(dir);
+  assert.equal(atlas.modules.find(module=>module.id==='packages/ui/src/index.ts').workspace,'packages/ui');
   assert.deepEqual(atlas.edges.map(edge=>[edge.target,edge.resolution]),[
     ['packages/ui/src/index.ts','internal'],
     ['packages/ui/src/button.ts','internal'],
