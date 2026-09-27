@@ -40,6 +40,27 @@ Replace the repository URL to map another public repo. For a local checkout, pas
 npx --yes --package=github:maximilianfeix/repoatlas -- repoatlas ./my-project -o architecture.html
 ```
 
+## Generate a map in GitHub Actions
+
+Create a downloadable architecture map whenever your project changes. Add this to `.github/workflows/architecture.yml`:
+
+```yaml
+name: Architecture map
+on: [push]
+permissions:
+  contents: read
+jobs:
+  map:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: maximilianfeix/repoatlas@v0.1.0
+        with:
+          output: repoatlas-map.html
+```
+
+Download `repoatlas-map` from the workflow run's **Artifacts** section. Inputs also let you choose a project `path`, `artifact-name`, `retention-days`, and whether to `include-tests`. The action needs no token or write permission. Maps embed source snippets and paths, so treat artifacts from private repositories as source code and restrict artifact access accordingly. The action requires Node.js 22+.
+
 ## Try a map
 
 No install needed for these pinned, shareable examples:
