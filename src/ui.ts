@@ -4,6 +4,7 @@ import { buildBoundaryMatrix, type BoundaryCell } from './boundaries.js';
 import { analyzeReachability, findCycles, findEntryPath } from './insights.js';
 import { groupExternalDependencies, type ExternalUsage } from './packages.js';
 import { encodeInspectorRoute, resolveInspectorRoute } from './routes.js';
+import { groupParallelEdges, type ParallelEdgeGroup } from './graph.js';
 const data: Atlas = JSON.parse(document.getElementById('atlas-data')!.textContent!);
 const $ = (id: string) => document.getElementById(id)!;
 function el(tag: string, text = '', cls = '') { const e = document.createElement(tag); e.textContent = text; if (cls) e.className = cls; return e; }
@@ -27,6 +28,7 @@ const NS = 'http://www.w3.org/2000/svg';
 function svg(tag: string, attrs: Record<string, string | number> = {}) { const e = document.createElementNS(NS,tag); for (const [k,v] of Object.entries(attrs)) e.setAttribute(k,String(v)); return e; }
 const internal = data.edges.filter(e => e.resolution === 'internal');
 const external = groupExternalDependencies(data.edges);
+const allEdgeGroups = groupParallelEdges(internal);
 const byId = new Map(data.modules.map(m => [m.id,m]));
 const cycleGroups = findCycles(data.modules, internal);
 const reachability = analyzeReachability(data.modules,internal);
@@ -133,6 +135,26 @@ function edgeDetail(edge: Edge,syncRoute=true) {
   else panel.append(el('p','Embedded source evidence. A clean GitHub checkout is needed for a permanent source link.'));
   const b=el('button','← Back to module','dep'); b.onclick=()=>choose(edge.source); panel.append(b);
   draw();
+}
+function edgeGroupDetail(group:ParallelEdgeGroup,page:number,syncRoute=true) {
+  selectedEdge=undefined;
+  const panel=$('inspector'),pageSize=50,pages=Math.max(1,Math.ceil(group.edges.length/pageSize)),start=page*pageSize;
+  panel.replaceChildren(el('h2','Parallel import evidence'),el('h3',`${group.source} → ${group.target}`),el('p',`${group.edges.length} import sites connect these modules.`));
+  if(syncRoute)setInspectorRoute({type:'edge-group',source:group.source,target:group.target,page});
+  addShareControl(panel);
+  const back=el('button','← Back to module','dep');back.onclick=()=>choose(group.source);panel.append(back);
+  panel.append(el('h3',`Source sites · ${start+1}–${Math.min(start+pageSize,group.edges.length)} of ${group.edges.length}`));
+  for(const edge of group.edges.slice(start,start+pageSize)){
+    const button=el('button',`${edge.source}:${edge.line} → ${edge.specifier}`,'dep');
+    button.append(el('small',`${edge.kind} · ${edge.resolution}`));button.onclick=()=>edgeDetail(edge);panel.append(button);
+  }
+  if(pages>1){
+    const nav=el('div','','external-pages');
+    const previous=el('button','← Previous 50','button') as HTMLButtonElement;previous.disabled=page===0;previous.onclick=()=>edgeGroupDetail(group,page-1);
+    const status=el('span',`Page ${page+1} of ${pages}`,'badge');
+    const next=el('button','Next 50 →','button') as HTMLButtonElement;next.disabled=page+1===pages;next.onclick=()=>edgeGroupDetail(group,page+1);
+    nav.append(previous,status,next);panel.append(nav);
+  }
 }
 function choose(id: string,syncRoute=true) {
   if(selected!==id)entryPathView=false;
@@ -284,7 +306,10 @@ function draw() {
   const radius=circleCycles ? Math.max(150,250/(2*Math.sin(Math.PI/visible.length))) : 0;
   const width=circleCycles ? Math.max(920,2*(radius+160)) : Math.max(920,columns.length*300+20);
   const rowHeight=clusterView?104:88,nodeOffset=clusterView?65:55;
-  const height=circleCycles ? Math.max(450,2*(radius+95)) : Math.max(450,Math.max(...columns.map(column=>column.modules.length),0)*rowHeight+90);
+  const moduleColumn=new Map<string,number>();columns.forEach((column,index)=>column.modules.forEach(module=>moduleColumn.set(module.id,index)));
+  const edgeGroups=groupParallelEdges(edges);
+  const longRouteCount=circleCycles?0:edgeGroups.filter(group=>Math.abs((moduleColumn.get(group.edges[0]!.source)??0)-(moduleColumn.get(group.edges[0]!.target)??0))>1).length;
+  const height=circleCycles ? Math.max(450,2*(radius+95)) : Math.max(450,Math.max(...columns.map(column=>column.modules.length),0)*rowHeight+(longRouteCount?100+longRouteCount*16:90));
   graph.setAttribute('viewBox',`0 0 ${width} ${height}`); graph.setAttribute('width',String(width*zoom)); graph.setAttribute('height',String(height*zoom));
   const defs=svg('defs'), marker=svg('marker',{id:'arrow',viewBox:'0 0 10 10',refX:9,refY:5,markerWidth:5,markerHeight:5,orient:'auto-start-reverse'}); marker.append(svg('path',{d:'M 0 0 L 10 5 L 0 10 z',fill:'#8190a8'}));defs.append(marker);graph.append(defs);
   const positions=new Map<string,{x:number;y:number}>();
@@ -306,10 +331,12 @@ function draw() {
       }
     }
   });
-  for (const edge of edges) {
+  let routeLaneIndex=0;
+  for (const group of edgeGroups) {
+    const edge=group.edges[0]!;
     const a=positions.get(edge.source)!,b=positions.get(edge.target)!;
     let d:string;
-    const isPath=entryPathEdges.has(edge);
+    const isPath=group.edges.some(item=>entryPathEdges.has(item));
     if(entryPathView&&isPath&&a.x===b.x)d=`M ${a.x+120} ${a.y+58} L ${b.x+120} ${b.y}`;
     else if(circleCycles){
       const ax=a.x+120,ay=a.y+29,bx=b.x+120,by=b.y+29,dx=bx-ax,dy=by-ay;
@@ -317,12 +344,26 @@ function draw() {
       const toX=Math.abs(dx)>Math.abs(dy)?b.x+(dx>0?0:240):bx,toY=Math.abs(dx)>Math.abs(dy)?by:b.y+(dy>0?0:58);
       const vx=toX-fromX,vy=toY-fromY;
       d=`M ${fromX} ${fromY} C ${fromX+vx*.34} ${fromY+vy*.34}, ${toX-vx*.34} ${toY-vy*.34}, ${toX} ${toY}`;
-    }else d=a.x===b.x ? `M ${a.x+240} ${a.y+27} C ${a.x+280} ${a.y+27}, ${b.x+280} ${b.y+27}, ${b.x+240} ${b.y+27}` : `M ${a.x+240} ${a.y+27} C ${a.x+275} ${a.y+27}, ${b.x-35} ${b.y+27}, ${b.x} ${b.y+27}`;
+    }else if(Math.abs((moduleColumn.get(edge.source)??0)-(moduleColumn.get(edge.target)??0))>1){
+      const leftToRight=a.x<b.x,direction=leftToRight?1:-1;
+      const fromX=leftToRight?a.x+240:a.x,toX=leftToRight?b.x:b.x+240;
+      const sourceLane=leftToRight?a.x+248:a.x-8,targetLane=leftToRight?b.x-8:b.x+248;
+      const yA=a.y+29,yB=b.y+29,laneY=height-55-routeLaneIndex++*16,r=4;
+      d=`M ${fromX} ${yA} L ${sourceLane-direction*r} ${yA} Q ${sourceLane} ${yA} ${sourceLane} ${yA+r} L ${sourceLane} ${laneY-r} Q ${sourceLane} ${laneY} ${sourceLane+direction*r} ${laneY} L ${targetLane-direction*r} ${laneY} Q ${targetLane} ${laneY} ${targetLane} ${laneY-r} L ${targetLane} ${yB+r} Q ${targetLane} ${yB} ${targetLane-direction*r} ${yB} L ${toX} ${yB}`;
+    }else if(a.x===b.x)d=`M ${a.x+240} ${a.y+29} C ${a.x+280} ${a.y+29}, ${b.x+280} ${b.y+29}, ${b.x+240} ${b.y+29}`;
+    else if(a.x<b.x)d=`M ${a.x+240} ${a.y+29} C ${a.x+275} ${a.y+29}, ${b.x-35} ${b.y+29}, ${b.x} ${b.y+29}`;
+    else d=`M ${a.x} ${a.y+29} C ${a.x-35} ${a.y+29}, ${b.x+275} ${b.y+29}, ${b.x+240} ${b.y+29}`;
     const isCycle=cycleByModule.has(edge.source)&&cycleByModule.get(edge.source)===cycleByModule.get(edge.target);
-    const description=`${edge.source} imports ${edge.target} at line ${edge.line}${isCycle?' · circular dependency':''}`;
-    const p=svg('path',{d,class:`edge${isCycle?' cycle-edge':''}${isPath?' path-edge':''}${selectedEdge===edge ? ' selected':''}`,'marker-end':'url(#arrow)','aria-hidden':'true'});
-    const hit=svg('path',{d,class:'edge-hit',tabindex:0,role:'button','aria-label':description});
-    hit.addEventListener('click',()=>edgeDetail(edge)); hit.addEventListener('keydown',(e)=>{if((e as KeyboardEvent).key==='Enter'||(e as KeyboardEvent).key===' ')edgeDetail(edge);}); graph.append(p,hit);
+    const description=group.edges.length===1?`${edge.source} imports ${edge.target} at line ${edge.line}${isCycle?' · circular dependency':''}`:`${edge.source} imports ${edge.target} at ${group.edges.length} source locations; activate to inspect each line${isCycle?' · circular dependency':''}`;
+    const p=svg('path',{d,class:`edge${isCycle?' cycle-edge':''}${isPath?' path-edge':''}${group.edges.includes(selectedEdge as Edge) ? ' selected':''}`,'marker-end':'url(#arrow)','aria-hidden':'true'}) as SVGPathElement;
+    const edgeContainer=svg('g',{class:'edge-container'});edgeContainer.append(p);graph.append(edgeContainer);
+    const midpoint=p.getPointAtLength(p.getTotalLength()/2);
+    const longRoute=!circleCycles&&Math.abs((moduleColumn.get(edge.source)??0)-(moduleColumn.get(edge.target)??0))>1;
+    const hit=svg('rect',{x:midpoint.x-(longRoute?16:18),y:midpoint.y-(longRoute?7:16),width:longRoute?32:36,height:longRoute?14:32,rx:7,class:'edge-hit',tabindex:0,role:'button','aria-label':description});
+    hit.addEventListener('click',()=>group.edges.length===1?edgeDetail(edge):edgeGroupDetail(group,0));
+    hit.addEventListener('keydown',(e)=>{if((e as KeyboardEvent).key==='Enter'||(e as KeyboardEvent).key===' '){e.preventDefault();group.edges.length===1?edgeDetail(edge):edgeGroupDetail(group,0);}});
+    edgeContainer.append(hit);
+    if(group.edges.length>1){const count=svg('text',{x:midpoint.x,y:midpoint.y+4,class:'edge-count','aria-hidden':'true'});count.textContent=`×${group.edges.length}`;graph.append(count);}
   }
   for(const m of visible) {
     const {x,y}=positions.get(m.id)!; const g=svg('g',{transform:`translate(${x},${y})`,class:`node${m.entry.length?' entry':''}${cycleByModule.has(m.id)?' cyclic':''}${reachability.unreachable.has(m.id)?' orphan':''}${entryPathModules.has(m.id)?' path-node':''}${selected===m.id?' selected':''}`,tabindex:0,role:'button','aria-label':`${m.id}${entryPathModules.has(m.id)?' · on traced entry path':''}${reachability.unreachable.has(m.id)?' · outside detected entry-point paths':''}${cycleByModule.has(m.id)?' · circular dependency':''}`});
@@ -331,7 +372,7 @@ function draw() {
     const meta=svg('text',{x:12,y:43,class:'meta'});meta.textContent=m.group.length>32?'…'+m.group.slice(-31):m.group;g.append(text,meta);
     g.addEventListener('click',()=>choose(m.id));g.addEventListener('keydown',(e)=>{if((e as KeyboardEvent).key==='Enter')choose(m.id);});graph.append(g);
   }
-  buildOverview(width,height,positions,visible,edges,pageCount);
+  buildOverview(width,height,positions,visible,edgeGroups.map(group=>group.edges[0]!),pageCount);
 }
 for(const id of ['page-previous','page-next']) $(id).addEventListener('click',()=>{pageIndex+=id==='page-next'?1:-1;draw();});
 $('search').addEventListener('input',()=>{pageIndex=0;draw();});$('group').addEventListener('change',()=>{pageIndex=0;draw();});
@@ -352,6 +393,10 @@ function restoreInspectorRoute() {
   const route=resolveInspectorRoute(location.hash,data,external);
   if(route.type==='module')choose(route.id,false);
   else if(route.type==='edge')edgeDetail(route.edge,false);
+  else if(route.type==='edge-group'){
+    const group=allEdgeGroups.find(item=>item.source===route.source&&item.target===route.target);
+    if(group)edgeGroupDetail(group,route.page,false);else intro(false);
+  }
   else if(route.type==='external-list')externalInventory(false);
   else if(route.type==='external-package'){
     const usage=external.find(item=>item.kind===route.kind&&item.name===route.name);

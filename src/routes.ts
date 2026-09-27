@@ -5,6 +5,7 @@ export type InspectorRoute =
   | {type:'overview'}
   | {type:'module'; id:string}
   | {type:'edge'; edge:Edge}
+  | {type:'edge-group'; source:string; target:string; page:number}
   | {type:'external-list'}
   | {type:'external-package'; kind:ExternalUsage['kind']; name:string; page:number};
 
@@ -16,6 +17,10 @@ export function encodeInspectorRoute(route: InspectorRoute): string {
     params.set('edge-line',String(route.edge.line));
     params.set('edge-specifier',route.edge.specifier);
     params.set('edge-kind',route.edge.kind);
+  }else if(route.type==='edge-group'){
+    params.set('bundle-source',route.source);
+    params.set('bundle-target',route.target);
+    if(route.page>0)params.set('page',String(route.page));
   }else if(route.type==='external-list')params.set('external-list','1');
   else if(route.type==='external-package'){
     params.set('external-kind',route.kind);
@@ -36,6 +41,15 @@ export function resolveInspectorRoute(hash:string, atlas:Atlas, usages:ExternalU
     const line=Number(lineText);
     const edge=atlas.edges.find(candidate=>candidate.source===source&&candidate.specifier===specifier&&candidate.kind===kind&&candidate.line===line);
     if(edge)return {type:'edge',edge};
+  }
+  const bundleSource=params.get('bundle-source'),bundleTarget=params.get('bundle-target');
+  if(bundleSource&&bundleTarget){
+    const group=atlas.edges.filter(edge=>edge.resolution==='internal'&&edge.source===bundleSource&&edge.target===bundleTarget);
+    if(group.length>1){
+      const pageText=params.get('page')??'0';
+      const requested=/^\d+$/.test(pageText)?Number(pageText):0;
+      return {type:'edge-group',source:bundleSource,target:bundleTarget,page:Math.min(Math.max(0,requested),Math.max(0,Math.ceil(group.length/50)-1))};
+    }
   }
   if(params.get('external-list')==='1')return {type:'external-list'};
   const externalKind=params.get('external-kind'),externalName=params.get('external-name');

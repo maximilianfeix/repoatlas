@@ -1,5 +1,22 @@
 # Changelog
 
+## [1.9.0] - 2026-09-27
+
+### Added
+
+- Bundle parallel imports into one countable connector per internal module pair; keep every original import edge and its exact source evidence.
+- Open a keyboard-accessible, paged source-site list from a bundled connector and share a direct link to that bundle or any exact edge.
+
+### Fixed
+
+- Replace zero-area SVG edge hit paths with accessible map-sized hit targets, restoring reliable pointer and keyboard activation for straight and curved connections.
+- Highlight the connector on hover and keyboard focus without leaving a visible hit-box over the map.
+
+### Quality
+
+- Test deterministic grouping, retained line/specifier evidence, stale and paged deep links, and direction-specific separation.
+- Browser-check a 51-import fixture and real Hono maps on desktop and mobile.
+
 ## [1.8.0] - 2026-09-27
 
 ### Added

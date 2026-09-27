@@ -22,6 +22,15 @@ test('external package routes clamp paging and restore a precise group',()=>{
   assert.equal(resolveInspectorRoute(encodeInspectorRoute({type:'external-list'}),atlas,[usage]).type,'external-list');
 });
 
+test('parallel-edge routes restore grouped evidence and clamp its page',()=>{
+  const edges=Array.from({length:63},(_,index)=>({...edge('src/über #1.ts',index+1,`./target-${index}`),target:'src/target.ts'}));
+  const bundleAtlas={...atlas,edges};
+  const hash=encodeInspectorRoute({type:'edge-group',source:'src/über #1.ts',target:'src/target.ts',page:8});
+  assert.deepEqual(resolveInspectorRoute(hash,bundleAtlas,[]),{type:'edge-group',source:'src/über #1.ts',target:'src/target.ts',page:1});
+  const single={...bundleAtlas,edges:edges.slice(0,1)};
+  assert.deepEqual(resolveInspectorRoute(hash,single,[]),{type:'overview'});
+});
+
 test('malformed, invalid, and stale deep links safely fall back to overview',()=>{
   for(const hash of ['#edge-line=NaN','#edge-line=2.5','#module=%E0%A4%A','#module=missing.ts','#external-kind=package&external-name=missing','#edge-source=src%2Fmissing.ts&edge-line=1&edge-specifier=x&edge-kind=import']){
     assert.deepEqual(resolveInspectorRoute(hash,atlas,[]),{type:'overview'});
