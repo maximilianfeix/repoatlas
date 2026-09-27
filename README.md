@@ -1,9 +1,9 @@
 <p align="center">
-  <img src="docs/assets/repoatlas-logo.svg" alt="RepoAtlas" width="300">
+  <img src="docs/assets/repoatlas-logo.svg" alt="RepoAtlas" width="286">
 </p>
 
-<h3 align="center">Understand any TypeScript repo in one interactive map.</h3>
-<p align="center">Every connection is backed by a real source line you can inspect.</p>
+<h3 align="center">See how an unfamiliar TypeScript repo fits together.</h3>
+<p align="center">Explore the modules. Follow a dependency. Check the exact source line behind it.</p>
 
 <p align="center">
   <a href="https://github.com/maximilianfeix/repoatlas/stargazers"><img alt="GitHub stars" src="https://img.shields.io/github/stars/maximilianfeix/repoatlas?style=social"></a>
@@ -13,103 +13,93 @@
 </p>
 
 <p align="center">
-  <a href="https://maximilianfeix.github.io/repoatlas/"><strong>Live demo</strong></a> ·
-  <a href="#try-the-map-in-20-seconds">Try the map</a> ·
-  <a href="#get-started">Get started</a> ·
+  <a href="https://maximilianfeix.github.io/repoatlas/"><strong>Open the live demo</strong></a> ·
+  <a href="https://maximilianfeix.github.io/repoatlas/#make-a-map">Build a command in the browser</a> ·
+  <a href="#try-a-map">Try a map</a> ·
+  <a href="#make-your-own-map">Make your own map</a> ·
   <a href="CONTRIBUTING.md">Contribute</a>
 </p>
 
-<p align="center"><img src="docs/assets/repoatlas-hero.svg" alt="RepoAtlas map showing TypeScript modules connected to their source evidence" width="100%"></p>
+<p align="center"><img src="docs/assets/repoatlas-hero.svg" alt="An interactive TypeScript dependency map with a selected connection's source code evidence" width="960"></p>
 
-## Explore a real codebase in 20 seconds
+RepoAtlas turns a GitHub repository or local TypeScript project into a **standalone, interactive architecture map**. Its graph is static analysis, not a guess: select an import to inspect the statement, line number, and commit-pinned GitHub source.
 
-1. Open the [Zustand architecture map](https://maximilianfeix.github.io/repoatlas/examples/zustand.html).
-2. Select `src/index.ts` and see what it connects to.
-3. Click a connection to inspect the import and exact line number.
-4. Open the pinned GitHub source permalink. That is the evidence behind the edge.
+## Make your own map
 
-No setup, sign-in, API key, or AI service needed. The map is already built and ready to explore.
-
-## Try the map in 20 seconds
-
-| Project | Get a feel for it | Snapshot |
-| --- | --- | --- |
-| **[Zustand](https://maximilianfeix.github.io/repoatlas/examples/zustand.html)** | A small state library; follow its entry points into the store | 18 modules · 23 connections |
-| **[Ky](https://maximilianfeix.github.io/repoatlas/examples/ky.html)** | An HTTP client with a focused, layered source tree | 51 modules · 93 connections |
-| **[Hono](https://maximilianfeix.github.io/repoatlas/examples/hono.html)** | A larger framework; search and filter to find your way | 247 modules · 676 connections |
-
-These are real TypeScript repositories analyzed at pinned commits. Downloadable HTML and commit details are in [`docs/examples`](docs/examples) and [`manifest.json`](docs/examples/manifest.json).
-
-## What you can see
-
-- **Where to start:** package entry fields and clearly labeled filename-based entry-point hints.
-- **How files connect:** static imports, re-exports, type imports, literal dynamic imports, and literal `require` calls.
-- **Why an edge exists:** select a connection to see the source statement, line number, and pinned GitHub permalink.
-- **What did not resolve:** external and unresolved dependencies stay visible in the inspector; RepoAtlas does not invent connections.
-- **A map you can explore:** search, directory filters, entry-point filtering, zoom, keyboard navigation, and a module inspector. Focus the map on a selected module to isolate its direct imports and dependents.
-- **A file you can share:** export a standalone HTML map with embedded graph data and viewer. The map itself works offline.
-- **A JSON interface:** send the same analysis to scripts and other tools with `--json`.
-
-## Get started
-
-Requires **Node.js 22+**. Git is needed to analyze a remote repository; local analysis works offline. RepoAtlas is not published to npm yet.
+Requires **Node.js 22+** and **Git**. Run this from a terminal:
 
 ```sh
-git clone https://github.com/maximilianfeix/repoatlas.git
-cd repoatlas
-npm ci
-npm run build
-npm link
-
-repoatlas https://github.com/pmndrs/zustand -o zustand.html
+npx --yes --package=github:maximilianfeix/repoatlas -- repoatlas https://github.com/pmndrs/zustand -o zustand-map.html
 ```
 
-Open `zustand.html` in any browser. To map a local project instead:
+Open `zustand-map.html` in a browser. The CLI installs from GitHub on first use; you don't need to clone or build RepoAtlas first. It's not published to the npm registry yet.
+
+Replace the repository URL to map another public repo. For a local checkout, pass its directory:
 
 ```sh
-repoatlas ./my-project -o architecture.html
-repoatlas https://github.com/honojs/hono --ref main -o hono.html
+npx --yes --package=github:maximilianfeix/repoatlas -- repoatlas ./my-project -o architecture.html
+```
+
+## Try a map
+
+No install needed for these pinned, shareable examples:
+
+| Project | What to explore | Map |
+| --- | --- | --- |
+| **Zustand** · 18 modules, 23 internal connections | Follow a compact state library from its entry points | [Open map ↗](https://maximilianfeix.github.io/repoatlas/examples/zustand.html) |
+| **Ky** · 51 modules, 93 internal connections | Trace an HTTP client through its source folders | [Open map ↗](https://maximilianfeix.github.io/repoatlas/examples/ky.html) |
+| **Hono** · 247 modules, 676 internal connections | Search a larger framework, focus a module, inspect its edges | [Open map ↗](https://maximilianfeix.github.io/repoatlas/examples/hono.html) |
+
+The source commit and analysis warnings are recorded in [`docs/examples/manifest.json`](docs/examples/manifest.json). Each map includes its upstream license notice.
+
+## Find your way through the graph
+
+- **See the structure:** TypeScript modules, likely entry points, imports, re-exports, and directories.
+- **Follow direct relationships:** imports, type imports, literal dynamic imports, and literal `require` calls.
+- **Focus on one module:** isolate it and its direct importers and dependencies, even in a large project.
+- **Check the evidence:** inspect the original statement and line, then open the pinned source on GitHub.
+- **Keep exploring:** search, filter by directory or entry point, zoom, and navigate with a keyboard.
+- **Share a snapshot:** export one self-contained HTML file; the map works offline.
+- **Use the data elsewhere:** `--json` emits the complete analysis graph for scripts and other tools.
+
+```sh
+repoatlas https://github.com/honojs/hono --ref main -o hono-map.html
 repoatlas . --include-tests --json > graph.json
 repoatlas --json doctor
 repoatlas --help
 ```
 
-Existing output files are protected; use `--force` to replace one. Private repositories use your existing Git credential helper. Credentials are never embedded in an export. **Maps include repository paths and source snippets**, so share maps of private projects only with the right people.
+Private repositories use your existing Git credential helper. Credentials are never written into the map. Exports include repository paths and source snippets, so share maps of private projects only with the right people. Existing output files are protected; add `--force` to replace one.
 
-## How it works
+## What RepoAtlas can and cannot infer
 
-```text
-GitHub URL or local directory
-          ↓
-TypeScript source + nearest tsconfig + package entry fields
-          ↓
-TypeScript compiler AST + module resolution
-          ↓
-Evidence-backed dependency graph → one interactive HTML file
-```
+RepoAtlas maps **static file dependencies**. It doesn't execute the target project's code or claim to show runtime calls. Computed imports, framework routing, and dependency injection aren't inferred. Unresolved and external dependencies stay visible as such, rather than being drawn as made-up internal edges.
 
-The analyzer uses the TypeScript 6.0 compiler API, pinned deliberately. TypeScript 7 removes the standalone `resolveModuleName` API RepoAtlas uses. The full regression suite is verified against 6.0.3, including Node and bundler resolution modes. Follow [TypeScript 7 compatibility](https://github.com/maximilianfeix/repoatlas/issues/5) for updates. See the [TypeScript 6 release notes](https://www.typescriptlang.org/docs/handbook/release-notes/typescript-6-0.html) and [module-resolution reference](https://www.typescriptlang.org/tsconfig/moduleResolution).
+Generated directories, declaration files, hidden files, and tests are excluded by default. Use `--include-tests` to add tests and fixtures. Analysis is limited to 5,000 files and 2 MB per source file; the map draws up to 100 matching modules at once. Search, filters, and **Focus map** help you inspect larger projects, and JSON retains every analyzed edge.
 
-## Scope and limits
+Local modifications disable GitHub source links because the current files may not match the remote commit. The export still embeds source evidence. Analysis reads files but does not install dependencies or run repository scripts. Symlinks are skipped, file reads stay within the selected directory, and the viewer makes no network requests.
 
-RepoAtlas maps **static file dependencies**, not runtime calls or an AI-generated architecture narrative. It does not install dependencies or run a target repository's code. Framework routing, dependency injection, and computed imports cannot be inferred reliably. Missing dependencies and shared TypeScript configs can leave imports unresolved; diagnostics are included in the map.
+<details>
+<summary>TypeScript, security, and compatibility details</summary>
 
-Generated directories, declaration files, hidden files, and tests are excluded by default. `--include-tests` includes tests and fixtures. Analysis is limited to 5,000 files and 2 MB per source file. The graph renders the first 100 matching modules at a time; search and directory filters help explore larger projects. All analyzed connections remain in the export and JSON.
+The analyzer uses the TypeScript 6.0 compiler API, pinned at 6.0.3. TypeScript 7 removes the standalone `resolveModuleName` API used here; track [TypeScript 7 compatibility](https://github.com/maximilianfeix/repoatlas/issues/5). Node and bundler module-resolution modes are covered by tests.
 
-Symlinked paths are skipped and resolver reads stay inside the selected directory. Local modifications disable GitHub links so the evidence cannot silently point at different source. Exports make no network requests; viewer scripts and styles are protected by a strict hash-based Content Security Policy.
+The generated viewer uses a hash-based Content Security Policy for its inline scripts and styles. For dependency-resolution caveats, limits, and known gaps, see [open issues](https://github.com/maximilianfeix/repoatlas/issues).
 
-## Contributing
+</details>
 
-Small repositories that reproduce a module-resolution edge case are especially useful. Start with [`CONTRIBUTING.md`](CONTRIBUTING.md); current plans and known gaps are tracked in [GitHub Issues](https://github.com/maximilianfeix/repoatlas/issues).
+## Develop and contribute
 
 ```sh
+git clone https://github.com/maximilianfeix/repoatlas.git
+cd repoatlas
 npm ci
 npm test
 npm run check
 ```
 
-MIT licensed. Example source snippets retain their upstream licenses, listed in [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md).
+Bug reports, small reproduction repos, and focused improvements are welcome. See [`CONTRIBUTING.md`](CONTRIBUTING.md). RepoAtlas is MIT licensed; example source notices are collected in [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md).
 
 ---
 
-<p align="center">If RepoAtlas helps you get oriented in an unfamiliar codebase, <a href="https://github.com/maximilianfeix/repoatlas">give it a star on GitHub</a> — it helps other developers find the project.</p>
+<p align="center">If RepoAtlas helps you get oriented, <a href="https://github.com/maximilianfeix/repoatlas">give it a star</a> so more developers can find it.</p>
