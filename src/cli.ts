@@ -9,6 +9,7 @@ import { analyze, githubURL } from './analyze.js';
 import { render } from './render.js';
 import { compareAtlases, parseAtlas } from './compare.js';
 import { renderBoundarySvg, renderTextReport } from './report.js';
+import { checkArchitecture, parseArchitectureConfig, renderRuleReport } from './rules.js';
 
 const packageVersion=JSON.parse(readFileSync(new URL('../package.json',import.meta.url),'utf8')).version as string;
 async function loadSnapshot(file:string) {
@@ -92,6 +93,20 @@ program.command('report').description('Export a concise text report or workspace
       const output=path.resolve(opts.output);await writeFile(output,content,{flag:opts.overwrite?'w':'wx'});
       process.stdout.write(`Report saved: ${output}\n`);
     }else process.stdout.write(content);
+  });
+program.command('check').description('Fail CI when configured architecture rules are violated')
+  .argument('<snapshot>', 'RepoAtlas JSON snapshot')
+  .requiredOption('-c, --config <file>', 'JSON architecture rules configuration')
+  .option('--json', 'emit machine-readable results')
+  .action(async (snapshotFile:string,opts) => {
+    let configText:string;
+    try{configText=await readFile(path.resolve(opts.config),'utf8');}catch{throw new Error(`Could not read config file: ${opts.config}`);}
+    let configValue:unknown;
+    try{configValue=JSON.parse(configText);}catch{throw new Error(`Config is not valid JSON: ${opts.config}`);}
+    const result=checkArchitecture(await loadSnapshot(snapshotFile),parseArchitectureConfig(configValue));
+    if(opts.json||program.opts().json||process.argv.includes('--json'))process.stdout.write(JSON.stringify(result,null,2)+'\n');
+    else process.stdout.write(renderRuleReport(result));
+    if(!result.passed)process.exitCode=1;
   });
 program.configureOutput({outputError: (str, write) => write(process.argv.includes('--json') ? JSON.stringify({error:str.trim()})+'\n' : str)});
 program.parseAsync().catch((error: Error) => {

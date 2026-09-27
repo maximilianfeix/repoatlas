@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.9.0] - 2026-09-27
+
+### Added
+
+- Add `repoatlas check` for forbidden workspace/directory import boundaries and configurable cycle-group and unreachable-module limits.
+- Return exact source-file, line, and import-code evidence for each forbidden dependency; provide deterministic text and JSON results with a failing exit code for CI.
+- Treat reachability as unknown when there are no detected entry points, so the orphan limit cannot create a false failure.
+- Document a GitHub Actions check workflow and the stable boundary ID format.
+
+### Quality
+
+- Validate configuration strictly, reject unknown properties and invalid thresholds, and test successful/failing CLI exit behavior.
+- Verified 42 tests, TypeScript checks, package contents, cross-platform CI, and CodeQL.
+
 ## [0.8.0] - 2026-09-27
 
 ### Added

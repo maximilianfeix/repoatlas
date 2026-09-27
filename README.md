@@ -66,7 +66,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: maximilianfeix/repoatlas@v0.8.0
+      - uses: maximilianfeix/repoatlas@v0.9.0
         with:
           output: repoatlas-map.html
 ```
@@ -97,6 +97,7 @@ The Zustand demo includes a workspace boundary: `examples/starter/src/index.tsx`
 - **Map monorepo boundaries:** resolve declared npm/Yarn or pnpm workspace exports, compare imports between packages and source directories, and open each populated boundary cell to inspect exact import sites.
 - **Spot architecture risks:** isolate circular import groups, trace the exact cycle edges, and jump straight to the most depended-on modules.
 - **Compare snapshots:** report added or removed modules and dependency relationships, plus changed import specifiers, between two JSON maps; line shifts alone do not count as architecture drift.
+- **Enforce architecture in CI:** fail a workflow on forbidden workspace/directory imports, excess circular groups, or modules outside detected entry paths, with source-line evidence in JSON output.
 - **Portable output:** one offline HTML file, full graph JSON, a boundary SVG, or a concise CI text report.
 
 ```sh
@@ -107,6 +108,8 @@ repoatlas compare before.json after.json
 repoatlas compare before.json after.json --json > drift.json
 repoatlas report after.json --format svg --output boundaries.svg
 repoatlas report after.json --format text
+repoatlas check after.json --config repoatlas.config.json
+repoatlas check after.json --config repoatlas.config.json
 repoatlas --help
 ```
 
@@ -124,6 +127,36 @@ repoatlas compare before.json after.json
 ```
 
 Use `--json` on the compare command to save the full machine-readable delta. Line and formatting changes alone do not create drift; changed import specifiers, module additions/removals, and dependency changes are reported.
+
+### Keep architecture rules in CI
+
+Save a RepoAtlas JSON snapshot and configure checks against its stable package or top-level directory boundaries:
+
+```json
+{
+  "forbiddenImports": [
+    { "from": "package:apps/web", "to": "package:packages/database" }
+  ],
+  "limits": {
+    "cycleGroups": 0,
+    "unreachableModules": 12
+  }
+}
+```
+
+Run `repoatlas check atlas.json --config repoatlas.config.json`. Boundary IDs use `package:<workspace path>` for declared workspace packages and `directory:<top-level source folder>` for other files (for example `directory:src`). Each forbidden resolved import is reported with its exact source file, line, and code. `--json` returns stable metrics and violations for CI annotations. If no entry point is detected, reachability is unknown and does not trigger the unreachable-module limit; this avoids treating missing heuristic evidence as proof of dead code.
+
+In GitHub Actions, generate and check the snapshot in one step so a violation fails the job:
+
+```yaml
+- uses: actions/checkout@v4
+- uses: actions/setup-node@v4
+  with:
+    node-version: 22
+- run: |
+    npx --yes --package=github:maximilianfeix/repoatlas -- repoatlas . --json > atlas.json
+    npx --yes --package=github:maximilianfeix/repoatlas -- repoatlas check atlas.json --config repoatlas.config.json --json
+```
 
 ## Scope and privacy
 
