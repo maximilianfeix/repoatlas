@@ -44,6 +44,20 @@ test('external imports are classified and scoped package subpaths are grouped wi
     ['builtin','fs'],['builtin','fs'],['builtin','path'],['package','lodash'],['package','@scope/tool'],['url','https://cdn.example.test']
   ]);
 });
+test('CommonJS require calls are ignored only when a runtime lexical binding shadows the global',async t=>{
+  const dir=await fixture(t,{
+    'src/index.ts':["const actual = require('./target');","function injected(require: (id: string) => unknown, id: string) { return require(id); }","function local(id: string) { const require = (name: string) => name; return require(id); }","{ const require = (id: string) => id; require('./target'); }","const afterBlock = require('./target');","function globalInside() { return require('./target'); }","function hoisted() { if (true) { var require = (id: string) => id; } return require('./target'); }","function destructured({ require }: { require: (id: string) => unknown }, id: string) { return require(id); }","try { throw 0; } catch (require) { require('./target'); }","import type { require } from 'types-only';","const afterTypeOnlyImport = require('./target');","const moduleName = './target';","const computedGlobal = require(moduleName);","declare var require: (id: string) => unknown;","const ambientRequire = require('./target');"].join('\n'),
+    'src/target.ts':'export const target = true;'
+  });
+  const atlas=await analyze(dir);
+  const calls=atlas.edges.filter(edge=>edge.kind==='require');
+  assert.deepEqual(calls.map(edge=>edge.line),[1,5,6,11,13,15]);
+  assert.ok(calls.slice(0,4).every(edge=>edge.resolution==='internal'));
+  assert.equal(calls[4].computed,true);
+  assert.equal(calls[4].specifier,'moduleName');
+  assert.equal(calls[4].resolution,'unresolved');
+  assert.equal(calls[5].resolution,'internal');
+});
 test('JavaScript analysis is opt-in and links TS, JSX, ESM and CommonJS modules',async t=>{
   const dir=await fixture(t,{
     'tsconfig.json':JSON.stringify({compilerOptions:{allowJs:false,moduleResolution:'Bundler'}}),
