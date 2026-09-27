@@ -1,13 +1,16 @@
 #!/usr/bin/env node
 import { Command } from 'commander';
 import { execFileSync } from 'node:child_process';
-import { mkdtemp, rm, writeFile, mkdir } from 'node:fs/promises';
+import { readFileSync } from 'node:fs';
+import { mkdtemp, rm, writeFile, mkdir, readFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { analyze, githubURL } from './analyze.js';
 import { render } from './render.js';
+import { compareAtlases, parseAtlas } from './compare.js';
 
-const program = new Command().name('repoatlas').version('0.1.0').description('Understand a TypeScript repo in one interactive map. Every edge has evidence.')
+const packageVersion=JSON.parse(readFileSync(new URL('../package.json',import.meta.url),'utf8')).version as string;
+const program = new Command().name('repoatlas').version(packageVersion).description('Understand a TypeScript repo in one interactive map. Every edge has evidence.')
   .argument('[source]', 'GitHub HTTPS repository URL or local directory')
   .option('-o, --out <file>', 'write a standalone HTML map', 'repoatlas.html')
   .option('--json', 'emit the complete graph as JSON; do not write HTML')
@@ -46,6 +49,34 @@ program.command('doctor').description('Check runtime and Git; local analysis nee
   const result = {node:process.version,git,offline:true,auth:'Git credential helper for private repositories; not required for local/public repositories'};
   console.log(program.opts().json ? JSON.stringify(result) : `Node ${result.node}\nGit: ${git ? 'available':'missing (needed for GitHub URLs)'}\nLocal analysis: ready, no auth required`);
 });
+program.command('compare').description('Compare two RepoAtlas JSON snapshots for architecture drift')
+  .argument('<base>', 'baseline RepoAtlas JSON file')
+  .argument('<head>', 'current RepoAtlas JSON file')
+  .option('--json', 'emit machine-readable JSON instead of text')
+  .action(async (baseFile:string,headFile:string,opts) => {
+    const loadSnapshot=async(file:string)=>{
+      let contents:string;
+      try{contents=await readFile(path.resolve(file),'utf8');}catch{throw new Error(`Could not read snapshot file: ${file}`);}
+      let value:unknown;
+      try{value=JSON.parse(contents);}catch{throw new Error(`Snapshot is not valid JSON: ${file}`);}
+      return parseAtlas(value);
+    };
+    const [base,head]=await Promise.all([loadSnapshot(baseFile),loadSnapshot(headFile)]);
+    const comparison=compareAtlases(base,head);
+    if(opts.json||program.opts().json||process.argv.includes('--json')){process.stdout.write(JSON.stringify(comparison,null,2)+'\n');return;}
+    const baseCommit=comparison.base.commit?` (${comparison.base.commit.slice(0,10)})`:'';
+    const headCommit=comparison.head.commit?` (${comparison.head.commit.slice(0,10)})`:'';
+    process.stdout.write(`Architecture drift: ${comparison.base.name}${baseCommit} → ${comparison.head.name}${headCommit}\n`);
+    process.stdout.write(`Modules: +${comparison.modules.added.length} added · −${comparison.modules.removed.length} removed\n`);
+    process.stdout.write(`Dependencies: +${comparison.dependencies.added.length} added · −${comparison.dependencies.removed.length} removed · ${comparison.dependencies.changedSpecifier.length} changed specifiers\n`);
+    for(const id of comparison.modules.added.slice(0,20))process.stdout.write(`  + module ${id}\n`);
+    for(const id of comparison.modules.removed.slice(0,20))process.stdout.write(`  − module ${id}\n`);
+    for(const edge of comparison.dependencies.added.slice(0,20))process.stdout.write(`  + ${edge.source} → ${edge.target} (${edge.resolution})\n`);
+    for(const edge of comparison.dependencies.removed.slice(0,20))process.stdout.write(`  − ${edge.source} → ${edge.target} (${edge.resolution})\n`);
+    for(const change of comparison.dependencies.changedSpecifier.slice(0,20))process.stdout.write(`  ~ ${change.before.source}: ${change.before.specifier} → ${change.after.specifier}\n`);
+    const omitted=Math.max(0,comparison.modules.added.length-20)+Math.max(0,comparison.modules.removed.length-20)+Math.max(0,comparison.dependencies.added.length-20)+Math.max(0,comparison.dependencies.removed.length-20)+Math.max(0,comparison.dependencies.changedSpecifier.length-20);
+    if(omitted)process.stdout.write(`  … ${omitted} more changes (use --json for the full report)\n`);
+  });
 program.configureOutput({outputError: (str, write) => write(process.argv.includes('--json') ? JSON.stringify({error:str.trim()})+'\n' : str)});
 program.parseAsync().catch((error: Error) => {
   const message = 'code' in error && error.code === 'EEXIST' ? 'Output exists. Choose another --out path or pass --force.' : error.message;

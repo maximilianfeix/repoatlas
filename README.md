@@ -93,21 +93,36 @@ The Zustand demo includes a workspace boundary: `examples/starter/src/index.tsx`
 - **Dependencies:** static imports, re-exports, type imports, literal dynamic imports, and literal `require` calls.
 - **Monorepos:** resolve declared npm/Yarn or pnpm workspace packages, including `package.json` export subpaths, back to included TypeScript source.
 - **Evidence:** the exact import statement and line, with a commit-pinned GitHub link when the checkout is clean.
-- **Explore and assess change:** search, directory and entry-point filters, Focus map for direct neighbors, and Impact map for every transitively dependent module.
+- **Explore maps and assess change:** search, directory and entry-point filters, accessible pagination, Focus map for direct neighbors, and Impact map for every transitively dependent module.
 - **Check entry-point reachability:** find modules outside paths from detected entries; if RepoAtlas finds no entry point, reachability stays unknown instead of flagging every file.
 - **Inspect architecture boundaries:** compare imports between declared workspace packages and top-level source directories, then open any populated cell to inspect every exact import site.
-- **Navigate large maps:** browse filtered results in accessible 100-module pages; the module explorer follows the active page so every analyzed file remains reachable without flooding the canvas.
 - **Spot architecture risks:** isolate circular import groups, trace the exact cycle edges, and jump straight to the most depended-on modules.
+- **Compare snapshots:** report added or removed modules and dependency relationships, plus changed import specifiers, between two JSON maps; line shifts alone do not count as architecture drift.
 - **Portable output:** one offline HTML file, or the full graph as JSON for other tools.
 
 ```sh
 repoatlas https://github.com/honojs/hono --ref main -o hono-map.html
 repoatlas . --include-tests -o project-map.html
 repoatlas . --json > graph.json
+repoatlas compare before.json after.json
+repoatlas compare before.json after.json --json > drift.json
 repoatlas --help
 ```
 
 In JSON output, each module retains its containing `group`; modules in a declared workspace also include the repository-relative `workspace` package path.
+
+## Compare two snapshots
+
+Save a baseline and a current graph, then compare their architecture:
+
+```sh
+repoatlas ./my-project --json > before.json
+# Update or check out the other revision.
+repoatlas ./my-project --json > after.json
+repoatlas compare before.json after.json
+```
+
+Use `--json` on the compare command to save the full machine-readable delta. Line and formatting changes alone do not create drift; changed import specifiers, module additions/removals, and dependency changes are reported.
 
 ## Scope and privacy
 
