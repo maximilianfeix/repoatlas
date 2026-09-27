@@ -1,65 +1,85 @@
 <p align="center">
-  <img src="docs/assets/repoatlas-logo.svg" alt="RepoAtlas" width="250">
-</p>
-
-<h1 align="center">Understand a codebase by following its imports.</h1>
-
-<p align="center">Generate a clickable map of a TypeScript project. Select a connection to see the exact source line behind it.</p>
-
-<p align="center">
-  <a href="https://github.com/maximilianfeix/repoatlas/releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/maximilianfeix/repoatlas?style=flat-square&label=release"></a>
-  <a href="https://github.com/maximilianfeix/repoatlas/actions/workflows/ci.yml"><img alt="Tests" src="https://img.shields.io/github/actions/workflow/status/maximilianfeix/repoatlas/ci.yml?branch=main&label=tests&style=flat-square"></a>
-  <a href="https://github.com/maximilianfeix/repoatlas/actions/workflows/codeql.yml"><img alt="CodeQL" src="https://img.shields.io/github/actions/workflow/status/maximilianfeix/repoatlas/codeql.yml?branch=main&label=CodeQL&style=flat-square"></a>
-  <a href="https://github.com/maximilianfeix/repoatlas/blob/main/LICENSE"><img alt="MIT license" src="https://img.shields.io/github/license/maximilianfeix/repoatlas?style=flat-square"></a>
-  <img alt="Node.js 22+" src="https://img.shields.io/badge/Node.js-22%2B-43853d?style=flat-square&logo=node.js&logoColor=white">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/assets/banner-dark.svg">
+    <img src="docs/assets/banner-light.svg" alt="RepoAtlas — trace imports and verify every edge in a clickable TypeScript architecture map" width="100%">
+  </picture>
 </p>
 
 <p align="center">
-  <a href="https://maximilianfeix.github.io/repoatlas/examples/hono.html"><strong>Open the Hono map</strong></a> ·
-  <a href="#quickstart">Quickstart</a> ·
-  <a href="#github-actions">GitHub Actions</a> ·
-  <a href="#features">Features</a>
+  <a href="https://github.com/maximilianfeix/repoatlas/releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/maximilianfeix/repoatlas?style=for-the-badge&label=release&color=92EDC7&labelColor=0B0E14"></a>
+  <a href="https://github.com/maximilianfeix/repoatlas/actions/workflows/ci.yml"><img alt="Tests" src="https://img.shields.io/github/actions/workflow/status/maximilianfeix/repoatlas/ci.yml?branch=main&label=tests&style=for-the-badge&color=92EDC7&labelColor=0B0E14"></a>
+  <a href="https://github.com/maximilianfeix/repoatlas/actions/workflows/codeql.yml"><img alt="CodeQL" src="https://img.shields.io/github/actions/workflow/status/maximilianfeix/repoatlas/codeql.yml?branch=main&label=CodeQL&style=for-the-badge&color=B4A0FF&labelColor=0B0E14"></a>
+  <a href="https://github.com/maximilianfeix/repoatlas/blob/main/LICENSE"><img alt="MIT license" src="https://img.shields.io/github/license/maximilianfeix/repoatlas?style=for-the-badge&color=92EDC7&labelColor=0B0E14"></a>
 </p>
 
 <p align="center">
-  <a href="https://maximilianfeix.github.io/repoatlas/examples/hono.html"><img src="docs/assets/bundled-import-evidence.png" alt="Interactive Hono dependency map: select a bundled connection to inspect all four exact import locations" width="1000"></a>
+  <a href="https://maximilianfeix.github.io/repoatlas/examples/hono.html"><img src="https://img.shields.io/badge/OPEN%20LIVE%20MAP-92EDC7?style=for-the-badge&logo=github&logoColor=0B0E14&labelColor=0B0E14" alt="Open the interactive Hono map"></a>
+  <a href="#quickstart"><img src="https://img.shields.io/badge/BUILD%20YOUR%20MAP-B4A0FF?style=for-the-badge&logo=typescript&logoColor=0B0E14&labelColor=0B0E14" alt="Jump to quickstart"></a>
+  <a href="#github-actions"><img src="https://img.shields.io/badge/ADD%20TO%20CI-92EDC7?style=for-the-badge&logo=githubactions&logoColor=0B0E14&labelColor=0B0E14" alt="Jump to GitHub Actions"></a>
 </p>
 
-<p align="center"><sub>One connector represents four imports. The inspector keeps all four source locations clickable.</sub></p>
+<p align="center"><a href="#quickstart">Quickstart</a> &nbsp;·&nbsp; <a href="#what-the-map-shows">What you can explore</a> &nbsp;·&nbsp; <a href="#features">Features</a> &nbsp;·&nbsp; <a href="#scope-and-privacy">Scope &amp; privacy</a></p>
 
-<table align="center">
-  <tr>
-    <td align="center"><strong>247</strong><br><sub>modules mapped</sub></td>
-    <td align="center"><strong>676</strong><br><sub>connections</sub></td>
-    <td align="center"><strong>65</strong><br><sub>detected entry points</sub></td>
-  </tr>
-</table>
+<details>
+  <summary><strong>Contents</strong></summary>
 
-<p align="center"><sub>Hono at <a href="https://github.com/honojs/hono/tree/52f6c7ec865b31001a14eed9b323a0235f0a3156">commit 52f6c7e</a>; counts come from this pinned source revision.</sub></p>
+- [See the map](#a-real-map-not-a-mockup)
+- [Quickstart](#quickstart)
+- [GitHub Actions](#github-actions)
+- [What the map shows](#what-the-map-shows)
+- [Features](#features)
+- [Compare snapshots](#compare-snapshots)
+- [Enforce boundaries in CI](#enforce-boundaries-in-ci)
+- [Scope and privacy](#scope-and-privacy)
+- [Contribute](#contribute)
+</details>
 
-RepoAtlas reads source files without running the project. It resolves static TypeScript imports into a dependency graph and exports the result as one offline HTML file. Every resolved connection can be traced back to its import line; uncertain imports stay marked unresolved instead of being guessed.
+RepoAtlas turns a TypeScript repository into a map you can investigate. Follow an import across modules, click the connection, and inspect the exact source line that created it. Export the result as one offline HTML file and share the architecture with your team.
+
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/assets/readme-flow.svg">
+    <img src="docs/assets/readme-flow.svg" alt="Four steps: give RepoAtlas a GitHub repository or folder, resolve imports with static analysis, explore the interactive module map, and verify an edge against its exact source evidence" width="100%">
+  </picture>
+</p>
+
+## A real map, not a mockup
+
+<p align="center">
+  <a href="https://maximilianfeix.github.io/repoatlas/examples/hono.html"><img src="docs/assets/bundled-import-evidence.png" alt="Interactive architecture map generated from Hono: a selected bundled connection exposes four clickable import locations in the source inspector" width="100%"></a>
+</p>
+
+<p align="center"><sub>In this Hono snapshot, one bundled edge represents four imports. Select it to inspect each location.</sub></p>
+
+<p align="center">
+  <img alt="Modules" src="https://img.shields.io/badge/247-MODULES-92EDC7?style=flat-square&labelColor=151B25">
+  <img alt="Connections" src="https://img.shields.io/badge/676-CONNECTIONS-B4A0FF?style=flat-square&labelColor=151B25">
+  <img alt="Entry points" src="https://img.shields.io/badge/65-ENTRY%20POINTS-92EDC7?style=flat-square&labelColor=151B25">
+</p>
+
+<p align="center"><sub>Counts from <a href="https://github.com/honojs/hono/tree/52f6c7ec865b31001a14eed9b323a0235f0a3156">Hono commit 52f6c7e</a>; regenerate with the pinned revision in <a href="docs/examples/manifest.json">the demo manifest</a>.</sub></p>
 
 ## Quickstart
 
-Requires **Node.js 22 or later** and **Git**. Generate a map from a public GitHub repository:
+Requires **Node.js 22 or later** and **Git**. Point RepoAtlas at a public GitHub repository:
 
 ```sh
 npx --yes --package=github:maximilianfeix/repoatlas#v1.10.0 -- \
   repoatlas https://github.com/pmndrs/zustand --out zustand-map.html
 ```
 
-Open `zustand-map.html` in a browser. To map a local checkout instead:
+Open `zustand-map.html` in your browser. RepoAtlas also analyzes a local checkout:
 
 ```sh
 npx --yes --package=github:maximilianfeix/repoatlas#v1.10.0 -- \
   repoatlas ./my-project --out architecture.html
 ```
 
-The CLI is fetched from the versioned GitHub release; no global install, API key, or access token for a public repository is needed.
+It downloads the versioned CLI from GitHub. No global install, API key, or token for a public repository is needed.
 
 ## GitHub Actions
 
-Generate a map on each push. The HTML is uploaded as a workflow artifact:
+Build the map on every push and keep it as a downloadable workflow artifact:
 
 ```yaml
 name: Architecture map
@@ -76,44 +96,43 @@ jobs:
           output: repoatlas-map.html
 ```
 
-The action accepts `path`, `artifact-name`, `retention-days`, `include-tests`, and `include-js`. It needs read-only repository access and does not require a token input. Maps contain project paths and source snippets; limit access to artifacts built from private repositories.
+The action accepts `path`, `artifact-name`, `retention-days`, `include-tests`, and `include-js`. It needs read-only repository access and no token input. Maps include project paths and source snippets, so restrict artifacts from private repositories.
 
-## Explore real projects
+## What the map shows
 
-Each demo is generated from a pinned source commit, so its counts and import evidence are reproducible.
+Each example below was generated from a pinned upstream commit. The counts and evidence can be reproduced from the source revision.
 
-| Project snapshot | Modules | Connections | What to explore |
+| Project snapshot | Modules | Connections | Useful views |
 | --- | ---: | ---: | --- |
-| [honojs/hono](https://github.com/honojs/hono/tree/52f6c7ec865b31001a14eed9b323a0235f0a3156) | 247 | 676 | [Open map](https://maximilianfeix.github.io/repoatlas/examples/hono.html) · entry paths, cycles, boundaries |
+| [honojs/hono](https://github.com/honojs/hono/tree/52f6c7ec865b31001a14eed9b323a0235f0a3156) | 247 | 676 | [Open map](https://maximilianfeix.github.io/repoatlas/examples/hono.html) · entry paths, cycles, bundled imports |
 | [sindresorhus/ky](https://github.com/sindresorhus/ky/tree/0d59458a0a58e1c3d7c6db0ab17ed5c7cd671e47) | 51 | 93 | [Open map](https://maximilianfeix.github.io/repoatlas/examples/ky.html) · external packages, import sites |
 | [pmndrs/zustand](https://github.com/pmndrs/zustand/tree/b57db4f86ef179285da216eeb291266da82c361c) | 18 | 24 | [Open map](https://maximilianfeix.github.io/repoatlas/examples/zustand.html) · workspace boundaries |
 
 <table>
   <tr>
-    <td width="50%" valign="top">
-      <a href="https://maximilianfeix.github.io/repoatlas/examples/hono.html"><img src="docs/assets/entry-path-trace.png" alt="A four-module Hono entry path, highlighted from its detected entry point to the selected module" width="100%"></a>
-      <sub>Trace a shortest import path from an entry point.</sub>
-    </td>
-    <td width="50%" valign="top">
-      <a href="https://maximilianfeix.github.io/repoatlas/examples/hono.html"><img src="docs/assets/boundary-matrix-preview.png" alt="Hono directory boundary matrix with source-backed import counts" width="100%"></a>
-      <sub>Compare imports across workspace and directory boundaries.</sub>
-    </td>
+    <td width="50%" valign="top"><a href="https://maximilianfeix.github.io/repoatlas/examples/hono.html"><img src="docs/assets/entry-path-trace.png" alt="A highlighted shortest import path from a detected Hono entry point to a selected module" width="100%"></a><sub>Follow the shortest path from an entry point.</sub></td>
+    <td width="50%" valign="top"><a href="https://maximilianfeix.github.io/repoatlas/examples/hono.html"><img src="docs/assets/boundary-matrix-preview.png" alt="A directory boundary matrix showing source-backed imports between parts of Hono" width="100%"></a><sub>See which package and directory boundaries imports cross.</sub></td>
   </tr>
 </table>
 
-The analyzed commits and upstream license notices are recorded in [`docs/examples/manifest.json`](docs/examples/manifest.json) and [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md).
+The analyzed revisions and upstream license notices are recorded in [`docs/examples/manifest.json`](docs/examples/manifest.json) and [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md).
 
 ## Features
 
-| Capability | What it helps you do |
-| --- | --- |
-| **Follow the evidence** | Inspect the import statement and line behind a connection, with a commit-pinned source link when the checkout is clean. Bundle repeated imports without losing individual locations. |
-| **Read the project shape** | Explore entry points, reachability, cycles, impact, external packages, and shortest entry paths. Share direct links to modules, packages, and import evidence. |
-| **Understand monorepos** | Resolve declared npm, Yarn, and pnpm workspace packages through their export maps. Compare package or directory boundaries and inspect the imports in each cell. |
-| **Track architecture change** | Compare JSON snapshots to find changed modules, dependencies, and import specifiers. Formatting and line shifts alone do not count as drift. |
-| **Set architecture rules** | Fail CI on forbidden boundaries, dependency cycles, or unreachable-module limits. Reports include source files and line numbers. |
-| **Navigate large projects** | Search, filter, page through modules, group by package or directory, and jump with the overview. The graph works with mouse and keyboard. |
-| **Keep the result portable** | Export a single offline HTML map, the full JSON snapshot, a boundary SVG, or a concise CI report. |
+<table>
+  <tr>
+    <td width="50%" valign="top"><strong>Trace every connection</strong><br>Open the import statement and exact line behind an edge. Bundled imports keep every individual location; clean checkouts link to the pinned source on GitHub.</td>
+    <td width="50%" valign="top"><strong>Get oriented quickly</strong><br>See detected entries, reachability, cycles, impact, external packages, and shortest entry paths. Share a focused view with a deep link.</td>
+  </tr>
+  <tr>
+    <td width="50%" valign="top"><strong>Read workspace boundaries</strong><br>Resolve declared npm, Yarn, and pnpm workspace packages through export maps. Compare package or directory boundaries and inspect the imports behind each cell.</td>
+    <td width="50%" valign="top"><strong>Catch architecture drift</strong><br>Compare JSON snapshots to find changed modules, dependencies, and import specifiers. Formatting and line shifts alone do not count as drift.</td>
+  </tr>
+  <tr>
+    <td width="50%" valign="top"><strong>Set rules for CI</strong><br>Fail builds on forbidden boundaries, dependency cycles, or unreachable-module limits. Reports include the source file and line.</td>
+    <td width="50%" valign="top"><strong>Share a portable map</strong><br>Export one offline HTML file, the full JSON snapshot, a boundary SVG, or a concise CI report. The viewer makes no network requests.</td>
+  </tr>
+</table>
 
 ### Compare snapshots
 
@@ -147,13 +166,13 @@ repoatlas ./my-project --json > atlas.json
 repoatlas check atlas.json --config repoatlas.config.json --format github
 ```
 
-Boundary IDs use `package:<workspace path>` for declared workspace packages and `directory:<top-level source folder>` otherwise. If no entry point is detected, reachability remains unknown and does not fail the unreachable-module limit. Run `repoatlas check --help` for output formats and options; snapshot compatibility is documented in [`SCHEMA.md`](SCHEMA.md).
+Boundary IDs use `package:<workspace path>` for declared workspace packages and `directory:<top-level source folder>` otherwise. If no entry point is detected, reachability remains unknown and does not fail the unreachable-module limit. Run `repoatlas check --help` for output formats; snapshot compatibility is documented in [`SCHEMA.md`](SCHEMA.md).
 
 ## Scope and privacy
 
-RepoAtlas reports **static file dependencies**, not runtime calls, route registrations, or test coverage. Entry-point detection uses package metadata and file conventions; an unreachable module means no path was found from detected entries, not that the file is dead. When entry points are unknown, RepoAtlas does not claim modules are unreachable. Computed imports remain visible as unresolved evidence, and their targets are never inferred.
+RepoAtlas describes **static file dependencies**. It does not claim to show runtime calls, route registrations, or test coverage. It detects entries from package metadata and file conventions; “unreachable” means no path was found from detected entries, not that a file is dead. If entries are unknown, reachability remains unknown. Computed imports stay visible as unresolved evidence rather than receiving guessed targets.
 
-Analysis is limited to 5,000 source files and 2 MB per file. Tests, generated directories, declarations, and hidden files are excluded by default; use `--include-tests` or `--include-js` to opt in. Local edits disable commit-pinned GitHub links. The viewer makes no network requests and does not copy repository credentials. Since maps embed source snippets, share private-project maps only with people authorized to read that source.
+Analysis is limited to 5,000 source files and 2 MB per file. Tests, generated directories, declarations, and hidden files are excluded by default; use `--include-tests` or `--include-js` to opt in. Local edits disable commit-pinned GitHub links. The viewer makes no network requests and does not copy repository credentials. Maps include source snippets; share private-project maps only with people authorized to read that source.
 
 ## Contribute
 
