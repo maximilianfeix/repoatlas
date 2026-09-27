@@ -1,4 +1,5 @@
 import type { Atlas, Edge, Module } from './types.js';
+import { focusNeighborhood } from './focus.js';
 const data: Atlas = JSON.parse(document.getElementById('atlas-data')!.textContent!);
 const $ = (id: string) => document.getElementById(id)!;
 function el(tag: string, text = '', cls = '') { const e = document.createElement(tag); e.textContent = text; if (cls) e.className = cls; return e; }
@@ -7,7 +8,7 @@ const NS = 'http://www.w3.org/2000/svg';
 function svg(tag: string, attrs: Record<string, string | number> = {}) { const e = document.createElementNS(NS,tag); for (const [k,v] of Object.entries(attrs)) e.setAttribute(k,String(v)); return e; }
 const internal = data.edges.filter(e => e.resolution === 'internal');
 const byId = new Map(data.modules.map(m => [m.id,m]));
-let selected: string | undefined, selectedEdge: Edge | undefined, entriesOnly = false, zoom = 1;
+let selected: string | undefined, selectedEdge: Edge | undefined, entriesOnly = false, focusMap = false, zoom = 1;
 $('repo-name').textContent = data.name;
 for (const [value,label] of [[data.modules.length,'modules'],[internal.length,'connections'],[data.modules.filter(m=>m.entry.length).length,'entry points']]) { const stat = el('div'); stat.append(el('strong',String(value)),el('span',String(label))); $('stats').append(stat); }
 for (const group of [...new Set(data.modules.map(m=>m.group))].sort()) { const opt = document.createElement('option'); opt.value = group; opt.textContent = group; $('group').append(opt); }
@@ -42,9 +43,14 @@ function choose(id: string) {
 function draw() {
   const query=($('search') as HTMLInputElement).value.toLowerCase();
   const group=($('group') as HTMLSelectElement).value;
-  const matches=data.modules.filter(m=>(!query || m.id.toLowerCase().includes(query)) && (!group || m.group===group) && (!entriesOnly || m.entry.length));
-  const visible=matches.slice(0,100);
-  $('view-count').textContent=`${visible.length} / ${matches.length} matching modules${matches.length>100 ? ' · refine filters' : ''}`;
+  const focused=focusMap && selected ? focusNeighborhood(data.modules,internal,selected) : undefined;
+  const matches=focused ?? data.modules.filter(m=>(!query || m.id.toLowerCase().includes(query)) && (!group || m.group===group) && (!entriesOnly || m.entry.length));
+  const scoped=matches;
+  const visible=scoped.slice(0,100);
+  $('focus').toggleAttribute('disabled',!selected);
+  $('focus').classList.toggle('active',focusMap);
+  $('focus').setAttribute('aria-pressed',String(focusMap));
+  $('view-count').textContent=`${visible.length} / ${scoped.length} ${focused ? 'connected' : 'matching'} modules${scoped.length>100 ? ' · refine filters' : ''}`;
   const list=$('module-list'); list.replaceChildren();
   for (const m of matches.slice(0,500)) { const b=el('button',`${m.entry.length ? '● ' : ''}${m.id}`,selected===m.id ? 'selected' : ''); b.onclick=()=>{ if(!visible.some(v=>v.id===m.id)){ ($('search') as HTMLInputElement).value=m.id; } choose(m.id); }; list.append(b); }
   if (!matches.length) list.append(el('p','No matching modules.'));
@@ -75,7 +81,8 @@ function draw() {
 }
 $('search').addEventListener('input',draw);$('group').addEventListener('change',draw);
 $('entries').onclick=()=>{entriesOnly=!entriesOnly;$('entries').classList.toggle('active',entriesOnly);$('entries').setAttribute('aria-pressed',String(entriesOnly));draw();};
-$('reset').onclick=()=>{($('search') as HTMLInputElement).value='';($('group') as HTMLSelectElement).value='';entriesOnly=false;selected=undefined;selectedEdge=undefined;zoom=1;$('entries').classList.remove('active');$('entries').setAttribute('aria-pressed','false');intro();draw();};
+$('focus').onclick=()=>{if(selected){focusMap=!focusMap;draw();}};
+$('reset').onclick=()=>{($('search') as HTMLInputElement).value='';($('group') as HTMLSelectElement).value='';entriesOnly=false;focusMap=false;selected=undefined;selectedEdge=undefined;zoom=1;$('entries').classList.remove('active');$('entries').setAttribute('aria-pressed','false');intro();draw();};
 $('zoom-in').onclick=()=>{zoom=Math.min(2,zoom+0.2);draw();};$('zoom-out').onclick=()=>{zoom=Math.max(0.4,zoom-0.2);draw();};
 document.addEventListener('keydown',e=>{if(e.key==='/' && !(e.target instanceof HTMLInputElement)){e.preventDefault();$('search').focus();}});
 intro();draw();

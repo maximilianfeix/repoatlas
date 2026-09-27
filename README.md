@@ -46,7 +46,7 @@ These are real TypeScript repositories analyzed at pinned commits. Downloadable 
 - **How files connect:** static imports, re-exports, type imports, literal dynamic imports, and literal `require` calls.
 - **Why an edge exists:** select a connection to see the source statement, line number, and pinned GitHub permalink.
 - **What did not resolve:** external and unresolved dependencies stay visible in the inspector; RepoAtlas does not invent connections.
-- **A map you can explore:** search, directory filters, entry-point filtering, zoom, keyboard navigation, and a module inspector.
+- **A map you can explore:** search, directory filters, entry-point filtering, zoom, keyboard navigation, and a module inspector. Focus the map on a selected module to isolate its direct imports and dependents.
 - **A file you can share:** export a standalone HTML map with embedded graph data and viewer. The map itself works offline.
 - **A JSON interface:** send the same analysis to scripts and other tools with `--json`.
 
