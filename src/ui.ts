@@ -12,12 +12,13 @@ const byId = new Map(data.modules.map(m => [m.id,m]));
 const cycleGroups = findCycles(data.modules, internal);
 const cycleByModule = new Map(cycleGroups.flatMap((group, index) => group.map(module => [module.id, index] as const)));
 const importerSets = new Map<string, Set<string>>();
+const modulesWithImports = new Set(internal.map(edge=>edge.source));
 for (const edge of internal) {
   const importers=importerSets.get(edge.target) ?? new Set<string>();
   importers.add(edge.source);
   importerSets.set(edge.target,importers);
 }
-let selected: string | undefined, selectedEdge: Edge | undefined, entriesOnly = false, focusMap = false, impactMap = false, cyclesOnly = false, cycleGroupIndex = 0, zoom = 1;
+let selected: string | undefined, selectedEdge: Edge | undefined, entriesOnly = false, focusMap = false, impactMap = false, cyclesOnly = false, cycleGroupIndex = 0, pageIndex = 0, zoom = 1;
 $('repo-name').textContent = data.name;
 for (const [value,label] of [[data.modules.length,'modules'],[internal.length,'connections'],[data.modules.filter(m=>m.entry.length).length,'entry points']]) { const stat = el('div'); stat.append(el('strong',String(value)),el('span',String(label))); $('stats').append(stat); }
 for (const group of [...new Set(data.modules.map(m=>m.group))].sort()) { const opt = document.createElement('option'); opt.value = group; opt.textContent = group; $('group').append(opt); }
@@ -33,7 +34,7 @@ function intro() {
   signals.append(el('h2','Architecture signals'),el('p',`${cycleGroups.length} circular dependency groups · ${cycleByModule.size} modules involved.`));
   if (cycleGroups.length) {
     const b=el('button',cyclesOnly ? 'Exit cycle map' : 'Explore circular dependencies','button insight-link'); b.id='cycle-link';
-    b.onclick=()=>{cyclesOnly=!cyclesOnly;if(cyclesOnly)cycleGroupIndex=0;focusMap=false;impactMap=false;draw();};
+    b.onclick=()=>{cyclesOnly=!cyclesOnly;if(cyclesOnly)cycleGroupIndex=0;pageIndex=0;focusMap=false;impactMap=false;draw();};
     signals.append(b);
   } else signals.append(el('p','No circular imports detected in resolved internal dependencies.'));
   const hubs=data.modules.map(module=>({module,count:importerSets.get(module.id)?.size ?? 0}))
@@ -71,7 +72,7 @@ function choose(id: string) {
   summary.append(metric,el('p',`${directCount} direct · ${totalDependents-directCount} indirect`),el('p','Based on resolved static imports.'));
   const impactButton = el('button',impactMap ? 'Exit impact map' : 'Show impact map','button impact-link');
   impactButton.id='impact-link';
-  impactButton.onclick=()=>{impactMap=!impactMap;focusMap=false;draw();choose(id);};
+  impactButton.onclick=()=>{impactMap=!impactMap;focusMap=false;pageIndex=0;draw();choose(id);};
   summary.append(impactButton);
   panel.append(summary);
   for (const [label,edges] of [['Imports',data.edges.filter(e=>e.source===id)],['Imported by',data.edges.filter(e=>e.target===id && e.resolution==='internal')]] as [string,Edge[]][]) {
@@ -88,7 +89,9 @@ function draw() {
   const impacted=impactMap && selected ? impactNeighborhood(data.modules,internal,selected) : undefined;
   const matches=cyclesOnly ? data.modules.filter(m=>cycleByModule.has(m.id) && (cycleGroupIndex<0 || cycleByModule.get(m.id)===cycleGroupIndex)) : focused ?? impacted ?? data.modules.filter(m=>(!query || m.id.toLowerCase().includes(query)) && (!group || m.group===group) && (!entriesOnly || m.entry.length));
   const scoped=matches;
-  const visible=scoped.slice(0,100);
+  const pageCount=Math.max(1,Math.ceil(scoped.length/100));
+  pageIndex=Math.min(pageIndex,pageCount-1);
+  const visible=scoped.slice(pageIndex*100,(pageIndex+1)*100);
   $('focus').toggleAttribute('disabled',!selected);
   $('focus').classList.toggle('active',focusMap);
   $('focus').setAttribute('aria-pressed',String(focusMap));
@@ -105,29 +108,36 @@ function draw() {
   if(cycleLink) cycleLink.textContent=cyclesOnly ? 'Exit cycle map' : 'Explore circular dependencies';
   const impactLink=document.getElementById('impact-link');
   if(impactLink) impactLink.textContent=impactMap ? 'Exit impact map' : 'Show impact map';
-  const limited=scoped.length>100 ? (focused || impacted || cyclesOnly ? ' · first 100 shown' : ' · refine filters') : '';
-  $('view-count').textContent=cyclesOnly ? `${visible.length} modules · ${cycleGroupIndex<0 ? `all ${cycleGroups.length} cycles` : `cycle ${cycleGroupIndex+1}/${cycleGroups.length}`}${limited}` : `${visible.length} / ${scoped.length} ${focused ? 'connected' : impacted ? 'affected' : 'matching'} modules${limited}`;
+  const pageStatus=$('page-status');
+  pageStatus.textContent=scoped.length>100 ? `${pageIndex*100+1}–${Math.min((pageIndex+1)*100,scoped.length)} of ${scoped.length}` : `${scoped.length} modules`;
+  pageStatus.hidden=scoped.length<=100;
+  ($('page-previous') as HTMLButtonElement).disabled=pageIndex===0;
+  ($('page-next') as HTMLButtonElement).disabled=pageIndex>=pageCount-1;
+  $('view-count').textContent=cyclesOnly ? `${visible.length} modules · ${cycleGroupIndex<0 ? `all ${cycleGroups.length} cycles` : `cycle ${cycleGroupIndex+1}/${cycleGroups.length}`}` : `${visible.length} / ${scoped.length} ${focused ? 'connected' : impacted ? 'affected' : 'matching'} modules`;
   $('view-description').textContent=cyclesOnly ? `${cycleGroupIndex<0 ? `${cycleGroups.length} circular groups` : `Cycle group ${cycleGroupIndex+1} of ${cycleGroups.length}`} · amber links are part of a cycle` : impacted ? `Potential change impact for ${selected} · reverse imports` : focused ? `Direct neighborhood of ${selected}` : 'Click a connection for its code';
   const list=$('module-list'); list.replaceChildren();
-  for (const m of matches.slice(0,500)) { const b=el('button',`${m.entry.length ? '● ' : ''}${m.id}`,selected===m.id ? 'selected' : ''); b.onclick=()=>{ if(!visible.some(v=>v.id===m.id)){ ($('search') as HTMLInputElement).value=m.id; focusMap=false; impactMap=false; } choose(m.id); }; list.append(b); }
+  for (const m of visible) { const b=el('button',`${m.entry.length ? '● ' : ''}${m.id}`,selected===m.id ? 'selected' : ''); b.onclick=()=>choose(m.id); list.append(b); }
   if (!matches.length) list.append(el('p','No matching modules.'));
   const graph=$('graph'); graph.replaceChildren();
   const ids=new Set(visible.map(m=>m.id));
   const edges=internal.filter(e=>ids.has(e.source)&&ids.has(e.target)&&(!cyclesOnly||cycleByModule.get(e.source)===cycleByModule.get(e.target)));
   // Three stable columns: likely entry points, connecting modules, leaf modules.
   const buckets: Module[][]=[[],[],[]];
-  for(const m of visible) buckets[m.entry.length ? 0 : internal.some(e=>e.source===m.id) ? 1 : 2].push(m);
+  for(const m of visible) buckets[m.entry.length ? 0 : modulesWithImports.has(m.id) ? 1 : 2].push(m);
+  const labels=['ENTRY POINTS','MODULES','LEAVES'];
+  const columns:{modules:Module[];label:string}[]=[];
+  buckets.forEach((bucket,index)=>{for(let start=0;start<bucket.length;start+=20){const lane=start/20;columns.push({modules:bucket.slice(start,start+20),label:lane?`${labels[index]} · ${lane+1}`:labels[index]!});}});
   const circleCycles=cyclesOnly && visible.length>1 && visible.length<=10;
   const radius=circleCycles ? Math.max(150,250/(2*Math.sin(Math.PI/visible.length))) : 0;
-  const width=circleCycles ? Math.max(920,2*(radius+160)) : 920;
-  const height=circleCycles ? Math.max(450,2*(radius+95)) : Math.max(450,Math.max(...buckets.map(b=>b.length))*88+90);
+  const width=circleCycles ? Math.max(920,2*(radius+160)) : Math.max(920,columns.length*300+20);
+  const height=circleCycles ? Math.max(450,2*(radius+95)) : Math.max(450,Math.max(...columns.map(column=>column.modules.length),0)*88+90);
   graph.setAttribute('viewBox',`0 0 ${width} ${height}`); graph.setAttribute('width',String(width*zoom)); graph.setAttribute('height',String(height*zoom));
   const defs=svg('defs'), marker=svg('marker',{id:'arrow',viewBox:'0 0 10 10',refX:9,refY:5,markerWidth:5,markerHeight:5,orient:'auto-start-reverse'}); marker.append(svg('path',{d:'M 0 0 L 10 5 L 0 10 z',fill:'#8190a8'}));defs.append(marker);graph.append(defs);
   const positions=new Map<string,{x:number;y:number}>();
   if(circleCycles){
     const label=svg('text',{x:25,y:30,class:'graph-label'});label.textContent=`CIRCULAR DEPENDENCY · ${visible.length} MODULES`;graph.append(label);
     visible.forEach((m,index)=>{const angle=-Math.PI/2+index*2*Math.PI/visible.length;positions.set(m.id,{x:width/2+radius*Math.cos(angle)-120,y:height/2+radius*Math.sin(angle)-29});});
-  }else buckets.forEach((bucket,col)=>{const label=svg('text',{x:col*300+25,y:30,class:'graph-label'});label.textContent=['ENTRY POINTS','MODULES','LEAVES'][col];graph.append(label);bucket.forEach((m,row)=>positions.set(m.id,{x:col*300+25,y:row*88+55}));});
+  }else columns.forEach((column,col)=>{const label=svg('text',{x:col*300+25,y:30,class:'graph-label'});label.textContent=column.label;graph.append(label);column.modules.forEach((m,row)=>positions.set(m.id,{x:col*300+25,y:row*88+55}));});
   for (const edge of edges) {
     const a=positions.get(edge.source)!,b=positions.get(edge.target)!;
     let d:string;
@@ -139,8 +149,10 @@ function draw() {
       d=`M ${fromX} ${fromY} C ${fromX+vx*.34} ${fromY+vy*.34}, ${toX-vx*.34} ${toY-vy*.34}, ${toX} ${toY}`;
     }else d=a.x===b.x ? `M ${a.x+240} ${a.y+27} C ${a.x+280} ${a.y+27}, ${b.x+280} ${b.y+27}, ${b.x+240} ${b.y+27}` : `M ${a.x+240} ${a.y+27} C ${a.x+275} ${a.y+27}, ${b.x-35} ${b.y+27}, ${b.x} ${b.y+27}`;
     const isCycle=cycleByModule.has(edge.source)&&cycleByModule.get(edge.source)===cycleByModule.get(edge.target);
-    const p=svg('path',{d,class:`edge${isCycle?' cycle-edge':''}${selectedEdge===edge ? ' selected':''}`,'marker-end':'url(#arrow)',tabindex:0,role:'button','aria-label':`${edge.source} imports ${edge.target} at line ${edge.line}${isCycle?' · circular dependency':''}`});
-    p.addEventListener('click',()=>edgeDetail(edge)); p.addEventListener('keydown',(e)=>{if((e as KeyboardEvent).key==='Enter')edgeDetail(edge);}); graph.append(p);
+    const description=`${edge.source} imports ${edge.target} at line ${edge.line}${isCycle?' · circular dependency':''}`;
+    const p=svg('path',{d,class:`edge${isCycle?' cycle-edge':''}${selectedEdge===edge ? ' selected':''}`,'marker-end':'url(#arrow)','aria-hidden':'true'});
+    const hit=svg('path',{d,class:'edge-hit',tabindex:0,role:'button','aria-label':description});
+    hit.addEventListener('click',()=>edgeDetail(edge)); hit.addEventListener('keydown',(e)=>{if((e as KeyboardEvent).key==='Enter'||(e as KeyboardEvent).key===' ')edgeDetail(edge);}); graph.append(p,hit);
   }
   for(const m of visible) {
     const {x,y}=positions.get(m.id)!; const g=svg('g',{transform:`translate(${x},${y})`,class:`node${m.entry.length?' entry':''}${cycleByModule.has(m.id)?' cyclic':''}${selected===m.id?' selected':''}`,tabindex:0,role:'button','aria-label':`${m.id}${cycleByModule.has(m.id)?' · circular dependency':''}`});
@@ -150,13 +162,14 @@ function draw() {
     g.addEventListener('click',()=>choose(m.id));g.addEventListener('keydown',(e)=>{if((e as KeyboardEvent).key==='Enter')choose(m.id);});graph.append(g);
   }
 }
-$('search').addEventListener('input',draw);$('group').addEventListener('change',draw);
-$('entries').onclick=()=>{entriesOnly=!entriesOnly;$('entries').classList.toggle('active',entriesOnly);$('entries').setAttribute('aria-pressed',String(entriesOnly));draw();};
-$('impact').onclick=()=>{if(selected){impactMap=!impactMap;focusMap=false;cyclesOnly=false;draw();}};
-$('focus').onclick=()=>{if(selected){focusMap=!focusMap;impactMap=false;cyclesOnly=false;draw();}};
-$('cycles').onclick=()=>{cyclesOnly=!cyclesOnly;focusMap=false;impactMap=false;draw();};
-$('cycle-group').addEventListener('change',()=>{cycleGroupIndex=Number(($('cycle-group') as HTMLSelectElement).value);draw();});
-$('reset').onclick=()=>{($('search') as HTMLInputElement).value='';($('group') as HTMLSelectElement).value='';entriesOnly=false;focusMap=false;impactMap=false;cyclesOnly=false;cycleGroupIndex=0;selected=undefined;selectedEdge=undefined;zoom=1;$('entries').classList.remove('active');$('entries').setAttribute('aria-pressed','false');intro();draw();};
+for(const id of ['page-previous','page-next']) $(id).addEventListener('click',()=>{pageIndex+=id==='page-next'?1:-1;draw();});
+$('search').addEventListener('input',()=>{pageIndex=0;draw();});$('group').addEventListener('change',()=>{pageIndex=0;draw();});
+$('entries').onclick=()=>{entriesOnly=!entriesOnly;pageIndex=0;$('entries').classList.toggle('active',entriesOnly);$('entries').setAttribute('aria-pressed',String(entriesOnly));draw();};
+$('impact').onclick=()=>{if(selected){impactMap=!impactMap;focusMap=false;cyclesOnly=false;pageIndex=0;draw();}};
+$('focus').onclick=()=>{if(selected){focusMap=!focusMap;impactMap=false;cyclesOnly=false;pageIndex=0;draw();}};
+$('cycles').onclick=()=>{cyclesOnly=!cyclesOnly;focusMap=false;impactMap=false;pageIndex=0;draw();};
+$('cycle-group').addEventListener('change',()=>{cycleGroupIndex=Number(($('cycle-group') as HTMLSelectElement).value);pageIndex=0;draw();});
+$('reset').onclick=()=>{($('search') as HTMLInputElement).value='';($('group') as HTMLSelectElement).value='';entriesOnly=false;focusMap=false;impactMap=false;cyclesOnly=false;cycleGroupIndex=0;pageIndex=0;selected=undefined;selectedEdge=undefined;zoom=1;$('entries').classList.remove('active');$('entries').setAttribute('aria-pressed','false');intro();draw();};
 $('zoom-in').onclick=()=>{zoom=Math.min(2,zoom+0.2);draw();};$('zoom-out').onclick=()=>{zoom=Math.max(0.4,zoom-0.2);draw();};
 document.addEventListener('keydown',e=>{if(e.key==='/' && !(e.target instanceof HTMLInputElement)){e.preventDefault();$('search').focus();}});
 intro();draw();
