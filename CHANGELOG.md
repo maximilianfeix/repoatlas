@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.8.0] - 2026-09-27
+
+### Added
+
+- Export a script-free, standalone SVG of the workspace/directory boundary matrix.
+- Add a concise text report for CI logs summarizing modules, entries, import resolutions, reachability, cycle groups, warnings, and cross-boundary imports.
+- Keep XML labels escaped and apply the same 80-group limit to SVG as the interactive matrix, with a clear text-report fallback.
+- Protect report files from accidental overwrite unless `--overwrite` is supplied.
+
+### Quality
+
+- Added tests for injected markup, deterministic exports, empty and no-entry snapshots, matrix caps, CLI formats, and overwrite protection.
+- Validated an SVG export of the real Hono snapshot as XML; verified 38 tests, TypeScript checks, npm packaging, cross-platform CI, and CodeQL.
+
 ## [0.7.0] - 2026-09-27
 
 ### Added
