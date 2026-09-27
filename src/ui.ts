@@ -5,6 +5,7 @@ import { analyzeReachability, findCycles, findEntryPath } from './insights.js';
 import { groupExternalDependencies, type ExternalUsage } from './packages.js';
 import { encodeInspectorRoute, resolveInspectorRoute } from './routes.js';
 import { groupParallelEdges, type ParallelEdgeGroup } from './graph.js';
+import { activateOnKeyboard } from './accessibility.js';
 const data: Atlas = JSON.parse(document.getElementById('atlas-data')!.textContent!);
 const $ = (id: string) => document.getElementById(id)!;
 function el(tag: string, text = '', cls = '') { const e = document.createElement(tag); e.textContent = text; if (cls) e.className = cls; return e; }
@@ -361,7 +362,7 @@ function draw() {
     const longRoute=!circleCycles&&Math.abs((moduleColumn.get(edge.source)??0)-(moduleColumn.get(edge.target)??0))>1;
     const hit=svg('rect',{x:midpoint.x-(longRoute?16:18),y:midpoint.y-(longRoute?7:16),width:longRoute?32:36,height:longRoute?14:32,rx:7,class:'edge-hit',tabindex:0,role:'button','aria-label':description});
     hit.addEventListener('click',()=>group.edges.length===1?edgeDetail(edge):edgeGroupDetail(group,0));
-    hit.addEventListener('keydown',(e)=>{if((e as KeyboardEvent).key==='Enter'||(e as KeyboardEvent).key===' '){e.preventDefault();group.edges.length===1?edgeDetail(edge):edgeGroupDetail(group,0);}});
+    hit.addEventListener('keydown',(e)=>activateOnKeyboard(e as KeyboardEvent,()=>group.edges.length===1?edgeDetail(edge):edgeGroupDetail(group,0)));
     edgeContainer.append(hit);
     if(group.edges.length>1){const count=svg('text',{x:midpoint.x,y:midpoint.y+4,class:'edge-count','aria-hidden':'true'});count.textContent=`×${group.edges.length}`;graph.append(count);}
   }
@@ -370,7 +371,7 @@ function draw() {
     const title=svg('title');title.textContent=m.id;g.append(title,svg('rect',{width:240,height:58,rx:8}));
     const text=svg('text',{x:12,y:24}); const name=m.id.split('/').at(-1)!;text.textContent=(m.entry.length?'● ':'')+(name.length>28?name.slice(0,25)+'…':name);
     const meta=svg('text',{x:12,y:43,class:'meta'});meta.textContent=m.group.length>32?'…'+m.group.slice(-31):m.group;g.append(text,meta);
-    g.addEventListener('click',()=>choose(m.id));g.addEventListener('keydown',(e)=>{if((e as KeyboardEvent).key==='Enter')choose(m.id);});graph.append(g);
+    g.addEventListener('click',()=>choose(m.id));g.addEventListener('keydown',(e)=>activateOnKeyboard(e as KeyboardEvent,()=>choose(m.id)));graph.append(g);
   }
   buildOverview(width,height,positions,visible,edgeGroups.map(group=>group.edges[0]!),pageCount);
 }

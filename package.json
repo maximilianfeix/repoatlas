@@ -1,6 +1,6 @@
 {
   "name": "@maximilianfeix/repoatlas",
-  "version": "1.9.0",
+  "version": "1.10.0",
   "description": "Understand any TypeScript repo in one interactive map. Every edge has evidence.",
   "type": "module",
   "bin": {
@@ -19,6 +19,7 @@
     "build": "tsc && node scripts/build-ui.mjs",
     "test": "npm run build && node --test test/*.test.mjs",
     "check": "tsc --noEmit",
+    "check:ts7": "node_modules/typescript7/bin/tsc --noEmit",
     "prepack": "npm run build",
     "examples": "node scripts/examples.mjs"
   },
@@ -33,6 +34,7 @@
   },
   "devDependencies": {
     "@types/node": "^26.6.3",
-    "esbuild": "^0.28.2"
+    "esbuild": "^0.28.2",
+    "typescript7": "npm:typescript@7.0.2"
   }
 }
