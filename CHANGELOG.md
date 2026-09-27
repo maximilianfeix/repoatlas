@@ -1,5 +1,19 @@
 # Changelog
 
+## [1.2.0] - 2026-09-27
+
+### Added
+
+- Add `repoatlas check --format github` to emit native `::error` annotations in GitHub Actions.
+- Pin forbidden-import annotations to the exact source file and line; summarize aggregate cycle/reachability violations without inventing a source location.
+- Escape workflow-command property delimiters and untrusted newlines/percent signs while preserving normal source messages.
+- Retain `--json` and add `--format json`; reject contradictory output options.
+
+### Quality
+
+- Test GitHub command escaping for commas, colons, percent signs, CR/LF, aggregate messages, and successful checks without violations.
+- Add a release regression that keeps package.json and package-lock.json versions synchronized.
+
 ## [1.1.0] - 2026-09-27
 
 ### Added
