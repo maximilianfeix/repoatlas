@@ -1,5 +1,16 @@
 # Changelog
 
+## [1.5.0] - 2026-09-27
+
+### Added
+
+- Show computed `import()` and `require()` calls as unresolved edges with the original expression and exact source line.
+- Explain that computed targets are not inferred, keeping the map useful without overstating what static analysis can prove.
+
+### Quality
+
+- Cover identifier and interpolated-template expressions, CommonJS and dynamic-import kinds, exact lines, evidence, warning text, and continued resolution of literal imports.
+
 ## [1.4.0] - 2026-09-27
 
 ### Added

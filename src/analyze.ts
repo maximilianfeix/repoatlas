@@ -208,6 +208,7 @@ export async function analyze(input: string, options: { includeTests?: boolean; 
   }
   for (const {dir,data} of packages) for (const key of ['source','main','module','bin','exports']) mark(data[key], dir, `package.json ${key}`);
   const modules: Atlas['modules'] = [], edges: Edge[] = [];
+  let computedImportCount = 0;
   for (const file of files) {
     const content = await readFile(file, 'utf8');
     const sf = ts.createSourceFile(file, content, ts.ScriptTarget.Latest, true);
@@ -240,17 +241,29 @@ export async function analyze(input: string, options: { includeTests?: boolean; 
       const end = sf.getLineAndCharacterOfPosition(node.end).line + 1;
       edges.push({source:id(file), target: internal ? id(target!) : specifier, specifier, kind, line, code:lines.slice(line-1, Math.min(end,line+7)).join('\n').slice(0,3000), url:url(file,line), resolution});
     }
+    function addComputed(expression: ts.Expression, node: ts.Node, kind: Edge['kind']) {
+      const specifier = expression.getText(sf);
+      const line = sf.getLineAndCharacterOfPosition(node.getStart(sf)).line + 1;
+      const end = sf.getLineAndCharacterOfPosition(node.end).line + 1;
+      computedImportCount++;
+      edges.push({source:id(file), target:specifier, specifier, kind, line, code:lines.slice(line-1, Math.min(end,line+7)).join('\n').slice(0,3000), url:url(file,line), resolution:'unresolved', computed:true});
+    }
     function visit(node: ts.Node) {
       if (ts.isImportDeclaration(node) && ts.isStringLiteral(node.moduleSpecifier)) add(node.moduleSpecifier,node,node.importClause?.isTypeOnly ? 'type' : 'import');
       else if (ts.isExportDeclaration(node) && node.moduleSpecifier && ts.isStringLiteral(node.moduleSpecifier)) add(node.moduleSpecifier,node,node.isTypeOnly ? 'type' : 'export');
       else if (ts.isImportEqualsDeclaration(node) && ts.isExternalModuleReference(node.moduleReference) && node.moduleReference.expression && ts.isStringLiteral(node.moduleReference.expression)) add(node.moduleReference.expression,node,'require');
       else if (ts.isImportTypeNode(node) && ts.isLiteralTypeNode(node.argument) && ts.isStringLiteral(node.argument.literal)) add(node.argument.literal,node,'type');
-      else if (ts.isCallExpression(node) && node.arguments[0] && ts.isStringLiteralLike(node.arguments[0]) && (node.expression.kind === ts.SyntaxKind.ImportKeyword || (ts.isIdentifier(node.expression) && node.expression.text === 'require'))) add(node.arguments[0],node,node.expression.kind === ts.SyntaxKind.ImportKeyword ? 'dynamic' : 'require');
+      else if (ts.isCallExpression(node) && node.arguments[0] && (node.expression.kind === ts.SyntaxKind.ImportKeyword || (ts.isIdentifier(node.expression) && node.expression.text === 'require'))) {
+        const kind = node.expression.kind === ts.SyntaxKind.ImportKeyword ? 'dynamic' : 'require';
+        if (ts.isStringLiteralLike(node.arguments[0])) add(node.arguments[0],node,kind);
+        else addComputed(node.arguments[0],node,kind);
+      }
       ts.forEachChild(node,visit);
     }
     visit(sf);
   }
   const unresolved = edges.filter(e => e.resolution === 'unresolved').length;
   if (unresolved) warnings.push(`${unresolved} imports could not be mapped to included source files. See the dependency inspector.`);
+  if (computedImportCount) warnings.push(`${computedImportCount} computed import expression${computedImportCount === 1 ? '' : 's'} shown as unresolved evidence; targets are not inferred.`);
   return {schemaVersion:1, name: repository?.split('/').slice(-2).join('/') || path.basename(root), repository, commit, modules, edges, warnings};
 }

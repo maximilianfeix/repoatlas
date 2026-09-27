@@ -19,6 +19,23 @@ test('AST edges retain exact lines; aliases, ESM extensions, reexports, types an
   assert.ok(atlas.edges.every(e=>e.target==='src/a.ts'&&e.resolution==='internal'));assert.deepEqual(atlas.edges.map(e=>e.line),[2,3,4,5,6,7]);assert.match(atlas.edges[0].code,/@\/a/);assert.ok(atlas.modules.find(m=>m.id==='src/index.ts').entry.includes('package.json source'));
   assert.equal((await analyze(dir,{includeTests:true})).modules.length,3);
 });
+test('computed dynamic imports and require calls remain visible as unresolved source evidence',async t=>{
+  const dir=await fixture(t,{
+    'src/index.ts':["const moduleName = './target';","const dynamic = import(moduleName);","const interpolated = import(`./${moduleName}`);","const loaded = require(`./${moduleName}`);","const literal = import('./target');"].join('\n'),
+    'src/target.ts':'export const target = true;'
+  });
+  const atlas=await analyze(dir);
+  assert.equal(atlas.edges.length,4);
+  assert.deepEqual(atlas.edges.map(edge=>edge.line),[2,3,4,5]);
+  assert.deepEqual(atlas.edges.map(edge=>edge.kind),['dynamic','dynamic','require','dynamic']);
+  assert.deepEqual(atlas.edges.slice(0,3).map(edge=>edge.resolution),['unresolved','unresolved','unresolved']);
+  assert.ok(atlas.edges.slice(0,3).every(edge=>edge.computed===true));
+  assert.equal(atlas.edges[3].computed,undefined);
+  assert.deepEqual(atlas.edges.slice(0,3).map(edge=>edge.target),['moduleName','`./${moduleName}`','`./${moduleName}`']);
+  assert.ok(atlas.edges.slice(0,3).every(edge=>edge.code.includes(edge.specifier)));
+  assert.equal(atlas.edges[3].resolution,'internal');
+  assert.ok(atlas.warnings.some(warning=>warning.includes('3 computed import expressions')&&warning.includes('targets are not inferred')));
+});
 test('JavaScript analysis is opt-in and links TS, JSX, ESM and CommonJS modules',async t=>{
   const dir=await fixture(t,{
     'tsconfig.json':JSON.stringify({compilerOptions:{allowJs:false,moduleResolution:'Bundler'}}),

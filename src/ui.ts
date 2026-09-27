@@ -57,6 +57,7 @@ function intro() {
 }
 function edgeDetail(edge: Edge) {
   selectedEdge=edge; const panel=$('inspector'); panel.replaceChildren(el('h2','Connection evidence'),el('h3',`${edge.source} → ${edge.target}`),el('span',edge.kind,'pill'),el('span',edge.resolution,'pill'),el('p',`${edge.source}:${edge.line}`),el('pre',edge.code));
+  if (edge.computed) panel.append(el('p','Computed import: the expression is shown as source evidence; RepoAtlas cannot determine its runtime target.'));
   if (edge.url) panel.append(link(`Open source on GitHub ↗ (line ${edge.line})`,edge.url));
   else panel.append(el('p','Embedded source evidence. A clean GitHub checkout is needed for a permanent source link.'));
   const b=el('button','← Back to module','dep'); b.onclick=()=>choose(edge.source); panel.append(b);
