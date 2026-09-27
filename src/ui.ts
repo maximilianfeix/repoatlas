@@ -1,6 +1,6 @@
 import type { Atlas, Edge, Module } from './types.js';
 import { focusNeighborhood, impactNeighborhood } from './focus.js';
-import { findCycles } from './insights.js';
+import { analyzeReachability, findCycles } from './insights.js';
 const data: Atlas = JSON.parse(document.getElementById('atlas-data')!.textContent!);
 const $ = (id: string) => document.getElementById(id)!;
 function el(tag: string, text = '', cls = '') { const e = document.createElement(tag); e.textContent = text; if (cls) e.className = cls; return e; }
@@ -10,6 +10,7 @@ function svg(tag: string, attrs: Record<string, string | number> = {}) { const e
 const internal = data.edges.filter(e => e.resolution === 'internal');
 const byId = new Map(data.modules.map(m => [m.id,m]));
 const cycleGroups = findCycles(data.modules, internal);
+const reachability = analyzeReachability(data.modules,internal);
 const cycleByModule = new Map(cycleGroups.flatMap((group, index) => group.map(module => [module.id, index] as const)));
 const importerSets = new Map<string, Set<string>>();
 const modulesWithImports = new Set(internal.map(edge=>edge.source));
@@ -18,7 +19,7 @@ for (const edge of internal) {
   importers.add(edge.source);
   importerSets.set(edge.target,importers);
 }
-let selected: string | undefined, selectedEdge: Edge | undefined, entriesOnly = false, focusMap = false, impactMap = false, cyclesOnly = false, cycleGroupIndex = 0, pageIndex = 0, zoom = 1;
+let selected: string | undefined, selectedEdge: Edge | undefined, entriesOnly = false, focusMap = false, impactMap = false, cyclesOnly = false, orphansOnly = false, cycleGroupIndex = 0, pageIndex = 0, zoom = 1;
 $('repo-name').textContent = data.name;
 for (const [value,label] of [[data.modules.length,'modules'],[internal.length,'connections'],[data.modules.filter(m=>m.entry.length).length,'entry points']]) { const stat = el('div'); stat.append(el('strong',String(value)),el('span',String(label))); $('stats').append(stat); }
 for (const group of [...new Set(data.modules.map(m=>m.group))].sort()) { const opt = document.createElement('option'); opt.value = group; opt.textContent = group; $('group').append(opt); }
@@ -32,9 +33,13 @@ function intro() {
   if (data.commit) panel.append(el('p',`Snapshot ${data.commit.slice(0,10)}`));
   const signals = el('div','','insight-summary');
   signals.append(el('h2','Architecture signals'),el('p',`${cycleGroups.length} circular dependency groups · ${cycleByModule.size} modules involved.`));
+  if(reachability.known){
+    signals.append(el('h2','Entry-point reachability'),el('p',`${reachability.reachable.size} reachable · ${reachability.unreachable.size} outside detected entry-point paths. Entry-point detection follows file and package conventions.`));
+    if(reachability.unreachable.size){const b=el('button','Explore unreachable modules','button insight-link');b.onclick=()=>{orphansOnly=true;entriesOnly=false;focusMap=false;impactMap=false;cyclesOnly=false;pageIndex=0;draw();};signals.append(b);}
+  }else signals.append(el('p','Reachability is unknown: no entry points were detected.'));
   if (cycleGroups.length) {
     const b=el('button',cyclesOnly ? 'Exit cycle map' : 'Explore circular dependencies','button insight-link'); b.id='cycle-link';
-    b.onclick=()=>{cyclesOnly=!cyclesOnly;if(cyclesOnly)cycleGroupIndex=0;pageIndex=0;focusMap=false;impactMap=false;draw();};
+    b.onclick=()=>{cyclesOnly=!cyclesOnly;if(cyclesOnly)cycleGroupIndex=0;pageIndex=0;focusMap=false;impactMap=false;orphansOnly=false;draw();};
     signals.append(b);
   } else signals.append(el('p','No circular imports detected in resolved internal dependencies.'));
   const hubs=data.modules.map(module=>({module,count:importerSets.get(module.id)?.size ?? 0}))
@@ -59,6 +64,7 @@ function edgeDetail(edge: Edge) {
 function choose(id: string) {
   selected=id; selectedEdge=undefined;
   const module=byId.get(id)!; const panel=$('inspector'); panel.replaceChildren(el('h2','Module inspector'),el('h3',id),el('p',`${module.lines} lines · ${module.group}`));
+  if(reachability.known)panel.append(el('span',reachability.unreachable.has(id)?'Outside detected entry-point paths':'Reachable from detected entry points',`pill${reachability.unreachable.has(id)?' orphan-pill':''}`));
   for (const reason of module.entry) panel.append(el('span',reason,'pill'));
   const cycleIndex=cycleByModule.get(id);
   if (cycleIndex !== undefined) panel.append(el('span',`Circular group ${cycleIndex+1} · ${cycleGroups[cycleIndex]!.length} modules`,'pill cycle-pill'));
@@ -72,7 +78,7 @@ function choose(id: string) {
   summary.append(metric,el('p',`${directCount} direct · ${totalDependents-directCount} indirect`),el('p','Based on resolved static imports.'));
   const impactButton = el('button',impactMap ? 'Exit impact map' : 'Show impact map','button impact-link');
   impactButton.id='impact-link';
-  impactButton.onclick=()=>{impactMap=!impactMap;focusMap=false;pageIndex=0;draw();choose(id);};
+  impactButton.onclick=()=>{impactMap=!impactMap;focusMap=false;orphansOnly=false;pageIndex=0;draw();choose(id);};
   summary.append(impactButton);
   panel.append(summary);
   for (const [label,edges] of [['Imports',data.edges.filter(e=>e.source===id)],['Imported by',data.edges.filter(e=>e.target===id && e.resolution==='internal')]] as [string,Edge[]][]) {
@@ -87,7 +93,7 @@ function draw() {
   const group=($('group') as HTMLSelectElement).value;
   const focused=focusMap && selected ? focusNeighborhood(data.modules,internal,selected) : undefined;
   const impacted=impactMap && selected ? impactNeighborhood(data.modules,internal,selected) : undefined;
-  const matches=cyclesOnly ? data.modules.filter(m=>cycleByModule.has(m.id) && (cycleGroupIndex<0 || cycleByModule.get(m.id)===cycleGroupIndex)) : focused ?? impacted ?? data.modules.filter(m=>(!query || m.id.toLowerCase().includes(query)) && (!group || m.group===group) && (!entriesOnly || m.entry.length));
+  const matches=cyclesOnly ? data.modules.filter(m=>cycleByModule.has(m.id) && (cycleGroupIndex<0 || cycleByModule.get(m.id)===cycleGroupIndex)) : focused ?? impacted ?? data.modules.filter(m=>(!query || m.id.toLowerCase().includes(query)) && (!group || m.group===group) && (!entriesOnly || m.entry.length) && (!orphansOnly || reachability.unreachable.has(m.id)));
   const scoped=matches;
   const pageCount=Math.max(1,Math.ceil(scoped.length/100));
   pageIndex=Math.min(pageIndex,pageCount-1);
@@ -101,6 +107,9 @@ function draw() {
   $('cycles').toggleAttribute('disabled',cycleGroups.length===0);
   $('cycles').classList.toggle('active',cyclesOnly);
   $('cycles').setAttribute('aria-pressed',String(cyclesOnly));
+  $('orphans').toggleAttribute('disabled',!reachability.known||reachability.unreachable.size===0);
+  $('orphans').classList.toggle('active',orphansOnly);
+  $('orphans').setAttribute('aria-pressed',String(orphansOnly));
   const cycleSelect=$('cycle-group') as HTMLSelectElement;
   cycleSelect.hidden=!cyclesOnly;
   cycleSelect.value=String(cycleGroupIndex);
@@ -113,8 +122,8 @@ function draw() {
   pageStatus.hidden=scoped.length<=100;
   ($('page-previous') as HTMLButtonElement).disabled=pageIndex===0;
   ($('page-next') as HTMLButtonElement).disabled=pageIndex>=pageCount-1;
-  $('view-count').textContent=cyclesOnly ? `${visible.length} modules · ${cycleGroupIndex<0 ? `all ${cycleGroups.length} cycles` : `cycle ${cycleGroupIndex+1}/${cycleGroups.length}`}` : `${visible.length} / ${scoped.length} ${focused ? 'connected' : impacted ? 'affected' : 'matching'} modules`;
-  $('view-description').textContent=cyclesOnly ? `${cycleGroupIndex<0 ? `${cycleGroups.length} circular groups` : `Cycle group ${cycleGroupIndex+1} of ${cycleGroups.length}`} · amber links are part of a cycle` : impacted ? `Potential change impact for ${selected} · reverse imports` : focused ? `Direct neighborhood of ${selected}` : 'Click a connection for its code';
+  $('view-count').textContent=cyclesOnly ? `${visible.length} modules · ${cycleGroupIndex<0 ? `all ${cycleGroups.length} cycles` : `cycle ${cycleGroupIndex+1}/${cycleGroups.length}`}` : `${visible.length} / ${scoped.length} ${orphansOnly ? 'unreachable' : focused ? 'connected' : impacted ? 'affected' : 'matching'} modules`;
+  $('view-description').textContent=cyclesOnly ? `${cycleGroupIndex<0 ? `${cycleGroups.length} circular groups` : `Cycle group ${cycleGroupIndex+1} of ${cycleGroups.length}`} · amber links are part of a cycle` : orphansOnly ? 'Outside paths from detected entry points · entry detection is heuristic' : impacted ? `Potential change impact for ${selected} · reverse imports` : focused ? `Direct neighborhood of ${selected}` : 'Click a connection for its code';
   const list=$('module-list'); list.replaceChildren();
   for (const m of visible) { const b=el('button',`${m.entry.length ? '● ' : ''}${m.id}`,selected===m.id ? 'selected' : ''); b.onclick=()=>choose(m.id); list.append(b); }
   if (!matches.length) list.append(el('p','No matching modules.'));
@@ -155,7 +164,7 @@ function draw() {
     hit.addEventListener('click',()=>edgeDetail(edge)); hit.addEventListener('keydown',(e)=>{if((e as KeyboardEvent).key==='Enter'||(e as KeyboardEvent).key===' ')edgeDetail(edge);}); graph.append(p,hit);
   }
   for(const m of visible) {
-    const {x,y}=positions.get(m.id)!; const g=svg('g',{transform:`translate(${x},${y})`,class:`node${m.entry.length?' entry':''}${cycleByModule.has(m.id)?' cyclic':''}${selected===m.id?' selected':''}`,tabindex:0,role:'button','aria-label':`${m.id}${cycleByModule.has(m.id)?' · circular dependency':''}`});
+    const {x,y}=positions.get(m.id)!; const g=svg('g',{transform:`translate(${x},${y})`,class:`node${m.entry.length?' entry':''}${cycleByModule.has(m.id)?' cyclic':''}${reachability.unreachable.has(m.id)?' orphan':''}${selected===m.id?' selected':''}`,tabindex:0,role:'button','aria-label':`${m.id}${reachability.unreachable.has(m.id)?' · outside detected entry-point paths':''}${cycleByModule.has(m.id)?' · circular dependency':''}`});
     const title=svg('title');title.textContent=m.id;g.append(title,svg('rect',{width:240,height:58,rx:8}));
     const text=svg('text',{x:12,y:24}); const name=m.id.split('/').at(-1)!;text.textContent=(m.entry.length?'● ':'')+(name.length>28?name.slice(0,25)+'…':name);
     const meta=svg('text',{x:12,y:43,class:'meta'});meta.textContent=m.group.length>32?'…'+m.group.slice(-31):m.group;g.append(text,meta);
@@ -164,12 +173,13 @@ function draw() {
 }
 for(const id of ['page-previous','page-next']) $(id).addEventListener('click',()=>{pageIndex+=id==='page-next'?1:-1;draw();});
 $('search').addEventListener('input',()=>{pageIndex=0;draw();});$('group').addEventListener('change',()=>{pageIndex=0;draw();});
-$('entries').onclick=()=>{entriesOnly=!entriesOnly;pageIndex=0;$('entries').classList.toggle('active',entriesOnly);$('entries').setAttribute('aria-pressed',String(entriesOnly));draw();};
-$('impact').onclick=()=>{if(selected){impactMap=!impactMap;focusMap=false;cyclesOnly=false;pageIndex=0;draw();}};
-$('focus').onclick=()=>{if(selected){focusMap=!focusMap;impactMap=false;cyclesOnly=false;pageIndex=0;draw();}};
-$('cycles').onclick=()=>{cyclesOnly=!cyclesOnly;focusMap=false;impactMap=false;pageIndex=0;draw();};
+$('entries').onclick=()=>{entriesOnly=!entriesOnly;orphansOnly=false;pageIndex=0;$('entries').classList.toggle('active',entriesOnly);$('entries').setAttribute('aria-pressed',String(entriesOnly));draw();};
+$('orphans').onclick=()=>{if(reachability.known&&reachability.unreachable.size){orphansOnly=!orphansOnly;entriesOnly=false;focusMap=false;impactMap=false;cyclesOnly=false;pageIndex=0;draw();}};
+$('impact').onclick=()=>{if(selected){impactMap=!impactMap;focusMap=false;cyclesOnly=false;orphansOnly=false;pageIndex=0;draw();}};
+$('focus').onclick=()=>{if(selected){focusMap=!focusMap;impactMap=false;cyclesOnly=false;orphansOnly=false;pageIndex=0;draw();}};
+$('cycles').onclick=()=>{cyclesOnly=!cyclesOnly;focusMap=false;impactMap=false;orphansOnly=false;pageIndex=0;draw();};
 $('cycle-group').addEventListener('change',()=>{cycleGroupIndex=Number(($('cycle-group') as HTMLSelectElement).value);pageIndex=0;draw();});
-$('reset').onclick=()=>{($('search') as HTMLInputElement).value='';($('group') as HTMLSelectElement).value='';entriesOnly=false;focusMap=false;impactMap=false;cyclesOnly=false;cycleGroupIndex=0;pageIndex=0;selected=undefined;selectedEdge=undefined;zoom=1;$('entries').classList.remove('active');$('entries').setAttribute('aria-pressed','false');intro();draw();};
+$('reset').onclick=()=>{($('search') as HTMLInputElement).value='';($('group') as HTMLSelectElement).value='';entriesOnly=false;focusMap=false;impactMap=false;cyclesOnly=false;orphansOnly=false;cycleGroupIndex=0;pageIndex=0;selected=undefined;selectedEdge=undefined;zoom=1;$('entries').classList.remove('active');$('entries').setAttribute('aria-pressed','false');intro();draw();};
 $('zoom-in').onclick=()=>{zoom=Math.min(2,zoom+0.2);draw();};$('zoom-out').onclick=()=>{zoom=Math.max(0.4,zoom-0.2);draw();};
 document.addEventListener('keydown',e=>{if(e.key==='/' && !(e.target instanceof HTMLInputElement)){e.preventDefault();$('search').focus();}});
 intro();draw();

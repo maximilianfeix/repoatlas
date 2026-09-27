@@ -1,5 +1,31 @@
 import type { Edge, Module } from './types.js';
 
+export interface Reachability {
+  known: boolean;
+  reachable: Set<string>;
+  unreachable: Set<string>;
+}
+
+/** Find modules reachable from recognized entry points over resolved internal imports. */
+export function analyzeReachability(modules: Module[], edges: Edge[]): Reachability {
+  const entries=modules.filter(module=>module.entry.length>0);
+  const reachable=new Set<string>();
+  if(!entries.length)return {known:false,reachable,unreachable:new Set()};
+  const ids=new Set(modules.map(module=>module.id));
+  const adjacency=new Map(modules.map(module=>[module.id,new Set<string>()]));
+  for(const edge of edges){
+    if(edge.resolution==='internal'&&ids.has(edge.source)&&ids.has(edge.target))adjacency.get(edge.source)!.add(edge.target);
+  }
+  const pending:string[]=[];
+  for(const entry of entries)if(!reachable.has(entry.id)){reachable.add(entry.id);pending.push(entry.id);}
+  while(pending.length){
+    const id=pending.pop()!;
+    for(const target of adjacency.get(id)??[])if(!reachable.has(target)){reachable.add(target);pending.push(target);}
+  }
+  const orderedReachable=new Set(modules.filter(module=>reachable.has(module.id)).map(module=>module.id));
+  return {known:true,reachable:orderedReachable,unreachable:new Set(modules.filter(module=>!reachable.has(module.id)).map(module=>module.id))};
+}
+
 /** Return deterministic strongly connected groups that contain a real import cycle. */
 export function findCycles(modules: Module[], edges: Edge[]): Module[][] {
   const ids = new Set(modules.map(module => module.id));

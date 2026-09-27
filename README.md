@@ -86,6 +86,7 @@ The Zustand demo includes a workspace boundary: `examples/starter/src/index.tsx`
 - **Monorepos:** resolve declared npm/Yarn or pnpm workspace packages, including `package.json` export subpaths, back to included TypeScript source.
 - **Evidence:** the exact import statement and line, with a commit-pinned GitHub link when the checkout is clean.
 - **Explore and assess change:** search, directory and entry-point filters, Focus map for direct neighbors, and Impact map for every transitively dependent module.
+- **Check entry-point reachability:** find modules outside paths from detected entries; if RepoAtlas finds no entry point, reachability stays unknown instead of flagging every file.
 - **Navigate large maps:** browse filtered results in accessible 100-module pages; the module explorer follows the active page so every analyzed file remains reachable without flooding the canvas.
 - **Spot architecture risks:** isolate circular import groups, trace the exact cycle edges, and jump straight to the most depended-on modules.
 - **Portable output:** one offline HTML file, or the full graph as JSON for other tools.
@@ -99,7 +100,7 @@ repoatlas --help
 
 ## Scope and privacy
 
-RepoAtlas performs **static file-dependency analysis**. Impact map follows resolved internal imports backwards to show potential dependents; circular dependency groups use strongly connected components over the same resolved graph. Workspace links are followed only for packages declared by npm/Yarn workspaces or `pnpm-workspace.yaml` (common `*`, `**`, and exclusion patterns are supported), and export maps remain authoritative for package subpaths. These are source-level signals, not runtime or test-coverage guarantees. RepoAtlas does not execute project code, install target dependencies, or infer runtime calls, framework routes, or computed imports. Unresolved and external dependencies remain visible as unresolved or external.
+RepoAtlas performs **static file-dependency analysis**. Entry-point reachability follows resolved imports from entries detected by package metadata and file conventions; entry detection is heuristic, so unreachable means “not found along these static paths,” not proof of dead code. If no entry is detected, reachability is unknown. Impact map follows resolved internal imports backwards to show potential dependents; circular dependency groups use strongly connected components over the same resolved graph. Workspace links are followed only for packages declared by npm/Yarn workspaces or `pnpm-workspace.yaml` (common `*`, `**`, and exclusion patterns are supported), and export maps remain authoritative for package subpaths. These are source-level signals, not runtime or test-coverage guarantees. RepoAtlas does not execute project code, install target dependencies, or infer runtime calls, framework routes, or computed imports. Unresolved and external dependencies remain visible as unresolved or external.
 
 Generated directories, declaration files, hidden files, and tests are excluded by default. Use `--include-tests` to include tests and fixtures. Analysis is limited to 5,000 files and 2 MB per source file; the interactive map displays 100 matching modules per page, with previous/next navigation, while JSON retains the full analyzed graph. Local edits disable GitHub source links, but source evidence remains embedded in the HTML.
 
