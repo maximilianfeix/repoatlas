@@ -82,7 +82,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: maximilianfeix/repoatlas@v1.4.0
+      - uses: maximilianfeix/repoatlas@v1.5.0
         with:
           output: repoatlas-map.html
 ```
@@ -106,7 +106,7 @@ The Zustand demo includes a workspace boundary: `examples/starter/src/index.tsx`
 ## What you can inspect
 
 - **Project shape:** source modules, directories, and likely entry points.
-- **Dependencies:** static imports, re-exports, type imports, literal dynamic imports, and literal `require` calls.
+- **Dependencies:** static imports, re-exports, type imports, and literal dynamic imports or `require` calls. Computed calls remain visible as unresolved source evidence; their targets are never guessed.
 - **Mixed repositories:** opt into `.js`, `.jsx`, `.mjs`, and `.cjs` modules with `--include-js`; TypeScript-only stays the default.
 - **Evidence:** the exact import statement and line, with a commit-pinned GitHub link when the checkout is clean.
 - **Explore maps and assess change:** search, directory and entry-point filters, accessible pagination, Focus map for direct neighbors, and Impact map for every transitively dependent module.
@@ -183,7 +183,7 @@ RepoAtlas v1 snapshots use `schemaVersion: 1`. Generate the full JSON Schema at 
 
 ## Scope and privacy
 
-RepoAtlas performs **static file-dependency analysis**. Entry-point reachability follows resolved imports from entries detected by package metadata and file conventions; entry detection is heuristic, so unreachable means “not found along these static paths,” not proof of dead code. If no entry is detected, reachability is unknown. The boundary matrix groups declared workspace packages separately and other files by their top-level directory; it counts resolved internal imports only. Matrices and SVG exports show at most 80 groups; use the existing search or directory filters to narrow larger projects, or use the text report. Impact map follows resolved internal imports backwards to show potential dependents; circular dependency groups use strongly connected components over the same resolved graph. Workspace links are followed only for packages declared by npm/Yarn workspaces or `pnpm-workspace.yaml` (common `*`, `**`, and exclusion patterns are supported), and export maps remain authoritative for package subpaths. These are source-level signals, not runtime or test-coverage guarantees. RepoAtlas does not execute project code, install target dependencies, or infer runtime calls, framework routes, or computed imports. Unresolved and external dependencies remain visible as unresolved or external.
+RepoAtlas performs **static file-dependency analysis**. Entry-point reachability follows resolved imports from entries detected by package metadata and file conventions; entry detection is heuristic, so unreachable means “not found along these static paths,” not proof of dead code. If no entry is detected, reachability is unknown. The boundary matrix groups declared workspace packages separately and other files by their top-level directory; it counts resolved internal imports only. Matrices and SVG exports show at most 80 groups; use the existing search or directory filters to narrow larger projects, or use the text report. Impact map follows resolved internal imports backwards to show potential dependents; circular dependency groups use strongly connected components over the same resolved graph. Workspace links are followed only for packages declared by npm/Yarn workspaces or `pnpm-workspace.yaml` (common `*`, `**`, and exclusion patterns are supported), and export maps remain authoritative for package subpaths. These are source-level signals, not runtime or test-coverage guarantees. RepoAtlas does not execute project code, install target dependencies, or infer runtime calls or framework routes. Computed import calls are shown as unresolved evidence without inferring their targets. Unresolved and external dependencies remain visible as unresolved or external.
 
 Generated directories, declaration files, hidden files, and tests are excluded by default. Use `--include-tests` to include tests and fixtures, and `--include-js` to include JavaScript modules. Analysis is limited to 5,000 source files and 2 MB per source file; the interactive map displays 100 matching modules per page, with previous/next navigation. Cluster mode groups visible modules by declared workspace package or top-level source folder, and a navigable overview appears on pages with more than 50 modules. JSON retains the full analyzed graph. Local edits disable GitHub source links, but source evidence remains embedded in the HTML.
 

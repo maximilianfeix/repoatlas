@@ -6,6 +6,7 @@ export interface Edge {
   kind: 'import' | 'type' | 'export' | 'dynamic' | 'require';
   line: number; code: string; url?: string;
   resolution: 'internal' | 'external' | 'unresolved';
+  computed?: true;
 }
 export interface Atlas {
   schemaVersion: 1; name: string; repository?: string; commit?: string;
