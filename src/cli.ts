@@ -8,6 +8,7 @@ import path from 'node:path';
 import { analyze, githubURL } from './analyze.js';
 import { render } from './render.js';
 import { compareAtlases, parseAtlas } from './compare.js';
+import { renderComparisonHtml } from './compare-render.js';
 import { renderBoundarySvg, renderTextReport } from './report.js';
 import { checkArchitecture, parseArchitectureConfig, renderGitHubAnnotations, renderRuleReport } from './rules.js';
 
@@ -63,10 +64,22 @@ program.command('compare').description('Compare two RepoAtlas JSON snapshots for
   .argument('<base>', 'baseline RepoAtlas JSON file')
   .argument('<head>', 'current RepoAtlas JSON file')
   .option('--json', 'emit machine-readable JSON instead of text')
+  .option('--format <format>', 'text, json, or interactive html', 'text')
+  .option('--output <file>', 'write HTML to a standalone file (requires --format html)')
+  .option('--overwrite', 'replace an existing --output file')
   .action(async (baseFile:string,headFile:string,opts) => {
+    if(!['text','json','html'].includes(opts.format))throw new Error('--format must be text, json, or html.');
+    if(opts.overwrite&&!opts.output)throw new Error('--overwrite requires --output.');
+    if(opts.output&&opts.format!=='html')throw new Error('--output is supported only with --format html.');
+    if(opts.format==='html'&&!opts.output)throw new Error('--format html requires --output <file>.');
+    if((opts.json||program.opts().json||process.argv.includes('--json'))&&opts.format!=='text')throw new Error('Choose either --json or --format, not both.');
     const [base,head]=await Promise.all([loadSnapshot(baseFile),loadSnapshot(headFile)]);
     const comparison=compareAtlases(base,head);
-    if(opts.json||program.opts().json||process.argv.includes('--json')){process.stdout.write(JSON.stringify(comparison,null,2)+'\n');return;}
+    if(opts.format==='html'){
+      const output=path.resolve(opts.output);await writeFile(output,renderComparisonHtml(comparison),{flag:opts.overwrite?'w':'wx'});
+      process.stdout.write(`Architecture diff saved: ${output}\n`);return;
+    }
+    if(opts.json||opts.format==='json'||program.opts().json||process.argv.includes('--json')){process.stdout.write(JSON.stringify(comparison,null,2)+'\n');return;}
     const baseCommit=comparison.base.commit?` (${comparison.base.commit.slice(0,10)})`:'';
     const headCommit=comparison.head.commit?` (${comparison.head.commit.slice(0,10)})`:'';
     process.stdout.write(`Architecture drift: ${comparison.base.name}${baseCommit} → ${comparison.head.name}${headCommit}\n`);

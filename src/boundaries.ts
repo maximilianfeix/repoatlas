@@ -17,15 +17,20 @@ export interface BoundaryMatrix {
   cells: BoundaryCell[];
 }
 
+export function boundaryGroup(module: Module): { id: string; label: string } {
+  const label = module.workspace ?? (module.group === '.' ? '.' : module.group.split('/')[0]!);
+  return { id: module.workspace ? `package:${module.workspace}` : `directory:${label}`, label };
+}
+
 /** Group modules by workspace package or their top-level source directory. */
 export function buildBoundaryMatrix(modules: Module[], edges: Edge[]): BoundaryMatrix {
   const groupByModule=new Map<string,string>();
   const counts=new Map<string,number>();
   const labels=new Map<string,string>();
   for(const module of modules){
-    const id=module.workspace?`package:${module.workspace}`:`directory:${module.group==='.'?'.':module.group.split('/')[0]}`;
+    const {id,label}=boundaryGroup(module);
     groupByModule.set(module.id,id);
-    labels.set(id,module.workspace??(module.group==='.'?'.':module.group.split('/')[0]!));
+    labels.set(id,label);
     counts.set(id,(counts.get(id)??0)+1);
   }
   const compare=(a:string,b:string)=>a<b?-1:a>b?1:0;

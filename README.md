@@ -125,8 +125,8 @@ The analyzed revisions and upstream license notices are recorded in [`docs/examp
     <td width="50%" valign="top"><strong>Get oriented quickly</strong><br>See detected entries, reachability, cycles, impact, external packages, and shortest entry paths. Share a focused view with a deep link.</td>
   </tr>
   <tr>
-    <td width="50%" valign="top"><strong>Read workspace boundaries</strong><br>Resolve declared npm, Yarn, and pnpm workspace packages through export maps. Compare package or directory boundaries and inspect the imports behind each cell.</td>
-    <td width="50%" valign="top"><strong>Catch architecture drift</strong><br>Compare JSON snapshots to find changed modules, dependencies, and import specifiers. Formatting and line shifts alone do not count as drift.</td>
+    <td width="50%" valign="top"><strong>Read workspace boundaries</strong><br>Start with a ranked package and directory overview, then drill into a package or open any import count to inspect its exact source lines. Resolve declared npm, Yarn, and pnpm workspace packages through export maps.</td>
+    <td width="50%" valign="top"><strong>Catch architecture drift</strong><br>Compare JSON snapshots to find changed modules, dependencies, and import specifiers. Export the comparison as a searchable standalone HTML report with source links. Formatting and line shifts alone do not count as drift.</td>
   </tr>
   <tr>
     <td width="50%" valign="top"><strong>Set rules for CI</strong><br>Fail builds on forbidden boundaries, dependency cycles, or unreachable-module limits. Reports include the source file and line.</td>
@@ -141,7 +141,12 @@ repoatlas ./my-project --json > before.json
 # Update the checkout, then save the next snapshot.
 repoatlas ./my-project --json > after.json
 repoatlas compare before.json after.json
+repoatlas compare before.json after.json --format html --output architecture-diff.html
 ```
+
+Open `architecture-diff.html` to filter added, removed, and changed relationships, search paths or imports, and expand each dependency to its source line in both snapshots. The report is a single offline file. It links to commit-pinned source on GitHub when the snapshots contain source URLs.
+
+In the map, choose **Packages** for a ranked overview of workspace packages and top-level source directories. The dependency rows count resolved internal import sites; selecting a package opens its modules, and selecting a count lists every contributing source line. Use **Boundaries** for the full source-by-target matrix.
 
 ### Enforce boundaries in CI
 
