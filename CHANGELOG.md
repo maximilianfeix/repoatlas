@@ -1,5 +1,16 @@
 # Changelog
 
+## [2.17.0] - 2026-09-28
+
+### Improved
+
+- Paginate long export import-site lists in accessible 20-item pages instead of hiding sites after the first 20.
+- Announce the visible range and page position; disable previous/next controls at either boundary.
+
+### Quality
+
+- Test empty, short, multi-page, clamped, and invalid pagination windows.
+
 ## [2.16.0] - 2026-09-28
 
 ### Added

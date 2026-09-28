@@ -9,6 +9,7 @@ import { groupParallelEdges, type ParallelEdgeGroup } from './graph.js';
 import { activateOnKeyboard } from './accessibility.js';
 import { buildEntryTour, clampEntryTourStep } from './tour.js';
 import { matchesModuleSearch, matchingExports } from './search.js';
+import { pageWindow } from './pagination.js';
 const data: Atlas = JSON.parse(document.getElementById('atlas-data')!.textContent!);
 const $ = (id: string) => document.getElementById(id)!;
 function el(tag: string, text = '', cls = '') { const e = document.createElement(tag); e.textContent = text; if (cls) e.className = cls; return e; }
@@ -189,7 +190,31 @@ function choose(id: string,syncRoute=true) {
       if(module.url){const base=module.url.replace(/#L\d+$/,'');row.replaceChildren(link(label,`${base}#L${item.line}`));}
       panel.append(row);
       const sites=importersByTarget.get(id)?.get(item.name)??[];
-      if(sites.length){const details=el('details','','export-importers'),summary=el('summary',`${sites.length} direct named import/re-export site${sites.length===1?'':'s'}`);details.append(summary);for(const site of sites.slice(0,20)){const button=el('button',`${site.edge.source}:${site.edge.line} · as ${site.localName}`,'dep');button.onclick=()=>edgeDetail(site.edge);details.append(button);}if(sites.length>20)details.append(el('p',`${sites.length-20} more import sites are not shown.`));panel.append(details);}
+      if(sites.length){
+        let requestedPage=0;
+        const details=el('details','','export-importers'),summary=el('summary',`${sites.length} direct named import/re-export site${sites.length===1?'':'s'}`),status=el('span','','export-importer-status');
+        status.setAttribute('aria-live','polite');
+        const list=el('div','','export-importer-list');
+        details.append(summary,list);
+        const nav=el('div','','export-importer-pages');
+        const previous=el('button','← Previous','button') as HTMLButtonElement;
+        previous.setAttribute('aria-label','Previous import-site page');
+        const pageStatus=el('span','','badge');pageStatus.setAttribute('aria-live','polite');
+        const next=el('button','Next →','button') as HTMLButtonElement;
+        next.setAttribute('aria-label','Next import-site page');
+        function renderImportSites(){
+          const window=pageWindow(sites,requestedPage);requestedPage=window.page;
+          list.replaceChildren(...window.items.map(site=>{const button=el('button',`${site.edge.source}:${site.edge.line} · as ${site.localName}`,'dep');button.onclick=()=>edgeDetail(site.edge);return button;}));
+          status.textContent=`Showing sites ${window.start+1}–${window.end} of ${sites.length}.`;
+          pageStatus.textContent=`Page ${window.page+1} of ${window.pageCount}`;
+          previous.disabled=window.page===0;next.disabled=window.page+1===window.pageCount;
+        }
+        previous.onclick=()=>{requestedPage--;renderImportSites();};
+        next.onclick=()=>{requestedPage++;renderImportSites();};
+        if(sites.length>20){nav.append(previous,pageStatus,next);details.append(status,nav);}
+        renderImportSites();
+        panel.append(details);
+      }
     }
     if(module.exports.length>30)panel.append(el('p',`${module.exports.length-30} more exports omitted from this panel.`));
   }
