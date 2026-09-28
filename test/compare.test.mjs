@@ -52,6 +52,15 @@ test('renders an offline, searchable HTML diff with exact source evidence and es
   assert.match(html,/\\u003c\/script>/);assert.doesNotMatch(html,/<script>alert\([12]\)<\/script>/);
   assert.match(html,/blob\/old\/a\.ts#L3/);assert.doesNotMatch(html,/href="javascript:/);
   assert.match(html,/aria-label="Search architecture changes"/);assert.match(html,/No tracking or network requests/);
+  assert.match(html,/prefers-reduced-motion:reduce/);assert.match(html,/translateY\(-1px\)/);
+});
+
+test('keeps base and head dependency links pinned to their respective commits',()=>{
+  const before=atlas(['old.ts','shared.ts'],[edge('old.ts','shared.ts','./shared',{url:'https://github.com/example/demo/blob/base-sha/old.ts#L1'})],'base');
+  const after=atlas(['new.ts','shared.ts'],[edge('new.ts','shared.ts','./shared',{url:'https://github.com/example/demo/blob/head-sha/new.ts#L1'})],'head');
+  const html=renderComparisonHtml(compareAtlases(before,after));
+  assert.match(html,/blob\/base-sha\/old\.ts#L1/);
+  assert.match(html,/blob\/head-sha\/new\.ts#L1/);
 });
 
 test('validates snapshot structure and allows additive workspace metadata',()=>{

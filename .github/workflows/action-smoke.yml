@@ -7,6 +7,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
       - name: Generate a map with the released v2 action
         uses: maximilianfeix/repoatlas@v2
         with:
@@ -17,3 +19,20 @@ jobs:
           retention-days: 1
       - name: Verify map output
         run: test -s repoatlas-smoke-map.html && grep -q 'RepoAtlas' repoatlas-smoke-map.html && grep -q 'scripts/examples.mjs' repoatlas-smoke-map.html
+      - name: Generate a PR architecture diff with the working tree action
+        if: github.event_name == 'pull_request'
+        uses: ./
+        with:
+          compare-to: ${{ github.event.pull_request.base.sha }}
+          output: repoatlas-smoke-diff.html
+          artifact-name: repoatlas-smoke-diff
+          retention-days: 1
+      - name: Verify architecture diff output
+        if: github.event_name == 'pull_request'
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          test -s repoatlas-smoke-diff.html
+          grep -q 'What changed in the architecture?' repoatlas-smoke-diff.html
+          grep -q "${BASE_SHA:0:10}" repoatlas-smoke-diff.html
+          grep -q "$(git rev-parse --short=10 HEAD)" repoatlas-smoke-diff.html

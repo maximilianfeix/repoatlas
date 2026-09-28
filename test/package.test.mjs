@@ -15,4 +15,9 @@ test('composite action keeps its node setup structure and JavaScript input wired
   assert.match(action,/  include-js:\n    description: Include JavaScript and JSX modules/);
   assert.match(action,/REPOATLAS_INCLUDE_JS: \$\{\{ inputs\.include-js \}\}/);
   assert.match(action,/args\+=\(--include-js\)/);
+  assert.match(action,/  compare-to:\n    description: Optional base commit SHA/);
+  assert.match(action,/REPOATLAS_COMPARE_TO: \$\{\{ inputs\.compare-to \}\}/);
+  assert.match(action,/compare-to must be a full Git commit SHA/);
+  assert.match(action,/git worktree add --quiet --detach/);
+  assert.match(action,/--format html --output/);
 });

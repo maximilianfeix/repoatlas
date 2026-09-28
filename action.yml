@@ -18,6 +18,10 @@ inputs:
     description: Include JavaScript and JSX modules in mixed repositories
     required: false
     default: 'false'
+  compare-to:
+    description: Optional base commit SHA; generate an architecture diff against this revision instead of a map
+    required: false
+    default: ''
   artifact-name:
     description: Name of the downloadable workflow artifact
     required: false
@@ -53,11 +57,30 @@ runs:
         REPOATLAS_INCLUDE_TESTS: ${{ inputs.include-tests }}
         REPOATLAS_INCLUDE_JS: ${{ inputs.include-js }}
         REPOATLAS_CLI: ${{ github.action_path }}/dist/cli.js
+        REPOATLAS_COMPARE_TO: ${{ inputs.compare-to }}
       run: |
         args=()
         if [[ "$REPOATLAS_INCLUDE_TESTS" == "true" ]]; then args+=(--include-tests); fi
         if [[ "$REPOATLAS_INCLUDE_JS" == "true" ]]; then args+=(--include-js); fi
-        node "$REPOATLAS_CLI" "$REPOATLAS_PATH" -o "$REPOATLAS_OUTPUT" "${args[@]}"
+        if [[ -n "$REPOATLAS_COMPARE_TO" ]]; then
+          if [[ ! "$REPOATLAS_COMPARE_TO" =~ ^[0-9a-fA-F]{40,64}$ ]]; then
+            echo "compare-to must be a full Git commit SHA." >&2
+            exit 2
+          fi
+          git fetch --no-tags --depth=1 origin "$REPOATLAS_COMPARE_TO"
+          baseline="$(mktemp -d)"
+          trap 'git worktree remove --force "$baseline" >/dev/null 2>&1 || true; rmdir "$baseline" >/dev/null 2>&1 || true' EXIT
+          rmdir "$baseline"
+          git worktree add --quiet --detach "$baseline" "$REPOATLAS_COMPARE_TO"
+          before_json="$(mktemp)"
+          after_json="$(mktemp)"
+          trap 'git worktree remove --force "$baseline" >/dev/null 2>&1 || true; rm -f "$before_json" "$after_json"' EXIT
+          node "$REPOATLAS_CLI" "$baseline" "${args[@]}" --json > "$before_json"
+          node "$REPOATLAS_CLI" "$REPOATLAS_PATH" "${args[@]}" --json > "$after_json"
+          node "$REPOATLAS_CLI" compare "$before_json" "$after_json" --format html --output "$REPOATLAS_OUTPUT"
+        else
+          node "$REPOATLAS_CLI" "$REPOATLAS_PATH" -o "$REPOATLAS_OUTPUT" "${args[@]}"
+        fi
     - name: Upload architecture map
       id: upload
       uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1

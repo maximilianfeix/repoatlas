@@ -64,14 +64,14 @@ RepoAtlas turns a TypeScript repository into a map you can investigate. Follow a
 Requires **Node.js 22 or later** and **Git**. Point RepoAtlas at a public GitHub repository:
 
 ```sh
-npx --yes --package=github:maximilianfeix/repoatlas#v2.0.0 -- \
+npx --yes --package=github:maximilianfeix/repoatlas#v2.1.0 -- \
   repoatlas https://github.com/pmndrs/zustand --out zustand-map.html
 ```
 
 Open `zustand-map.html` in your browser. RepoAtlas also analyzes a local checkout:
 
 ```sh
-npx --yes --package=github:maximilianfeix/repoatlas#v2.0.0 -- \
+npx --yes --package=github:maximilianfeix/repoatlas#v2.1.0 -- \
   repoatlas ./my-project --out architecture.html
 ```
 
@@ -92,12 +92,31 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: maximilianfeix/repoatlas@v2.0.0
+      - uses: maximilianfeix/repoatlas@v2.1.0
         with:
           output: repoatlas-map.html
 ```
 
-The action accepts `path`, `artifact-name`, `retention-days`, `include-tests`, and `include-js`. It needs read-only repository access and no token input. Maps include project paths and source snippets, so restrict artifacts from private repositories.
+For pull requests, set `compare-to` to the base commit SHA to make the artifact a source-linked architecture diff. This uses only `contents: read`; it does not post a comment or need a write token.
+
+```yaml
+name: Architecture review
+on: [pull_request]
+permissions:
+  contents: read
+jobs:
+  architecture:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: maximilianfeix/repoatlas@v2.1.0
+        with:
+          compare-to: ${{ github.event.pull_request.base.sha }}
+          output: architecture-diff.html
+          artifact-name: architecture-diff
+```
+
+Download `architecture-diff` from the workflow run to explore added and removed modules and imports; each edge links to the exact base or head source line. The action accepts `path`, `compare-to`, `artifact-name`, `retention-days`, `include-tests`, and `include-js`. It needs read-only repository access and no token input. Maps and diffs include project paths and source snippets, so restrict artifacts from private repositories.
 
 ## What the map shows
 
