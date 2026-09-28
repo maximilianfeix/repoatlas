@@ -65,19 +65,32 @@ RepoAtlas turns a TypeScript repository into a map you can investigate. Follow a
 Requires **Node.js 22 or later** and **Git**. Point RepoAtlas at a public GitHub repository:
 
 ```sh
-npx --yes --package=github:maximilianfeix/repoatlas#v2.2.0 -- \
+npx --yes --package=github:maximilianfeix/repoatlas#v2.3.0 -- \
   repoatlas-cli https://github.com/pmndrs/zustand --out zustand-map.html
 ```
 
 Open `zustand-map.html` in your browser. RepoAtlas also analyzes a local checkout:
 
 ```sh
-npx --yes --package=github:maximilianfeix/repoatlas#v2.2.0 -- \
+npx --yes --package=github:maximilianfeix/repoatlas#v2.3.0 -- \
   repoatlas-cli ./my-project --out architecture.html
 ```
 
 It downloads the versioned CLI from GitHub. The `repoatlas-cli` alias ensures `npx` uses the selected release even when another `repoatlas` is installed globally. No global install, API key, or token for a public repository is needed.
 Each GitHub release also includes an installable `.tgz` package for direct downloads or private registries.
+
+## Share an architecture card
+
+Create a compact SVG for a README or project page from a RepoAtlas JSON snapshot:
+
+```sh
+repoatlas-cli https://github.com/pmndrs/zustand --json > architecture.json
+repoatlas-cli report architecture.json --format card --output docs/architecture.svg
+```
+
+The card summarizes modules, detected entry points, resolved static imports, and dependency cycles. It is deterministic, contains no scripts or external requests, and states that it does not describe runtime behavior. Use `--overwrite` to replace an existing card. The [refresh workflow](.github/workflows/architecture-card.yml) shows how to regenerate a checked-in card through a reviewable pull request.
+
+<p align="center"><img src="docs/assets/architecture-card.svg" alt="RepoAtlas architecture summary for its own TypeScript source: module, entry point, resolved import, and cycle counts" width="720"></p>
 
 ## GitHub Actions
 
@@ -93,7 +106,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: maximilianfeix/repoatlas@v2.2.0
+      - uses: maximilianfeix/repoatlas@v2.3.0
         with:
           output: repoatlas-map.html
 ```
@@ -110,7 +123,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: maximilianfeix/repoatlas@v2.2.0
+      - uses: maximilianfeix/repoatlas@v2.3.0
         with:
           compare-to: ${{ github.event.pull_request.base.sha }}
           output: architecture-diff.html
@@ -132,7 +145,7 @@ Add this server entry to an MCP client configuration and replace the project pat
       "command": "npx",
       "args": [
         "--yes",
-        "--package=github:maximilianfeix/repoatlas#v2.2.0",
+        "--package=github:maximilianfeix/repoatlas#v2.3.0",
         "repoatlas-cli",
         "mcp",
         "/absolute/path/to/project"

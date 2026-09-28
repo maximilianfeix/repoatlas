@@ -65,3 +65,36 @@ export function renderBoundarySvg(atlas:Atlas):string {
   parts.push('</svg>');
   return parts.join('\n')+'\n';
 }
+
+/** Render a compact, deterministic SVG card for repository landing pages. */
+export function renderArchitectureCard(atlas:Atlas):string {
+  const internal=atlas.edges.filter(edge=>edge.resolution==='internal');
+  const entries=atlas.modules.filter(module=>module.entry.length).length;
+  const cycles=findCycles(atlas.modules,internal);
+  const title=atlas.name.length>48?`${atlas.name.slice(0,45)}…`:atlas.name;
+  const stats=[
+    {value:String(atlas.modules.length),label:'modules'},
+    {value:String(entries),label:'entry points'},
+    {value:String(internal.length),label:'resolved imports'},
+    {value:String(cycles.length),label:'dependency cycles'},
+  ];
+  const positions=[28,204,380,556];
+  const parts=[
+    '<svg xmlns="http://www.w3.org/2000/svg" width="720" height="232" viewBox="0 0 720 232" role="img" aria-labelledby="title desc">',
+    `<title id="title">RepoAtlas architecture summary — ${xml(atlas.name)}</title>`,
+    '<desc id="desc">Static TypeScript import analysis. Counts summarize this snapshot and do not represent runtime calls.</desc>',
+    '<defs><linearGradient id="wash" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#14251f"/><stop offset="1" stop-color="#111923"/></linearGradient></defs>',
+    '<rect x="1" y="1" width="718" height="230" rx="18" fill="#0b0e14" stroke="#2b3b3b"/>',
+    '<path d="M19 2h682a17 17 0 0 1 17 17v55H2V19A17 17 0 0 1 19 2Z" fill="url(#wash)"/>',
+    '<text x="28" y="31" fill="#92edc7" font-family="system-ui,sans-serif" font-size="11" font-weight="700" letter-spacing="2">REPOATLAS  /  ARCHITECTURE SNAPSHOT</text>',
+    `<text x="28" y="57" fill="#e6edf7" font-family="system-ui,sans-serif" font-size="19" font-weight="650">${xml(title)}</text>`,
+  ];
+  for(let index=0;index<stats.length;index++){
+    const item=stats[index]!;const x=positions[index]!;
+    parts.push(`<g><rect x="${x}" y="88" width="156" height="83" rx="11" fill="#111923" stroke="#293748"/><text x="${x+14}" y="129" fill="#92edc7" font-family="ui-monospace,monospace" font-size="26" font-weight="700">${item.value}</text><text x="${x+14}" y="151" fill="#93a1b8" font-family="system-ui,sans-serif" font-size="12">${item.label}</text></g>`);
+  }
+  parts.push('<path d="M28 190h664" stroke="#293748"/>');
+  parts.push('<text x="28" y="211" fill="#93a1b8" font-family="system-ui,sans-serif" font-size="11">Evidence-backed static imports · runtime behavior is not inferred</text>');
+  parts.push('</svg>');
+  return parts.join('\n')+'\n';
+}
