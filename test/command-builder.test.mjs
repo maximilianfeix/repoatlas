@@ -9,7 +9,7 @@ test('repository input accepts canonical GitHub URLs, short names, and .git URLs
 });
 
 test('command output only contains validated owner and repository names', () => {
-  assert.equal(createCommand('https://github.com/honojs/hono'), "npx --yes --package=github:maximilianfeix/repoatlas#v2.7.0 -- repoatlas-cli 'https://github.com/honojs/hono' -o 'hono-architecture.html'");
+  assert.equal(createCommand('https://github.com/honojs/hono'), "npx --yes --package=github:maximilianfeix/repoatlas#v2.8.0 -- repoatlas-cli 'https://github.com/honojs/hono' -o 'hono-architecture.html'");
 });
 
 test('repository input rejects non-GitHub hosts, credentials, extra paths, and shell syntax', () => {

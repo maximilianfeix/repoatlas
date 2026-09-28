@@ -1,23 +1,9 @@
-import { analyzeLocalRepositoryFiles, analyzePublicRepository, parsePublicRepositoryInput } from './repository-analysis.js';
+import { parsePublicRepositoryInput } from './repository-analysis.js';
+import { runAnalysisInWorker } from './analysis-client.js';
 
-const compilerUrl='https://cdn.jsdelivr.net/npm/typescript@6.0.3/lib/typescript.js';
-const compilerIntegrity='sha384-hLq9xq2/tlk0vqCTYY2KECZxYi9UuHw/GLg6biud4KQQhLlq4x/OouQB+CusnUN3';
-let compilerPromise;
 let currentController;
 let currentHtml;
 const byId=(id)=>document.getElementById(id);
-
-function loadCompiler(){
-  if(window.ts?.version==='6.0.3')return Promise.resolve(window.ts);
-  if(compilerPromise)return compilerPromise;
-  compilerPromise=new Promise((resolve,reject)=>{
-    const script=document.createElement('script');script.src=compilerUrl;script.integrity=compilerIntegrity;script.crossOrigin='anonymous';script.async=true;
-    script.onload=()=>window.ts?.version==='6.0.3'?resolve(window.ts):reject(new Error('The pinned TypeScript compiler did not load correctly.'));
-    script.onerror=()=>reject(new Error('Could not load the pinned TypeScript compiler from jsDelivr. Check your connection and try again.'));
-    document.head.append(script);
-  }).catch(error=>{compilerPromise=undefined;throw error;});
-  return compilerPromise;
-}
 
 function base64(bytes){let binary='';for(const byte of new Uint8Array(bytes))binary+=String.fromCharCode(byte);return btoa(binary);}
 async function digest(value){return `sha256-${base64(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(value)))}`;}
@@ -46,12 +32,11 @@ function progress(item){
 
 const input=byId('repo-url'),analyzeButton=byId('browser-analyze'),localButton=byId('browser-local'),localPicker=byId('browser-local-picker'),cancelButton=byId('browser-cancel'),progressPanel=byId('browser-progress'),errorPanel=byId('browser-error'),result=byId('browser-result'),frame=byId('browser-map'),download=byId('download-browser-map');
 
-async function runAnalysis(analyze){
+async function runAnalysis(request){
   errorPanel.textContent='';result.hidden=true;frame.classList.remove('loaded');frame.srcdoc='';currentHtml=undefined;
-  currentController=new AbortController();analyzeButton.disabled=true;localButton.disabled=true;cancelButton.hidden=false;progressPanel.hidden=false;progressPanel.setAttribute('aria-busy','true');progress({stage:'repository',message:'Loading the pinned TypeScript compiler…'});
+  currentController=new AbortController();analyzeButton.disabled=true;localButton.disabled=true;cancelButton.hidden=false;progressPanel.hidden=false;progressPanel.setAttribute('aria-busy','true');progress({stage:'repository',message:'Preparing background analysis…'});
   try{
-    const ts=await loadCompiler();
-    const atlas=await analyze(ts,currentController.signal);
+    const atlas=await runAnalysisInWorker({...request,includeTests:byId('browser-tests').checked,signal:currentController.signal,onProgress:progress});
     progress({stage:'render',message:'Building the interactive map…'});
     currentHtml=await createMapHtml(atlas);
     byId('browser-result-label').textContent=`${atlas.name} · ${atlas.modules.length.toLocaleString()} modules · ${atlas.edges.length.toLocaleString()} imports`;
@@ -78,13 +63,13 @@ async function runAnalysis(analyze){
 
 analyzeButton.addEventListener('click',()=>{
   try{parsePublicRepositoryInput(input.value);}catch(error){errorPanel.textContent=error.message;input.focus();return;}
-  void runAnalysis((compiler,signal)=>analyzePublicRepository(input.value,{compiler,includeTests:byId('browser-tests').checked,signal,onProgress:progress}));
+  void runAnalysis({type:'public',input:input.value});
 });
 localButton.addEventListener('click',()=>localPicker.click());
 localPicker.addEventListener('change',()=>{
   if(!localPicker.files?.length)return;
   const files=[...localPicker.files];localPicker.value='';
-  void runAnalysis((compiler,signal)=>analyzeLocalRepositoryFiles(files,{compiler,includeTests:byId('browser-tests').checked,signal,onProgress:progress}));
+  void runAnalysis({type:'local',files});
 });
 
 cancelButton.addEventListener('click',()=>currentController?.abort(new DOMException('Canceled by user','AbortError')));
