@@ -1,5 +1,17 @@
 # Changelog
 
+## [2.12.0] - 2026-09-28
+
+### Added
+
+- Add the bounded `module_context` MCP tool to return module metadata, direct import evidence, and its detected-entry path in one call.
+- Report complete edge totals and explicit truncation while preserving exact source lines and commit-pinned links.
+- Teach the installable agent skill to select the smallest MCP query for each task instead of always loading a repository summary.
+
+### Quality
+
+- Cover tool discovery, bounded import evidence, exact path lines, unreachable modules, and missing module errors in the MCP protocol test.
+
 ## [2.11.0] - 2026-09-28
 
 ### Added

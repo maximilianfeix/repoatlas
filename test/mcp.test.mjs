@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtemp, mkdir, readdir, rm, writeFile } from 'node:fs/promises';
+import { mkdtemp, mkdir, readdir, rm, unlink, writeFile } from 'node:fs/promises';
 import { spawn } from 'node:child_process';
 import { once } from 'node:events';
 import { tmpdir } from 'node:os';
@@ -13,6 +13,7 @@ test('stdio MCP exposes deterministic architecture and exact import evidence', a
   await writeFile(path.join(project, 'package.json'), JSON.stringify({ name: 'mcp-fixture', main: 'src/index.ts' }));
   await writeFile(path.join(project, 'src/index.ts'), "import { helper } from './util.js';\nexport const app = helper();\n");
   await writeFile(path.join(project, 'src/util.ts'), 'export function helper() { return 1; }\n');
+  await writeFile(path.join(project, 'src/secondary.ts'), "import { helper } from './util.js';\nexport const other = helper();\n");
 
   const request = (id, method, params = {}) => ({ jsonrpc: '2.0', id, method, params });
   const child = spawn(process.execPath, ['dist/cli.js', 'mcp', project]);
@@ -55,10 +56,17 @@ test('stdio MCP exposes deterministic architecture and exact import evidence', a
     request(4, 'tools/call', { name: 'trace_entry_path', arguments: { target: 'src/util.ts' } }),
     request(5, 'tools/call', { name: 'inspect_module', arguments: { moduleId: 'src/index.ts' } }),
     request(6, 'tools/call', { name: 'search_modules', arguments: { query: 'UTIL' } }),
+    request(7, 'tools/call', { name: 'module_context', arguments: { moduleId: 'src/util.ts', limit: 1 } }),
+    request(8, 'tools/call', { name: 'module_context', arguments: { moduleId: 'src/secondary.ts', limit: 2 } }),
+    request(9, 'tools/call', { name: 'module_context', arguments: { moduleId: 'src/missing.ts' } }),
   ];
   for (const message of protocolMessages) await send(message);
   await writeFile(path.join(project, 'src/new.ts'), 'export const next = true;\n');
-  await send(request(7, 'tools/call', { name: 'refresh_analysis', arguments: {} }));
+  await send(request(10, 'tools/call', { name: 'refresh_analysis', arguments: {} }));
+  await unlink(path.join(project, 'src/index.ts'));
+  await writeFile(path.join(project, 'src/start.ts'), "import { helper } from './util.js';\nexport const started = helper();\n");
+  await send(request(11, 'tools/call', { name: 'refresh_analysis', arguments: {} }));
+  await send(request(12, 'tools/call', { name: 'module_context', arguments: { moduleId: 'src/start.ts' } }));
   const exited = once(child, 'exit');
   child.stdin.end();
   const [code] = await exited;
@@ -66,11 +74,11 @@ test('stdio MCP exposes deterministic architecture and exact import evidence', a
   const byId = id => responses.get(id)?.result;
   assert.ok(byId(1)?.serverInfo?.name === 'repoatlas');
   const toolNames = byId(2)?.tools?.map(tool => tool.name);
-  assert.deepEqual(toolNames, ['architecture_summary', 'search_modules', 'inspect_module', 'trace_entry_path', 'refresh_analysis']);
+  assert.deepEqual(toolNames, ['architecture_summary', 'search_modules', 'inspect_module', 'module_context', 'trace_entry_path', 'refresh_analysis']);
   assert.ok(byId(2).tools.every(tool => tool.annotations?.readOnlyHint && tool.annotations?.openWorldHint === false));
   const summary = JSON.parse(byId(3).content[0].text);
-  assert.equal(summary.modules, 2);
-  assert.equal(summary.internalImportSites, 1);
+  assert.equal(summary.modules, 3);
+  assert.equal(summary.internalImportSites, 2);
   const pathResult = JSON.parse(byId(4).content[0].text);
   assert.deepEqual(pathResult.modules, ['src/index.ts', 'src/util.ts']);
   assert.equal(pathResult.evidence[0].line, 1);
@@ -81,11 +89,31 @@ test('stdio MCP exposes deterministic architecture and exact import evidence', a
   const search = JSON.parse(byId(6).content[0].text);
   assert.equal(search.total, 1);
   assert.equal(search.modules[0].id, 'src/util.ts');
-  assert.ok(byId(7), `refresh MCP response was missing or errored: ${JSON.stringify(responses)}`);
-  const refreshed = JSON.parse(byId(7).content[0].text);
-  assert.equal(refreshed.modules, 3);
+  const context = JSON.parse(byId(7).content[0].text);
+  assert.equal(context.module.id, 'src/util.ts');
+  assert.equal(context.importedBy.total, 2);
+  assert.equal(context.importedBy.evidence.length, 1);
+  assert.equal(context.importedBy.truncated, true);
+  assert.equal(context.entryPath.entry, 'src/index.ts');
+  assert.equal(context.entryPath.evidence[0].line, 1);
+  assert.equal(context.entryPath.evidence[0].code, "import { helper } from './util.js';");
+  const unreachable = JSON.parse(byId(8).content[0].text);
+  assert.equal(unreachable.entryPath.status, 'unreachable');
+  assert.deepEqual(unreachable.entryPath.modules, []);
+  assert.equal(byId(9).isError, true);
+  assert.match(JSON.parse(byId(9).content[0].text).error, /Module not found/);
+  assert.ok(byId(10), `refresh MCP response was missing or errored: ${JSON.stringify(responses)}`);
+  const refreshed = JSON.parse(byId(10).content[0].text);
+  assert.equal(refreshed.modules, 4);
   assert.match(refreshed.refreshedAt, /^\d{4}-\d{2}-\d{2}T/);
-  assert.deepEqual((await readdir(path.join(project, 'src'))).sort(), ['index.ts', 'new.ts', 'util.ts']);
-  assert.match(stderr, /RepoAtlas MCP server ready for .+ \(2 modules\)\./);
+  const refreshedWithoutEntry = JSON.parse(byId(11).content[0].text);
+  assert.equal(refreshedWithoutEntry.modules, 4);
+  const noEntryContext = JSON.parse(byId(12).content[0].text);
+  const unknownPath = noEntryContext.entryPath;
+  assert.equal(noEntryContext.limit, 8);
+  assert.equal(unknownPath.status, 'unknown');
+  assert.match(unknownPath.reason, /No entry points/);
+  assert.deepEqual((await readdir(path.join(project, 'src'))).sort(), ['new.ts', 'secondary.ts', 'start.ts', 'util.ts']);
+  assert.match(stderr, /RepoAtlas MCP server ready for .+ \(3 modules\)\./);
   assert.ok(stdout.trim().split('\n').every(line => JSON.parse(line).jsonrpc === '2.0'));
 });

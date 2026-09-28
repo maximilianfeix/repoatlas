@@ -85,6 +85,43 @@ export async function runMcpServer(root: string, version: string, options: { inc
     });
   });
 
+  server.registerTool('module_context', {
+    title: 'Get focused module context',
+    description: 'In one bounded call, return a known module, nearby exact import evidence, and its shortest path from a detected entry point. Use this instead of combining module inspection and entry tracing when a focused answer is needed.',
+    annotations: { readOnlyHint: true, openWorldHint: false },
+    inputSchema: z.object({ moduleId: z.string().min(1).max(1000), limit: z.number().int().min(1).max(40).default(8) }),
+  }, async ({ moduleId, limit }) => {
+    const module = atlas.modules.find(item => item.id === moduleId);
+    if (!module) return { ...result({ error: `Module not found: ${moduleId}` }), isError: true };
+    const outgoing = atlas.edges.filter(edge => edge.source === moduleId).sort((a, b) => a.line - b.line || a.target.localeCompare(b.target));
+    const incoming = atlas.edges.filter(edge => edge.resolution === 'internal' && edge.target === moduleId).sort((a, b) => a.source.localeCompare(b.source) || a.line - b.line);
+    const path = findEntryPath(atlas.modules, atlas.edges, moduleId);
+    const hasEntries = atlas.modules.some(item => item.entry.length > 0);
+    return result({
+      module: { id: module.id, group: module.group, lines: module.lines, entry: module.entry, workspace: module.workspace, url: module.url },
+      imports: { total: outgoing.length, evidence: outgoing.slice(0, limit).map(edgeEvidence), truncated: outgoing.length > limit },
+      importedBy: { total: incoming.length, evidence: incoming.slice(0, limit).map(edgeEvidence), truncated: incoming.length > limit },
+      entryPath: path ? {
+        found: true,
+        entry: path.entry,
+        totalEdges: path.edges.length,
+        modules: path.modules.slice(0, limit + 1),
+        evidence: path.edges.slice(0, limit).map(edgeEvidence),
+        truncated: path.edges.length > limit,
+      } : {
+        found: false,
+        status: hasEntries ? 'unreachable' : 'unknown',
+        reason: hasEntries ? 'No resolved import path from detected entries reaches this module.' : 'No entry points were detected, so reachability is unknown.',
+        totalEdges: 0,
+        modules: [],
+        evidence: [],
+        truncated: false,
+      },
+      limit,
+      evidenceTruncated: outgoing.length > limit || incoming.length > limit || Boolean(path && path.edges.length > limit),
+    });
+  });
+
   server.registerTool('trace_entry_path', {
     title: 'Trace from an entry point',
     description: 'Find a shortest resolved-import path from a detected entry point to a module, with source evidence for each edge.',
