@@ -1,5 +1,18 @@
 # Changelog
 
+## [2.10.0] - 2026-09-28
+
+### Added
+
+- Package RepoAtlas as an installable coding-agent skill for Codex and other supported agents.
+- Guide agents to use existing MCP tools or the local CLI to map real TypeScript projects, inspect workspace imports, and cite exact source lines.
+- Keep a no-write default and separate static import evidence from runtime behavior.
+
+### Quality
+
+- Validate skill frontmatter and verify installation in an isolated directory with the `skills` CLI.
+- Document the one-command install path and add the skills.sh discovery badge.
+
 ## [2.9.0] - 2026-09-28
 
 ### Added
