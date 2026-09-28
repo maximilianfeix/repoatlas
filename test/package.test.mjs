@@ -29,3 +29,12 @@ test('composite action keeps its node setup structure and JavaScript input wired
   assert.match(action,/--format github/);
   assert.ok(action.indexOf('name: Upload architecture map') < action.indexOf('name: Check architecture rules'));
 });
+
+test('live-site install examples stay aligned with the current package release',async()=>{
+  const version=JSON.parse(await readFile('package.json','utf8')).version;
+  const page=(await readFile('docs/index.html','utf8')).replace(/\r\n/g,'\n');
+  assert.match(page,new RegExp(`github:maximilianfeix/repoatlas#v${version.replaceAll('.','\\.')}`));
+  assert.match(page,new RegExp(`maximilianfeix/repoatlas@v${version.replaceAll('.','\\.')}`));
+  assert.match(page,/check-config: repoatlas\.config\.json/);
+  assert.match(page,/artifact stays available if a rule fails/);
+});
