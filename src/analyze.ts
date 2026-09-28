@@ -5,6 +5,7 @@ import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { builtinModules } from 'node:module';
 import type { Atlas, Edge } from './types.js';
+import { visitModuleDependencies } from './syntax.js';
 
 const ignored = new Set(['node_modules', '.git', 'dist', 'build', 'coverage', '.next', '.turbo', 'vendor']);
 const typeScriptPattern = /\.(?:ts|tsx|mts|cts)$/;
@@ -38,55 +39,6 @@ function isWorkspacePackage(directory: string, patterns: string[]): boolean {
   const includes=patterns.filter(pattern=>!pattern.startsWith('!'));
   const excludes=patterns.filter(pattern=>pattern.startsWith('!')).map(pattern=>pattern.slice(1));
   return includes.some(pattern=>workspaceMatch(pattern,directory))&&!excludes.some(pattern=>workspaceMatch(pattern,directory));
-}
-function bindingHasName(binding: ts.BindingName, name: string): boolean {
-  if (ts.isIdentifier(binding)) return binding.text===name;
-  return binding.elements.some(element=>!ts.isOmittedExpression(element)&&bindingHasName(element.name,name));
-}
-function statementDeclaresRequire(statement: ts.Statement): boolean {
-  if (isAmbientDeclaration(statement)) return false;
-  if (ts.isVariableStatement(statement)) return statement.declarationList.declarations.some(declaration=>bindingHasName(declaration.name,'require'));
-  if ((ts.isFunctionDeclaration(statement)||ts.isClassDeclaration(statement)||ts.isModuleDeclaration(statement)||ts.isEnumDeclaration(statement))&&statement.name?.text==='require') return true;
-  if (ts.isImportEqualsDeclaration(statement)) return !statement.isTypeOnly&&statement.name.text==='require';
-  if (ts.isImportDeclaration(statement)&&statement.importClause) {
-    const clause=statement.importClause;
-    return !clause.isTypeOnly&&(clause.name?.text==='require'||(clause.namedBindings!==undefined&&(ts.isNamespaceImport(clause.namedBindings)?clause.namedBindings.name.text==='require':clause.namedBindings.elements.some(element=>!element.isTypeOnly&&element.name.text==='require'))));
-  }
-  return false;
-}
-function statementsDeclareRequire(statements: readonly ts.Statement[]): boolean {
-  return statements.some(statementDeclaresRequire);
-}
-function isAmbientDeclaration(node: ts.Node): boolean {
-  return (ts.getCombinedModifierFlags(node as ts.Declaration)&ts.ModifierFlags.Ambient)!==0;
-}
-const functionVarCache=new WeakMap<ts.Node,boolean>();
-function isRequireShadowed(call: ts.CallExpression): boolean {
-  function hasFunctionVar(scope: ts.Node): boolean {
-    const cached=functionVarCache.get(scope);
-    if(cached!==undefined)return cached;
-    let found=false;
-    function visit(node: ts.Node) {
-      if(found||(node!==scope&&(ts.isFunctionLike(node)||ts.isClassLike(node))))return;
-      if(ts.isVariableDeclarationList(node)&&(node.flags&ts.NodeFlags.BlockScoped)===0&&!isAmbientDeclaration(node.parent)&&node.declarations.some(declaration=>bindingHasName(declaration.name,'require'))){found=true;return;}
-      ts.forEachChild(node,visit);
-    }
-    visit(scope);functionVarCache.set(scope,found);return found;
-  }
-  for(let scope:ts.Node|undefined=call.parent;scope;scope=scope.parent){
-    if(ts.isFunctionLike(scope)){
-      if(scope.parameters.some(parameter=>bindingHasName(parameter.name,'require'))||(scope.name&&ts.isIdentifier(scope.name)&&scope.name.text==='require'))return true;
-      if('body' in scope&&scope.body&&hasFunctionVar(scope.body))return true;
-    }
-    if(ts.isBlock(scope)&&statementsDeclareRequire(scope.statements))return true;
-    if(ts.isSourceFile(scope)&&statementsDeclareRequire(scope.statements))return true;
-    if(ts.isModuleBlock(scope)&&statementsDeclareRequire(scope.statements))return true;
-    if(ts.isCaseBlock(scope)&&scope.clauses.some(clause=>statementsDeclareRequire(clause.statements)))return true;
-    if(ts.isCatchClause(scope)&&scope.variableDeclaration&&bindingHasName(scope.variableDeclaration.name,'require'))return true;
-    if(ts.isForStatement(scope)&&scope.initializer&&ts.isVariableDeclarationList(scope.initializer)&&scope.initializer.declarations.some(declaration=>bindingHasName(declaration.name,'require')))return true;
-    if((ts.isForInStatement(scope)||ts.isForOfStatement(scope))&&ts.isVariableDeclarationList(scope.initializer)&&scope.initializer.declarations.some(declaration=>bindingHasName(declaration.name,'require')))return true;
-  }
-  return false;
 }
 export function githubURL(input: string): string {
   const u = new URL(input);
@@ -313,19 +265,7 @@ export async function analyze(input: string, options: { includeTests?: boolean; 
       computedImportCount++;
       edges.push({source:id(file), target:specifier, specifier, kind, line, code:lines.slice(line-1, Math.min(end,line+7)).join('\n').slice(0,3000), url:url(file,line), resolution:'unresolved', computed:true});
     }
-    function visit(node: ts.Node) {
-      if (ts.isImportDeclaration(node) && ts.isStringLiteral(node.moduleSpecifier)) add(node.moduleSpecifier,node,node.importClause?.isTypeOnly ? 'type' : 'import');
-      else if (ts.isExportDeclaration(node) && node.moduleSpecifier && ts.isStringLiteral(node.moduleSpecifier)) add(node.moduleSpecifier,node,node.isTypeOnly ? 'type' : 'export');
-      else if (ts.isImportEqualsDeclaration(node) && ts.isExternalModuleReference(node.moduleReference) && node.moduleReference.expression && ts.isStringLiteral(node.moduleReference.expression)) add(node.moduleReference.expression,node,'require');
-      else if (ts.isImportTypeNode(node) && ts.isLiteralTypeNode(node.argument) && ts.isStringLiteral(node.argument.literal)) add(node.argument.literal,node,'type');
-      else if (ts.isCallExpression(node) && node.arguments[0] && (node.expression.kind === ts.SyntaxKind.ImportKeyword || (ts.isIdentifier(node.expression) && node.expression.text === 'require' && !isRequireShadowed(node)))) {
-        const kind = node.expression.kind === ts.SyntaxKind.ImportKeyword ? 'dynamic' : 'require';
-        if (ts.isStringLiteralLike(node.arguments[0])) add(node.arguments[0],node,kind);
-        else addComputed(node.arguments[0],node,kind);
-      }
-      ts.forEachChild(node,visit);
-    }
-    visit(sf);
+    visitModuleDependencies(ts,sf,add,addComputed);
   }
   const unresolved = edges.filter(e => e.resolution === 'unresolved').length;
   if (unresolved) warnings.push(`${unresolved} imports could not be mapped to included source files. See the dependency inspector.`);

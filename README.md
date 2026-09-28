@@ -14,11 +14,11 @@
 
 <p align="center">
   <a href="https://maximilianfeix.github.io/repoatlas/examples/hono.html"><img src="https://img.shields.io/badge/OPEN%20LIVE%20MAP-92EDC7?style=for-the-badge&logo=github&logoColor=0B0E14&labelColor=0B0E14" alt="Open the interactive Hono map"></a>
-  <a href="#quickstart"><img src="https://img.shields.io/badge/BUILD%20YOUR%20MAP-B4A0FF?style=for-the-badge&logo=typescript&logoColor=0B0E14&labelColor=0B0E14" alt="Jump to quickstart"></a>
+  <a href="https://maximilianfeix.github.io/repoatlas/#make-a-map"><img src="https://img.shields.io/badge/PASTE%20A%20REPO-B4A0FF?style=for-the-badge&logo=typescript&logoColor=0B0E14&labelColor=0B0E14" alt="Analyze a repository in your browser"></a>
   <a href="#github-actions"><img src="https://img.shields.io/badge/ADD%20TO%20CI-92EDC7?style=for-the-badge&logo=githubactions&logoColor=0B0E14&labelColor=0B0E14" alt="Jump to GitHub Actions"></a>
 </p>
 
-<p align="center"><a href="#quickstart">Quickstart</a> &nbsp;·&nbsp; <a href="#what-the-map-shows">What you can explore</a> &nbsp;·&nbsp; <a href="#mcp-server">Coding agents</a> &nbsp;·&nbsp; <a href="#scope-and-privacy">Scope &amp; privacy</a></p>
+<p align="center"><a href="https://maximilianfeix.github.io/repoatlas/#make-a-map">Browser map</a> &nbsp;·&nbsp; <a href="#quickstart">CLI</a> &nbsp;·&nbsp; <a href="#what-the-map-shows">What you can explore</a> &nbsp;·&nbsp; <a href="#mcp-server">Coding agents</a> &nbsp;·&nbsp; <a href="#scope-and-privacy">Scope &amp; privacy</a></p>
 
 <details>
   <summary><strong>Contents</strong></summary>
@@ -62,17 +62,19 @@ RepoAtlas turns a TypeScript repository into a map you can investigate. Follow a
 
 ## Quickstart
 
-Requires **Node.js 22 or later** and **Git**. Point RepoAtlas at a public GitHub repository:
+Want to explore before installing? [Paste a public TypeScript repository into the browser map](https://maximilianfeix.github.io/repoatlas/#make-a-map). It analyzes source on your device and exports one offline HTML file. No account, token, Node.js, or RepoAtlas server is involved. The browser flow supports up to 1,200 files and 25 MB of source; use the CLI for larger or private projects.
+
+For a versioned command-line run, install nothing globally. The CLI requires **Node.js 22 or later** and **Git**. Point it at a public GitHub repository:
 
 ```sh
-npx --yes --package=github:maximilianfeix/repoatlas#v2.4.0 -- \
+npx --yes --package=github:maximilianfeix/repoatlas#v2.5.0 -- \
   repoatlas-cli https://github.com/pmndrs/zustand --out zustand-map.html
 ```
 
 Open `zustand-map.html` in your browser. RepoAtlas also analyzes a local checkout:
 
 ```sh
-npx --yes --package=github:maximilianfeix/repoatlas#v2.4.0 -- \
+npx --yes --package=github:maximilianfeix/repoatlas#v2.5.0 -- \
   repoatlas-cli ./my-project --out architecture.html
 ```
 
@@ -106,7 +108,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: maximilianfeix/repoatlas@v2.4.0
+      - uses: maximilianfeix/repoatlas@v2.5.0
         with:
           output: repoatlas-map.html
 ```
@@ -123,7 +125,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: maximilianfeix/repoatlas@v2.4.0
+      - uses: maximilianfeix/repoatlas@v2.5.0
         with:
           compare-to: ${{ github.event.pull_request.base.sha }}
           output: architecture-diff.html
@@ -145,7 +147,7 @@ Add this server entry to an MCP client configuration and replace the project pat
       "command": "npx",
       "args": [
         "--yes",
-        "--package=github:maximilianfeix/repoatlas#v2.4.0",
+        "--package=github:maximilianfeix/repoatlas#v2.5.0",
         "repoatlas-cli",
         "mcp",
         "/absolute/path/to/project"
@@ -190,6 +192,7 @@ The RepoAtlas comparison uses real snapshots from [v1.10.0](https://github.com/m
 <table>
   <tr>
     <td width="50%" valign="top"><strong>Trace every connection</strong><br>Open the import statement and exact line behind an edge. Bundled imports keep every individual location; clean checkouts link to the pinned source on GitHub.</td>
+    <td width="50%" valign="top"><strong>Start in the browser</strong><br>Paste a public GitHub URL, inspect the interactive map, and download a standalone HTML file. Source analysis stays on your device.</td>
     <td width="50%" valign="top"><strong>Get oriented quickly</strong><br>See detected entries, reachability, cycles, impact, external packages, and shortest entry paths. Share a focused view with a deep link.</td>
   </tr>
   <tr>
@@ -245,7 +248,9 @@ Boundary IDs use `package:<workspace path>` for declared workspace packages and 
 
 RepoAtlas describes **static file dependencies**. It does not claim to show runtime calls, route registrations, or test coverage. It detects entries from package metadata and file conventions; “unreachable” means no path was found from detected entries, not that a file is dead. If entries are unknown, reachability remains unknown. Computed imports stay visible as unresolved evidence rather than receiving guessed targets.
 
-Analysis is limited to 5,000 source files and 2 MB per file. Tests, generated directories, declarations, and hidden files are excluded by default; use `--include-tests` or `--include-js` to opt in. Local edits disable commit-pinned GitHub links. The viewer makes no network requests and does not copy repository credentials. Maps include source snippets; share private-project maps only with people authorized to read that source.
+The CLI is limited to 5,000 source files and 2 MB per file. Tests, generated directories, declarations, and hidden files are excluded by default; use `--include-tests` or `--include-js` to opt in. Local edits disable commit-pinned GitHub links. Exported maps make no network requests and do not copy repository credentials.
+
+The browser flow is for public repositories and is capped at 1,200 TypeScript files, 25 MB total, and 1 MB per file. It fetches the public tree and source from GitHub and loads a version-pinned TypeScript compiler from jsDelivr’s version-pinned TypeScript package; repository files are analyzed locally and never sent to a RepoAtlas server. GitHub allows 60 unauthenticated API requests per hour per IP. Maps contain source snippets, so share them only with people authorized to read that source.
 
 ## Contribute
 

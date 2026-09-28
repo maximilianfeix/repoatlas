@@ -1,0 +1,92 @@
+function bindingHasName(compiler, binding, name) {
+    if (compiler.isIdentifier(binding))
+        return binding.text === name;
+    return binding.elements.some(element => !compiler.isOmittedExpression(element) && bindingHasName(compiler, element.name, name));
+}
+function isAmbientDeclaration(compiler, node) {
+    return (compiler.getCombinedModifierFlags(node) & compiler.ModifierFlags.Ambient) !== 0;
+}
+function statementDeclaresRequire(compiler, statement) {
+    if (isAmbientDeclaration(compiler, statement))
+        return false;
+    if (compiler.isVariableStatement(statement))
+        return statement.declarationList.declarations.some(declaration => bindingHasName(compiler, declaration.name, 'require'));
+    if ((compiler.isFunctionDeclaration(statement) || compiler.isClassDeclaration(statement) || compiler.isModuleDeclaration(statement) || compiler.isEnumDeclaration(statement)) && statement.name?.text === 'require')
+        return true;
+    if (compiler.isImportEqualsDeclaration(statement))
+        return !statement.isTypeOnly && statement.name.text === 'require';
+    if (compiler.isImportDeclaration(statement) && statement.importClause) {
+        const clause = statement.importClause;
+        return !clause.isTypeOnly && (clause.name?.text === 'require' || (clause.namedBindings !== undefined && (compiler.isNamespaceImport(clause.namedBindings) ? clause.namedBindings.name.text === 'require' : clause.namedBindings.elements.some(element => !element.isTypeOnly && element.name.text === 'require'))));
+    }
+    return false;
+}
+function statementsDeclareRequire(compiler, statements) {
+    return statements.some(statement => statementDeclaresRequire(compiler, statement));
+}
+const functionVarCache = new WeakMap();
+function isRequireShadowed(compiler, call) {
+    function hasFunctionVar(scope) {
+        const cached = functionVarCache.get(scope);
+        if (cached !== undefined)
+            return cached;
+        let found = false;
+        function visit(node) {
+            if (found || (node !== scope && (compiler.isFunctionLike(node) || compiler.isClassLike(node))))
+                return;
+            if (compiler.isVariableDeclarationList(node) && (node.flags & compiler.NodeFlags.BlockScoped) === 0 && !isAmbientDeclaration(compiler, node.parent) && node.declarations.some(declaration => bindingHasName(compiler, declaration.name, 'require'))) {
+                found = true;
+                return;
+            }
+            compiler.forEachChild(node, visit);
+        }
+        visit(scope);
+        functionVarCache.set(scope, found);
+        return found;
+    }
+    for (let scope = call.parent; scope; scope = scope.parent) {
+        if (compiler.isFunctionLike(scope)) {
+            if (scope.parameters.some(parameter => bindingHasName(compiler, parameter.name, 'require')) || (scope.name && compiler.isIdentifier(scope.name) && scope.name.text === 'require'))
+                return true;
+            if ('body' in scope && scope.body && hasFunctionVar(scope.body))
+                return true;
+        }
+        if (compiler.isBlock(scope) && statementsDeclareRequire(compiler, scope.statements))
+            return true;
+        if (compiler.isSourceFile(scope) && statementsDeclareRequire(compiler, scope.statements))
+            return true;
+        if (compiler.isModuleBlock(scope) && statementsDeclareRequire(compiler, scope.statements))
+            return true;
+        if (compiler.isCaseBlock(scope) && scope.clauses.some(clause => statementsDeclareRequire(compiler, clause.statements)))
+            return true;
+        if (compiler.isCatchClause(scope) && scope.variableDeclaration && bindingHasName(compiler, scope.variableDeclaration.name, 'require'))
+            return true;
+        if (compiler.isForStatement(scope) && scope.initializer && compiler.isVariableDeclarationList(scope.initializer) && scope.initializer.declarations.some(declaration => bindingHasName(compiler, declaration.name, 'require')))
+            return true;
+        if ((compiler.isForInStatement(scope) || compiler.isForOfStatement(scope)) && compiler.isVariableDeclarationList(scope.initializer) && scope.initializer.declarations.some(declaration => bindingHasName(compiler, declaration.name, 'require')))
+            return true;
+    }
+    return false;
+}
+/** Share exact TypeScript import syntax extraction between the CLI and browser analyzer. */
+export function visitModuleDependencies(compiler, source, onStatic, onComputed) {
+    function visit(node) {
+        if (compiler.isImportDeclaration(node) && compiler.isStringLiteral(node.moduleSpecifier))
+            onStatic(node.moduleSpecifier, node, node.importClause?.isTypeOnly ? 'type' : 'import');
+        else if (compiler.isExportDeclaration(node) && node.moduleSpecifier && compiler.isStringLiteral(node.moduleSpecifier))
+            onStatic(node.moduleSpecifier, node, node.isTypeOnly ? 'type' : 'export');
+        else if (compiler.isImportEqualsDeclaration(node) && compiler.isExternalModuleReference(node.moduleReference) && node.moduleReference.expression && compiler.isStringLiteral(node.moduleReference.expression))
+            onStatic(node.moduleReference.expression, node, 'require');
+        else if (compiler.isImportTypeNode(node) && compiler.isLiteralTypeNode(node.argument) && compiler.isStringLiteral(node.argument.literal))
+            onStatic(node.argument.literal, node, 'type');
+        else if (compiler.isCallExpression(node) && node.arguments[0] && (node.expression.kind === compiler.SyntaxKind.ImportKeyword || (compiler.isIdentifier(node.expression) && node.expression.text === 'require' && !isRequireShadowed(compiler, node)))) {
+            const kind = node.expression.kind === compiler.SyntaxKind.ImportKeyword ? 'dynamic' : 'require';
+            if (compiler.isStringLiteralLike(node.arguments[0]))
+                onStatic(node.arguments[0], node, kind);
+            else
+                onComputed(node.arguments[0], node, kind);
+        }
+        compiler.forEachChild(node, visit);
+    }
+    visit(source);
+}
