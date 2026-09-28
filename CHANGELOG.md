@@ -1,5 +1,17 @@
 # Changelog
 
+## [2.20.0] - 2026-09-28
+
+### Added
+
+- Trace changed modules back to detected entry points in base and head snapshots using deterministic shortest resolved-import paths.
+- Include exact evidence links for every path hop in JSON, CLI text, offline HTML, and GitHub Actions summaries.
+- Mark entry reachability unknown when no entry point was detected, list changed modules outside detected paths, and cap large reports.
+
+### Quality
+
+- Reuse a single breadth-first graph walk for all changed modules per snapshot; cover cycles, path tie-breaking, unknown entry sets, and report bounds.
+
 ## [2.19.0] - 2026-09-28
 
 ### Added

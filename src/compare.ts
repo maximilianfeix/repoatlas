@@ -1,6 +1,7 @@
 import type { Atlas, Edge } from './types.js';
 import type { ExportedSymbol } from './exports.js';
 import type { Module } from './types.js';
+import { findEntryPaths } from './insights.js';
 
 export interface SnapshotMetadata {
   name: string;
@@ -15,6 +16,8 @@ export interface EdgeChange {
 
 export interface ExportEvidence extends ExportedSymbol { moduleId: string; url?: string }
 export interface ImportBindingEvidence { sourceModule:string; targetModule:string; name:string; localName:string; kind:Edge['kind']; specifier:string; line:number; url?:string }
+export interface ImpactRoute { moduleId:string; entry:string; edges:Edge[]; totalSteps:number; omittedSteps:number }
+export interface SnapshotImpact { known:boolean; entryPoints:number; routes:ImpactRoute[]; unreachableModules:string[]; changedModules:number; omittedModules:number }
 
 export interface AtlasComparison {
   base: SnapshotMetadata;
@@ -23,6 +26,7 @@ export interface AtlasComparison {
   dependencies: { added: Edge[]; removed: Edge[]; changedSpecifier: EdgeChange[] };
   exports: { added: ExportEvidence[]; removed: ExportEvidence[]; unavailableModules: string[] };
   importBindings: { added: ImportBindingEvidence[]; removed: ImportBindingEvidence[]; unavailableSnapshots: ('base'|'head')[] };
+  impact: { base:SnapshotImpact; head:SnapshotImpact };
 }
 
 const kinds=new Set(['import','type','export','dynamic','require']);
@@ -57,6 +61,21 @@ function bindingEvidence(edge:Edge,binding:{name:string;localName:string}):Impor
 }
 const bindingKey=(item:ImportBindingEvidence)=>JSON.stringify([item.sourceModule,item.targetModule,item.kind,item.specifier,item.name,item.localName]);
 const bindingOrder=(a:ImportBindingEvidence,b:ImportBindingEvidence)=>a.sourceModule.localeCompare(b.sourceModule)||a.line-b.line||a.name.localeCompare(b.name)||a.localName.localeCompare(b.localName)||a.targetModule.localeCompare(b.targetModule);
+const maxImpactModules=60;
+const maxImpactHops=40;
+function snapshotImpact(atlas:Atlas,changed:Iterable<string>):SnapshotImpact {
+  const moduleIds=new Set(atlas.modules.map(module=>module.id));
+  const targets=[...new Set(changed)].filter(id=>moduleIds.has(id)).sort();
+  const entryPoints=atlas.modules.filter(module=>module.entry.length).length;
+  if(!entryPoints)return {known:false,entryPoints:0,routes:[],unreachableModules:[],changedModules:targets.length,omittedModules:Math.max(0,targets.length-maxImpactModules)};
+  const routes:ImpactRoute[]=[],unreachableModules:string[]=[];
+  const selected=targets.slice(0,maxImpactModules),paths=findEntryPaths(atlas.modules,atlas.edges,selected);
+  for(const moduleId of selected){
+    const path=paths.get(moduleId);
+    if(path){const omittedSteps=Math.max(0,path.edges.length-maxImpactHops),edges=omittedSteps?[...path.edges.slice(0,maxImpactHops/2),...path.edges.slice(-maxImpactHops/2)]:path.edges;routes.push({moduleId,entry:path.entry,edges,totalSteps:path.edges.length,omittedSteps});}else unreachableModules.push(moduleId);
+  }
+  return {known:true,entryPoints,routes,unreachableModules,changedModules:targets.length,omittedModules:Math.max(0,targets.length-maxImpactModules)};
+}
 
 /** Compare graph relationships while ignoring source line shifts and code formatting. */
 export function compareAtlases(base:Atlas,head:Atlas):AtlasComparison {
@@ -111,5 +130,7 @@ export function compareAtlases(base:Atlas,head:Atlas):AtlasComparison {
     for(const [key,item] of before)if(!after.has(key)&&sharedEdges.has(JSON.stringify([item.sourceModule,item.targetModule,item.kind,item.specifier])))importBindings.removed.push(item);
     importBindings.added.sort(bindingOrder);importBindings.removed.sort(bindingOrder);
   }
-  return {base:metadata(base),head:metadata(head),modules:{added:addedModules,removed:removedModules},dependencies:{added,removed,changedSpecifier:changes},exports:exportChanges,importBindings};
+  const changedModules=new Set<string>([...addedModules,...removedModules,...added.map(edge=>edge.source),...removed.map(edge=>edge.source),...changes.flatMap(change=>[change.before.source,change.after.source]),...exportChanges.added.map(item=>item.moduleId),...exportChanges.removed.map(item=>item.moduleId),...importBindings.added.map(item=>item.sourceModule),...importBindings.removed.map(item=>item.sourceModule)]);
+  const impact={base:snapshotImpact(base,changedModules),head:snapshotImpact(head,changedModules)};
+  return {base:metadata(base),head:metadata(head),modules:{added:addedModules,removed:removedModules},dependencies:{added,removed,changedSpecifier:changes},exports:exportChanges,importBindings,impact};
 }

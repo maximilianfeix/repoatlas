@@ -16,6 +16,7 @@ function commitLabel(value:string|undefined):string {
 export function renderActionSummary(comparison:AtlasComparison,artifactUrl:string):string {
   const artifact=validArtifactUrl(artifactUrl);
   const modules=comparison.modules,dependencies=comparison.dependencies,exports=comparison.exports;
+  const impact=(side:'base'|'head')=>{const snapshot=comparison.impact[side];if(!snapshot.known)return 'unknown (no entry points detected)';const omittedSteps=snapshot.routes.reduce((total,route)=>total+route.omittedSteps,0);return `${snapshot.routes.length} reachable changed modules across ${snapshot.entryPoints} detected entr${snapshot.entryPoints===1?'y':'ies'} · ${snapshot.unreachableModules.length} outside entry paths · ${snapshot.omittedModules} modules and ${omittedSteps} path steps omitted`;};
   return [
     '## RepoAtlas architecture change',
     '',
@@ -23,11 +24,12 @@ export function renderActionSummary(comparison:AtlasComparison,artifactUrl:strin
     `- **Imports:** +${dependencies.added.length} added · −${dependencies.removed.length} removed · ${dependencies.changedSpecifier.length} changed specifiers`,
     `- **Exports:** +${exports.added.length} added · −${exports.removed.length} removed · ${exports.unavailableModules.length} unavailable`,
     `- **Imported bindings:** +${comparison.importBindings.added.length} added · −${comparison.importBindings.removed.length} removed · ${comparison.importBindings.unavailableSnapshots.length} snapshots unavailable`,
+    `- **Changed-module entry paths:** base ${impact('base')} · head ${impact('head')}`,
     `- **Snapshots:** \`${commitLabel(comparison.base.commit)}\` → \`${commitLabel(comparison.head.commit)}\``,
     '',
     `[Download the interactive, source-linked HTML diff](<${artifact}>)`,
     '',
-    '> Import counts describe resolved static source relationships, not runtime calls. Export counts describe syntax-level names, not type compatibility or semver safety.',
+    '> Paths follow resolved static imports, not runtime execution. Export counts describe syntax-level names, not type compatibility or semver safety.',
     '',
   ].join('\n');
 }
