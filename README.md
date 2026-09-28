@@ -62,19 +62,19 @@ RepoAtlas turns a TypeScript repository into a map you can investigate. Follow a
 
 ## Quickstart
 
-Want to explore before installing? [Paste a public TypeScript repository into the browser map](https://maximilianfeix.github.io/repoatlas/#make-a-map). It analyzes source on your device and exports one offline HTML file. No account, token, Node.js, or RepoAtlas server is involved. The browser flow supports up to 1,200 files and 25 MB of source; use the CLI for larger or private projects.
+Want to explore before installing? [Paste a public TypeScript repository or choose a local project folder](https://maximilianfeix.github.io/repoatlas/#make-a-map). The browser analyzes source on your device and exports one offline HTML file. Local folders work for private or unpushed projects; no account, token, Node.js, or RepoAtlas server is involved. Browser analysis supports up to 1,200 files, 25 MB total, and 1 MB per file; use the CLI for larger projects.
 
 For a versioned command-line run, install nothing globally. The CLI requires **Node.js 22 or later** and **Git**. Point it at a public GitHub repository:
 
 ```sh
-npx --yes --package=github:maximilianfeix/repoatlas#v2.5.0 -- \
+npx --yes --package=github:maximilianfeix/repoatlas#v2.6.0 -- \
   repoatlas-cli https://github.com/pmndrs/zustand --out zustand-map.html
 ```
 
 Open `zustand-map.html` in your browser. RepoAtlas also analyzes a local checkout:
 
 ```sh
-npx --yes --package=github:maximilianfeix/repoatlas#v2.5.0 -- \
+npx --yes --package=github:maximilianfeix/repoatlas#v2.6.0 -- \
   repoatlas-cli ./my-project --out architecture.html
 ```
 
@@ -108,7 +108,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: maximilianfeix/repoatlas@v2.5.0
+      - uses: maximilianfeix/repoatlas@v2.6.0
         with:
           output: repoatlas-map.html
 ```
@@ -125,7 +125,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: maximilianfeix/repoatlas@v2.5.0
+      - uses: maximilianfeix/repoatlas@v2.6.0
         with:
           compare-to: ${{ github.event.pull_request.base.sha }}
           output: architecture-diff.html
@@ -147,7 +147,7 @@ Add this server entry to an MCP client configuration and replace the project pat
       "command": "npx",
       "args": [
         "--yes",
-        "--package=github:maximilianfeix/repoatlas#v2.5.0",
+        "--package=github:maximilianfeix/repoatlas#v2.6.0",
         "repoatlas-cli",
         "mcp",
         "/absolute/path/to/project"
@@ -192,7 +192,7 @@ The RepoAtlas comparison uses real snapshots from [v1.10.0](https://github.com/m
 <table>
   <tr>
     <td width="50%" valign="top"><strong>Trace every connection</strong><br>Open the import statement and exact line behind an edge. Bundled imports keep every individual location; clean checkouts link to the pinned source on GitHub.</td>
-    <td width="50%" valign="top"><strong>Start in the browser</strong><br>Paste a public GitHub URL, inspect the interactive map, and download a standalone HTML file. Source analysis stays on your device.</td>
+    <td width="50%" valign="top"><strong>Start in the browser</strong><br>Paste a public GitHub URL or choose a private local folder. Inspect the interactive map and download a standalone HTML file; project source stays on your device.</td>
     <td width="50%" valign="top"><strong>Get oriented quickly</strong><br>See detected entries, reachability, cycles, impact, external packages, and shortest entry paths. Share a focused view with a deep link.</td>
   </tr>
   <tr>
@@ -250,7 +250,9 @@ RepoAtlas describes **static file dependencies**. It does not claim to show runt
 
 The CLI is limited to 5,000 source files and 2 MB per file. Tests, generated directories, declarations, and hidden files are excluded by default; use `--include-tests` or `--include-js` to opt in. Local edits disable commit-pinned GitHub links. Exported maps make no network requests and do not copy repository credentials.
 
-The browser flow is for public repositories and is capped at 1,200 TypeScript files, 25 MB total, and 1 MB per file. It fetches the public tree and source from GitHub and loads a version-pinned TypeScript compiler from jsDelivr’s version-pinned TypeScript package; repository files are analyzed locally and never sent to a RepoAtlas server. GitHub allows 60 unauthenticated API requests per hour per IP. Maps contain source snippets, so share them only with people authorized to read that source.
+The browser can analyze a public URL or a private local folder. Selected local source never leaves the browser; choose a folder explicitly, and review the exported snippets before sharing. Browser mode loads the version-pinned TypeScript compiler from jsDelivr, but sends it no project data.
+
+Browser analysis is capped at 1,200 TypeScript files, 25 MB total, and 1 MB per file. For a public URL it fetches the tree and source from GitHub; for a private or unpushed project choose a local folder. In both cases, source files are analyzed in the browser and never sent to a RepoAtlas server. The version-pinned TypeScript compiler loads from jsDelivr; it receives no project data. GitHub allows 60 unauthenticated API requests per hour per IP. Maps contain source snippets, so share them only with people authorized to read that source.
 
 ## Contribute
 

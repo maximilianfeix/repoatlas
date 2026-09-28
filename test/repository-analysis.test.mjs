@@ -102,3 +102,38 @@ test('browser bounds file counts and skips oversized files before fetching sourc
   await assert.rejects(()=>analyzePublicRepository('owner/repo',{compiler:ts,fetchImpl:base(many)}),/capped at 1,200/);
   await assert.rejects(()=>analyzePublicRepository('owner/repo',{compiler:ts,fetchImpl:base([{type:'blob',path:'src/index.ts',size:1_000_001}])}),/No readable TypeScript source files fit/);
 });
+
+test('local folder analysis shares AST resolution, omits remote links, and excludes tests/declarations by default',async()=>{
+  const { analyzeLocalRepositoryFiles }=await import('../docs/repository-analysis.js');
+  const localFile=(path,text)=>({name:path.split('/').at(-1),size:new TextEncoder().encode(text).length,webkitRelativePath:`secret-project/${path}`,text:async()=>text});
+  const local=await analyzeLocalRepositoryFiles([
+    localFile('package.json',JSON.stringify({name:'secret-project',main:'src/index.ts'})),
+    localFile('tsconfig.json',JSON.stringify({compilerOptions:{baseUrl:'.',paths:{'@/*':['src/*']}}})),
+    localFile('src/index.ts',"import { run } from '@/util.js';\nrun();"),
+    localFile('src/util.ts','export const run = () => true;'),
+    localFile('src/globals.d.ts','declare const ignored: string;'),
+    localFile('tests/sample.test.ts',"import { run } from '../src/util.js';"),
+  ],{compiler:ts});
+  assert.equal(local.name,'Local/secret-project');
+  assert.equal(local.commit,undefined);assert.equal(local.repository,undefined);
+  assert.deepEqual(local.modules.map(module=>module.id),['src/index.ts','src/util.ts']);
+  assert.equal(local.modules.find(module=>module.id==='src/index.ts').entry[0],'package.json main');
+  const edge=local.edges.find(item=>item.specifier==='@/util.js');
+  assert.equal(edge.resolution,'internal');assert.equal(edge.target,'src/util.ts');assert.equal(edge.line,1);
+  assert.equal(edge.url,undefined);assert.match(edge.code,/import \{ run \}/);
+  assert.match(local.warnings[0],/stays in this browser/);
+  const withTests=await analyzeLocalRepositoryFiles([
+    localFile('src/index.ts','export const entry = true;'),
+    localFile('tests/sample.test.ts',"import { entry } from '../src/index.js';"),
+  ],{compiler:ts,includeTests:true});
+  assert.equal(withTests.modules.some(module=>module.id==='tests/sample.test.ts'),true);
+});
+
+test('local folder limits are checked before reading selected files',async()=>{
+  const { analyzeLocalRepositoryFiles }=await import('../docs/repository-analysis.js');
+  const fake=(path,size)=>({name:path.split('/').at(-1),size,webkitRelativePath:`large-project/${path}`,text:async()=>{throw new Error('must not read')}});
+  const many=Array.from({length:1201},(_,index)=>fake(`src/file-${index}.ts`,10));
+  await assert.rejects(()=>analyzeLocalRepositoryFiles(many,{compiler:ts}),/capped at 1,200/);
+  const tooLarge=Array.from({length:27},(_,index)=>fake(`src/file-${index}.ts`,999_999));
+  await assert.rejects(()=>analyzeLocalRepositoryFiles(tooLarge,{compiler:ts}),/25 MB browser source limit/);
+});
