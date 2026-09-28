@@ -7,7 +7,7 @@ import { spawnSync } from 'node:child_process';
 import { renderActionSummary } from '../dist/action-summary.js';
 import { compareAtlases } from '../dist/compare.js';
 
-const atlas=(modules,edges,commit)=>({schemaVersion:1,name:'<untrusted project>',repository:'https://github.com/example/demo',commit,modules:modules.map(id=>({id,group:'src',lines:2,entry:[]})),edges,warnings:[]});
+const atlas=(modules,edges,commit)=>({schemaVersion:1,importBindingsVersion:1,name:'<untrusted project>',repository:'https://github.com/example/demo',commit,modules:modules.map(id=>({id,group:'src',lines:2,entry:[]})),edges,warnings:[]});
 const edge=(source,target,specifier)=>({source,target,specifier,kind:'import',line:1,code:`import '${specifier}';`,resolution:'internal'});
 
 test('job summary shows compact architecture counts, pinned snapshots, and a GitHub artifact link',()=>{
@@ -21,6 +21,7 @@ test('job summary shows compact architecture counts, pinned snapshots, and a Git
   assert.match(result,/\*\*Modules:\*\* \+1 added · −1 removed/);
   assert.match(result,/\*\*Imports:\*\* \+1 added · −1 removed · 0 changed specifiers/);
   assert.match(result,/\*\*Exports:\*\* \+1 added · −1 removed · 0 unavailable/);
+  assert.match(result,/\*\*Imported bindings:\*\* \+0 added · −0 removed · 0 snapshots unavailable/);
   assert.match(result,/`abcdef1234` → `123456abcd`/);
   assert.match(result,/\[Download the interactive, source-linked HTML diff\]\(<https:\/\/github\.com\/example\/demo\/actions\/runs\/12\/artifacts\/34>\)/);
   assert.match(result,/syntax-level names, not type compatibility/);

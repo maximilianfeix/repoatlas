@@ -1,5 +1,17 @@
 # Changelog
 
+## [2.19.0] - 2026-09-28
+
+### Added
+
+- Compare explicit named/default import and re-export bindings when a dependency edge remains stable, including alias changes and exact source links.
+- Report legacy snapshots without import-binding index metadata as unavailable rather than inferring no changes.
+- Include binding changes in JSON, text, standalone HTML, and GitHub Actions summaries.
+
+### Quality
+
+- Verify stable line-shift behavior, alias changes, legacy snapshots, schema validation, and escaped offline HTML.
+
 ## [2.18.0] - 2026-09-28
 
 ### Added

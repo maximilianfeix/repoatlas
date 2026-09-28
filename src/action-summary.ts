@@ -22,6 +22,7 @@ export function renderActionSummary(comparison:AtlasComparison,artifactUrl:strin
     `- **Modules:** +${modules.added.length} added · −${modules.removed.length} removed`,
     `- **Imports:** +${dependencies.added.length} added · −${dependencies.removed.length} removed · ${dependencies.changedSpecifier.length} changed specifiers`,
     `- **Exports:** +${exports.added.length} added · −${exports.removed.length} removed · ${exports.unavailableModules.length} unavailable`,
+    `- **Imported bindings:** +${comparison.importBindings.added.length} added · −${comparison.importBindings.removed.length} removed · ${comparison.importBindings.unavailableSnapshots.length} snapshots unavailable`,
     `- **Snapshots:** \`${commitLabel(comparison.base.commit)}\` → \`${commitLabel(comparison.head.commit)}\``,
     '',
     `[Download the interactive, source-linked HTML diff](<${artifact}>)`,
