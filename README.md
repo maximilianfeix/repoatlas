@@ -62,6 +62,8 @@ RepoAtlas turns a TypeScript repository into a map you can investigate. Follow a
 
 <p align="center"><sub>Counts from <a href="https://github.com/honojs/hono/tree/52f6c7ec865b31001a14eed9b323a0235f0a3156">Hono commit 52f6c7e</a>; regenerate with the pinned revision in <a href="docs/examples/manifest.json">the demo manifest</a>.</sub></p>
 
+<p align="center"><sub>Try two more pinned projects: <a href="https://maximilianfeix.github.io/repoatlas/examples/zustand.html">Zustand · state management · 18 modules</a> &nbsp;·&nbsp; <a href="https://maximilianfeix.github.io/repoatlas/examples/ky.html">Ky · HTTP client · 51 modules</a></sub></p>
+
 ## Quickstart
 
 Want to explore before installing? [Paste a public TypeScript repository or choose a local project folder](https://maximilianfeix.github.io/repoatlas/#make-a-map). A background worker analyzes the source while the page stays responsive and reports progress; cancel stops that worker immediately. Copy a link pinned to the exact public commit to share a reproducible analysis, or download one offline HTML file. Local folders work for private or unpushed projects; no account, token, Node.js, or RepoAtlas server is involved. Browser analysis supports up to 1,200 files, 25 MB total, and 1 MB per file; use the CLI for larger projects.
@@ -69,14 +71,14 @@ Want to explore before installing? [Paste a public TypeScript repository or choo
 For a versioned command-line run, install nothing globally. The CLI requires **Node.js 22 or later** and **Git**. Point it at a public GitHub repository:
 
 ```sh
-npx --yes --package=github:maximilianfeix/repoatlas#v2.34.0 -- \
+npx --yes --package=github:maximilianfeix/repoatlas#v2.35.0 -- \
   repoatlas-cli https://github.com/pmndrs/zustand --out zustand-map.html
 ```
 
 Open `zustand-map.html` in your browser. Search by module path or public export, then select a result to inspect its exact source evidence. RepoAtlas also analyzes a local checkout:
 
 ```sh
-npx --yes --package=github:maximilianfeix/repoatlas#v2.34.0 -- \
+npx --yes --package=github:maximilianfeix/repoatlas#v2.35.0 -- \
   repoatlas-cli ./my-project --out architecture.html
 ```
 
@@ -110,7 +112,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: maximilianfeix/repoatlas@v2.34.0
+      - uses: maximilianfeix/repoatlas@v2.35.0
         with:
           output: repoatlas-map.html
 ```
@@ -127,7 +129,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: maximilianfeix/repoatlas@v2.34.0
+      - uses: maximilianfeix/repoatlas@v2.35.0
         with:
           compare-to: ${{ github.event.pull_request.base.sha }}
           check-config: repoatlas.config.json
@@ -150,7 +152,7 @@ Add this server entry to an MCP client configuration and replace the project pat
       "command": "npx",
       "args": [
         "--yes",
-        "--package=github:maximilianfeix/repoatlas#v2.34.0",
+        "--package=github:maximilianfeix/repoatlas#v2.35.0",
         "repoatlas-cli",
         "mcp",
         "/absolute/path/to/project"

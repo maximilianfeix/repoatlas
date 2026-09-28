@@ -1,5 +1,16 @@
 # Changelog
 
+## [2.35.0] - 2026-09-28
+
+### Improved
+
+- Add direct links to the existing Zustand and Ky architecture maps on the README and project site, alongside Hono.
+- Label each example by project type and module count so visitors can choose a map that matches their codebase.
+
+### Quality
+
+- Verify the Zustand and Ky snapshots, source revisions, and live maps before presenting them as examples.
+
 ## [2.34.0] - 2026-09-28
 
 ### Improved
