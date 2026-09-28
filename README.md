@@ -65,14 +65,14 @@ RepoAtlas turns a TypeScript repository into a map you can investigate. Follow a
 Requires **Node.js 22 or later** and **Git**. Point RepoAtlas at a public GitHub repository:
 
 ```sh
-npx --yes --package=github:maximilianfeix/repoatlas#v2.3.0 -- \
+npx --yes --package=github:maximilianfeix/repoatlas#v2.4.0 -- \
   repoatlas-cli https://github.com/pmndrs/zustand --out zustand-map.html
 ```
 
 Open `zustand-map.html` in your browser. RepoAtlas also analyzes a local checkout:
 
 ```sh
-npx --yes --package=github:maximilianfeix/repoatlas#v2.3.0 -- \
+npx --yes --package=github:maximilianfeix/repoatlas#v2.4.0 -- \
   repoatlas-cli ./my-project --out architecture.html
 ```
 
@@ -106,12 +106,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: maximilianfeix/repoatlas@v2.3.0
+      - uses: maximilianfeix/repoatlas@v2.4.0
         with:
           output: repoatlas-map.html
 ```
 
-For pull requests, set `compare-to` to the base commit SHA to make the artifact a source-linked architecture diff. This uses only `contents: read`; it does not post a comment or need a write token.
+For pull requests, set `compare-to` to the base commit SHA to make the artifact a source-linked architecture diff. RepoAtlas also adds a short change summary and direct artifact link to the GitHub Actions job summary. This uses only `contents: read`; it does not post a comment or need a write token.
 
 ```yaml
 name: Architecture review
@@ -123,7 +123,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: maximilianfeix/repoatlas@v2.3.0
+      - uses: maximilianfeix/repoatlas@v2.4.0
         with:
           compare-to: ${{ github.event.pull_request.base.sha }}
           output: architecture-diff.html
@@ -145,7 +145,7 @@ Add this server entry to an MCP client configuration and replace the project pat
       "command": "npx",
       "args": [
         "--yes",
-        "--package=github:maximilianfeix/repoatlas#v2.3.0",
+        "--package=github:maximilianfeix/repoatlas#v2.4.0",
         "repoatlas-cli",
         "mcp",
         "/absolute/path/to/project"
