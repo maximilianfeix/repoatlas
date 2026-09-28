@@ -77,7 +77,16 @@
           "resolution": { "enum": ["internal", "external", "unresolved"] },
           "computed": { "const": true },
           "externalKind": { "enum": ["package", "builtin", "url", "other"] },
-          "externalName": { "type": "string" }
+          "externalName": { "type": "string" },
+          "imports": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["name", "localName"],
+              "properties": { "name": { "type": "string" }, "localName": { "type": "string" } },
+              "additionalProperties": false
+            }
+          }
         },
         "additionalProperties": true
       }

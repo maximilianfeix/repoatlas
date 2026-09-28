@@ -1,5 +1,21 @@
 # Changelog
 
+## [2.16.0] - 2026-09-28
+
+### Added
+
+- Show direct named/default import and re-export sites for each public TypeScript export, with exact source lines.
+- Record imported/exported symbol bindings in snapshots and expose them in the interactive module inspector.
+- Limit claims to explicit static bindings; namespace access and computed dynamic imports remain outside this evidence.
+
+### Fixed
+
+- Make the release workflow safely upload or replace its package asset when a tagged release already exists.
+
+### Quality
+
+- Test import aliases, default and type imports, re-export aliases, and source-backed consumer navigation.
+
 ## [2.15.0] - 2026-09-28
 
 ### Added

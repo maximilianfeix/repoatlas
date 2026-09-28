@@ -69,14 +69,14 @@ Want to explore before installing? [Paste a public TypeScript repository or choo
 For a versioned command-line run, install nothing globally. The CLI requires **Node.js 22 or later** and **Git**. Point it at a public GitHub repository:
 
 ```sh
-npx --yes --package=github:maximilianfeix/repoatlas#v2.15.0 -- \
+npx --yes --package=github:maximilianfeix/repoatlas#v2.16.0 -- \
   repoatlas-cli https://github.com/pmndrs/zustand --out zustand-map.html
 ```
 
 Open `zustand-map.html` in your browser. Search by module path or public export, then select a result to inspect its exact source evidence. RepoAtlas also analyzes a local checkout:
 
 ```sh
-npx --yes --package=github:maximilianfeix/repoatlas#v2.15.0 -- \
+npx --yes --package=github:maximilianfeix/repoatlas#v2.16.0 -- \
   repoatlas-cli ./my-project --out architecture.html
 ```
 
@@ -110,7 +110,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: maximilianfeix/repoatlas@v2.15.0
+      - uses: maximilianfeix/repoatlas@v2.16.0
         with:
           output: repoatlas-map.html
 ```
@@ -127,7 +127,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: maximilianfeix/repoatlas@v2.15.0
+      - uses: maximilianfeix/repoatlas@v2.16.0
         with:
           compare-to: ${{ github.event.pull_request.base.sha }}
           output: architecture-diff.html
@@ -149,7 +149,7 @@ Add this server entry to an MCP client configuration and replace the project pat
       "command": "npx",
       "args": [
         "--yes",
-        "--package=github:maximilianfeix/repoatlas#v2.15.0",
+        "--package=github:maximilianfeix/repoatlas#v2.16.0",
         "repoatlas-cli",
         "mcp",
         "/absolute/path/to/project"
@@ -159,7 +159,7 @@ Add this server entry to an MCP client configuration and replace the project pat
 }
 ```
 
-The tools summarize architecture, search modules and public TypeScript exports, inspect direct-import evidence, bundle a module's imports, exports, and detected-entry path through `module_context`, trace paths, and refresh analysis after edits. Results are bounded and expose totals and truncation. Exports and edges include exact source lines; neither is a claim about runtime behavior. The server requires Node.js 22 or later and analyzes TypeScript by default. Use `--include-js` or `--include-tests` after `mcp` to opt in to those files.
+The tools summarize architecture, search modules and public TypeScript exports, inspect direct-import evidence including explicit imported names, bundle a module's imports, exports, and detected-entry path through `module_context`, trace paths, and refresh analysis after edits. Results are bounded and expose totals and truncation. Exports and edges include exact source lines; neither is a claim about runtime behavior. The server requires Node.js 22 or later and analyzes TypeScript by default. Use `--include-js` or `--include-tests` after `mcp` to opt in to those files.
 
 ### Install the RepoAtlas agent skill
 
@@ -178,7 +178,7 @@ Each example below was generated from a pinned upstream commit. The counts and e
 | Project snapshot | Modules | Connections | Useful views |
 | --- | ---: | ---: | --- |
 | [RepoAtlas 1.10 → 2.0](https://github.com/maximilianfeix/repoatlas/compare/ee977687527b806925ff2a31f2311dce65d320ad...95bded201295c1c4b4e2330263fc26060c641073) | 15 → 17 | 29 → 34 | [Open the real HTML diff](https://maximilianfeix.github.io/repoatlas/examples/repoatlas-v1-to-v2.html) · added modules and imports |
-| [honojs/hono](https://github.com/honojs/hono/tree/52f6c7ec865b31001a14eed9b323a0235f0a3156) | 247 | 676 | [Open map](https://maximilianfeix.github.io/repoatlas/examples/hono.html) · entry paths, cycles, export search |
+| [honojs/hono](https://github.com/honojs/hono/tree/52f6c7ec865b31001a14eed9b323a0235f0a3156) | 247 | 676 | [Open map](https://maximilianfeix.github.io/repoatlas/examples/hono.html) · entry paths, cycles, export search and direct import sites |
 | [sindresorhus/ky](https://github.com/sindresorhus/ky/tree/0d59458a0a58e1c3d7c6db0ab17ed5c7cd671e47) | 51 | 93 | [Open map](https://maximilianfeix.github.io/repoatlas/examples/ky.html) · external packages, import sites |
 | [pmndrs/zustand](https://github.com/pmndrs/zustand/tree/b57db4f86ef179285da216eeb291266da82c361c) | 18 | 24 | [Open map](https://maximilianfeix.github.io/repoatlas/examples/zustand.html) · workspace boundaries |
 
@@ -196,6 +196,9 @@ Each example below was generated from a pinned upstream commit. The counts and e
   </tr>
   <tr>
     <td colspan="2" valign="top"><a href="https://maximilianfeix.github.io/repoatlas/examples/hono.html#module=src%2Fadapter%2Faws-lambda%2Fhandler.ts"><img src="docs/assets/export-surface.png" alt="The Hono module inspector lists exported TypeScript names with links to exact lines in the pinned GitHub source" width="100%"></a><sub>Inspect a file's public API and jump straight to each export in the pinned source.</sub></td>
+  </tr>
+  <tr>
+    <td colspan="2" valign="top"><a href="https://maximilianfeix.github.io/repoatlas/examples/hono.html#module=src%2Fhono.ts"><img src="docs/assets/export-import-sites.png" alt="The Hono export inspector shows 18 direct named imports of Hono, each linked to the precise importing line" width="100%"></a><sub>Open an export's direct import sites, then click any result to inspect its exact import statement and pinned source line.</sub></td>
   </tr>
   <tr>
     <td colspan="2" valign="top"><a href="https://maximilianfeix.github.io/repoatlas/examples/hono.html"><img src="docs/assets/export-search.png" alt="Searching Hono in the module explorer shows matching exported symbols and their source lines, with the selected export linked in the inspector" width="100%"></a><sub>Find an exported symbol in the map, then open its source line from the selected module.</sub></td>
@@ -218,7 +221,7 @@ The RepoAtlas comparison uses real snapshots from [v1.10.0](https://github.com/m
     <td width="50%" valign="top"><strong>Find a module or export</strong><br>Search the map by file path, exported name, alias, or re-export source. Matching symbols and source lines appear with each result; click a module to open its inspector.</td>
   </tr>
   <tr>
-    <td width="50%" valign="top"><strong>Find the public API</strong><br>Browse each file's TypeScript exports, aliases, and re-exports. Search public names in the map or through MCP, then jump to the exact declaration or export line.</td>
+    <td width="50%" valign="top"><strong>Follow an export to its import sites</strong><br>Browse each file's TypeScript exports and inspect direct named/default imports and re-exports with exact source lines. Click a site to read the import statement and open the pinned GitHub line.</td>
     <td width="50%" valign="top"><strong>Read workspace boundaries</strong><br>Start with a ranked package and directory overview, then drill into a package or open any import count to inspect its exact source lines. Resolve declared npm, Yarn, and pnpm workspace packages through export maps in CLI and browser analysis.</td>
     <td width="50%" valign="top"><strong>See active hotspots</strong><br>Optionally color modules by bounded local Git history, with committed touch counts and the last changed date. No author identities, risk grades, or implicit history scan.</td>
   </tr>
@@ -283,7 +286,7 @@ Boundary IDs use `package:<workspace path>` for declared workspace packages and 
 
 ## Scope and privacy
 
-RepoAtlas describes **static file dependencies**. It does not claim to show runtime calls, route registrations, or test coverage. It detects entries from package metadata and file conventions; “unreachable” means no path was found from detected entries, not that a file is dead. If entries are unknown, reachability remains unknown. Computed imports stay visible as unresolved evidence rather than receiving guessed targets.
+RepoAtlas describes **static file dependencies**. It does not claim to show runtime calls, route registrations, or test coverage. It detects entries from package metadata and file conventions; “unreachable” means no path was found from detected entries, not that a file is dead. If entries are unknown, reachability remains unknown. Export import-site evidence covers explicit named/default static bindings; namespace and computed accesses are not attributed to individual exports. Computed imports stay visible as unresolved evidence rather than receiving guessed targets.
 
 The CLI is limited to 5,000 source files and 2 MB per file. Tests, generated directories, declarations, and hidden files are excluded by default; use `--include-tests` or `--include-js` to opt in. Local edits disable commit-pinned GitHub links. Exported maps make no network requests and do not copy repository credentials.
 

@@ -14,9 +14,10 @@ async function fixture(t,files) {
   return dir;
 }
 test('AST edges retain exact lines; aliases, ESM extensions, reexports, types and dynamic imports resolve',async t=>{
-  const dir=await fixture(t,{'tsconfig.json':JSON.stringify({compilerOptions:{baseUrl:'.',paths:{'@/*':['src/*']}}}),'package.json':'{"source":"src/index.ts"}','src/index.ts':`// import 'fake';\nimport { a } from '@/a';\nexport { a } from './a.js';\nimport type { A } from './a';\nconst x = import('./a');\nconst y = require('./a');\ntype Z = import('./a').A;`,'src/a.ts':'export const a = 1; export type A = number;','src/a.test.ts':"import './a'"});
+  const dir=await fixture(t,{'tsconfig.json':JSON.stringify({compilerOptions:{baseUrl:'.',paths:{'@/*':['src/*']}}}),'package.json':'{"source":"src/index.ts"}','src/index.ts':`// import 'fake';\nimport DefaultThing, { a as alias, type A } from '@/a';\nexport { a as publicA } from './a.js';\nimport type { A } from './a';\nconst x = import('./a');\nconst y = require('./a');\ntype Z = import('./a').A;`,'src/a.ts':'export const a = 1; export type A = number;','src/a.test.ts':"import './a'"});
   const atlas=await analyze(dir);assert.equal(atlas.modules.length,2);assert.equal(atlas.edges.length,6);
   assert.ok(atlas.edges.every(e=>e.target==='src/a.ts'&&e.resolution==='internal'));assert.deepEqual(atlas.edges.map(e=>e.line),[2,3,4,5,6,7]);assert.match(atlas.edges[0].code,/@\/a/);assert.ok(atlas.modules.find(m=>m.id==='src/index.ts').entry.includes('package.json source'));
+  assert.deepEqual(atlas.edges[0].imports,[{name:'default',localName:'DefaultThing'},{name:'a',localName:'alias'},{name:'A',localName:'A'}]);assert.deepEqual(atlas.edges[1].imports,[{name:'a',localName:'publicA'}]);assert.deepEqual(atlas.edges[2].imports,[{name:'A',localName:'A'}]);assert.equal(atlas.edges[3].imports,undefined);
   assert.equal((await analyze(dir,{includeTests:true})).modules.length,3);
 });
 test('computed dynamic imports and require calls remain visible as unresolved source evidence',async t=>{
@@ -43,6 +44,7 @@ test('external imports are classified and scoped package subpaths are grouped wi
   assert.deepEqual(externals.map(edge=>[edge.externalKind,edge.externalName]),[
     ['builtin','fs'],['builtin','fs'],['builtin','path'],['package','lodash'],['package','@scope/tool'],['url','https://cdn.example.test']
   ]);
+  assert.ok(externals.every(edge=>edge.imports===undefined));
 });
 test('CommonJS require calls are ignored only when a runtime lexical binding shadows the global',async t=>{
   const dir=await fixture(t,{

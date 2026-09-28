@@ -4,7 +4,7 @@ description: Map or explain an unfamiliar TypeScript repository with RepoAtlas. 
 license: MIT
 metadata:
   author: maximilianfeix
-  version: "2.15.0"
+  version: "2.16.0"
 ---
 
 # RepoAtlas
@@ -13,7 +13,7 @@ Use RepoAtlas for evidence from the current TypeScript repository, not for imagi
 
 ## Workflow
 
-1. If a RepoAtlas MCP server is already available, choose the smallest useful call: use `architecture_summary` for a repository-wide overview; use `search_modules` for unknown module names; use `search_exports` for a public TypeScript name; use `module_context` for known-module details, imports, exports, and detected-entry path in one bounded response. Export metadata is syntax-level evidence, not proof of runtime reachability. Use `inspect_module` for fuller direct-import evidence or `trace_entry_path` for a path only. Call `refresh_analysis` only when the existing snapshot is stale; it rereads local files and does not write to the repository.
+1. If a RepoAtlas MCP server is already available, choose the smallest useful call: use `architecture_summary` for a repository-wide overview; use `search_modules` for unknown module names; use `search_exports` for a public TypeScript name; use `module_context` for known-module details, imports, exports, and detected-entry path in one bounded response. Edge records can identify explicit named/default import and re-export bindings, but omit namespace access. Export and import-binding metadata are syntax evidence, not proof of runtime reachability or usage. Use `inspect_module` for fuller direct-import evidence or `trace_entry_path` for a path only. Call `refresh_analysis` only when the existing snapshot is stale; it rereads local files and does not write to the repository.
 2. Otherwise, use an installed `repoatlas` CLI on the repository root. Run `repoatlas . --json` to inspect evidence, or `repoatlas . --out <temporary-path>/architecture.html` when the user asks to explore or share an HTML map. Keep generated snapshots and maps outside the project unless the user requests a repository artifact.
 3. If the CLI is missing, do not install packages automatically. Offer the versioned CLI command from the project README, or point the user to the browser map for a public GitHub URL or explicitly selected local folder.
 4. When a user requests a map, produce one standalone HTML file and give its path. Preserve existing files: omit `--force` unless the user explicitly asks to replace the chosen output.

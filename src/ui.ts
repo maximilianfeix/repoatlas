@@ -31,6 +31,8 @@ function addShareControl(panel:HTMLElement) {
 const NS = 'http://www.w3.org/2000/svg';
 function svg(tag: string, attrs: Record<string, string | number> = {}) { const e = document.createElementNS(NS,tag); for (const [k,v] of Object.entries(attrs)) e.setAttribute(k,String(v)); return e; }
 const internal = data.edges.filter(e => e.resolution === 'internal');
+const importersByTarget = new Map<string, Map<string, {edge: Edge; localName: string}[]>>();
+for(const edge of internal)for(const binding of edge.imports??[]){let byName=importersByTarget.get(edge.target);if(!byName){byName=new Map();importersByTarget.set(edge.target,byName);}const sites=byName.get(binding.name)??[];sites.push({edge,localName:binding.localName});byName.set(binding.name,sites);}
 const external = groupExternalDependencies(data.edges);
 const allEdgeGroups = groupParallelEdges(internal);
 const byId = new Map(data.modules.map(m => [m.id,m]));
@@ -186,6 +188,8 @@ function choose(id: string,syncRoute=true) {
       const row=item.source?el('p',label,'export-evidence'):el('p',label,'export-evidence');
       if(module.url){const base=module.url.replace(/#L\d+$/,'');row.replaceChildren(link(label,`${base}#L${item.line}`));}
       panel.append(row);
+      const sites=importersByTarget.get(id)?.get(item.name)??[];
+      if(sites.length){const details=el('details','','export-importers'),summary=el('summary',`${sites.length} direct named import/re-export site${sites.length===1?'':'s'}`);details.append(summary);for(const site of sites.slice(0,20)){const button=el('button',`${site.edge.source}:${site.edge.line} · as ${site.localName}`,'dep');button.onclick=()=>edgeDetail(site.edge);details.append(button);}if(sites.length>20)details.append(el('p',`${sites.length-20} more import sites are not shown.`));panel.append(details);}
     }
     if(module.exports.length>30)panel.append(el('p',`${module.exports.length-30} more exports omitted from this panel.`));
   }

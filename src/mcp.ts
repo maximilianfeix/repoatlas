@@ -18,6 +18,7 @@ function edgeEvidence(edge: Edge) {
     specifier: edge.specifier,
     line: edge.line,
     code: edge.code,
+    ...(edge.imports ? { imports: edge.imports } : {}),
     ...(edge.url ? { url: edge.url } : {}),
   };
 }
