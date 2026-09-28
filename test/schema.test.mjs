@@ -31,3 +31,15 @@ test('snapshot parser and published schema accept additive computed-import and e
   const snapshot={schemaVersion:1,name:'Fixture',modules:[{id:'a.ts',group:'.',lines:1,entry:[]}],edges:[{source:'a.ts',target:'pkg',specifier:'pkg',kind:'import',line:1,code:"import 'pkg';",resolution:'external',externalKind:'package',externalName:'pkg'},{source:'a.ts',target:'name',specifier:'name',kind:'dynamic',line:1,code:'import(name)',resolution:'unresolved',computed:true}],warnings:[]};
   assert.deepEqual(parseAtlas(snapshot),snapshot);
 });
+
+test('snapshot schema validates opt-in Git activity data while leaving old snapshots valid',async()=>{
+  const schema=JSON.parse(await readFile('schemas/snapshot.schema.json','utf8'));
+  assert.equal(schema.properties.activity.properties.days.maximum,365);
+  const snapshot={schemaVersion:1,name:'Fixture',activity:{days:90,commitsScanned:3,truncated:false,shallow:true},modules:[{id:'a.ts',group:'.',lines:1,entry:[],activity:{commits:2,lastChanged:'2026-09-20'}}],edges:[],warnings:[]};
+  assert.deepEqual(parseAtlas(snapshot),snapshot);
+  assert.deepEqual(parseAtlas({schemaVersion:1,name:'Old',modules:[],edges:[],warnings:[]}).activity,undefined);
+  for(const mutate of [value=>value.activity.days=366,value=>value.modules[0].activity.commits=-1,value=>value.modules[0].activity.lastChanged='2026-02-30']){
+    const invalid=structuredClone(snapshot);mutate(invalid);
+    assert.throws(()=>parseAtlas(invalid),/Invalid RepoAtlas snapshot/);
+  }
+});

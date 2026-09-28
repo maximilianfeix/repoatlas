@@ -32,6 +32,9 @@ const internal = data.edges.filter(e => e.resolution === 'internal');
 const external = groupExternalDependencies(data.edges);
 const allEdgeGroups = groupParallelEdges(internal);
 const byId = new Map(data.modules.map(m => [m.id,m]));
+const activityValues=data.modules.flatMap(module=>module.activity?[module.activity.commits]:[]).sort((a,b)=>a-b);
+const activityMedian=activityValues[Math.floor((activityValues.length-1)*0.5)]??0;
+const activityUpper=activityValues[Math.floor((activityValues.length-1)*0.75)]??0;
 const cycleGroups = findCycles(data.modules, internal);
 const reachability = analyzeReachability(data.modules,internal);
 const cycleByModule = new Map(cycleGroups.flatMap((group, index) => group.map(module => [module.id, index] as const)));
@@ -42,7 +45,7 @@ for (const edge of internal) {
   importers.add(edge.source);
   importerSets.set(edge.target,importers);
 }
-let selected: string | undefined, selectedEdge: Edge | undefined, entriesOnly = false, focusMap = false, impactMap = false, entryPathView = false, cyclesOnly = false, orphansOnly = false, boundaryView = false, architectureView = false, architectureGroup: string | undefined, clusterView = false, cycleGroupIndex = 0, pageIndex = 0, zoom = 1;
+let selected: string | undefined, selectedEdge: Edge | undefined, entriesOnly = false, focusMap = false, impactMap = false, activityMode = false, entryPathView = false, cyclesOnly = false, orphansOnly = false, boundaryView = false, architectureView = false, architectureGroup: string | undefined, clusterView = false, cycleGroupIndex = 0, pageIndex = 0, zoom = 1;
 $('repo-name').textContent = data.name;
 for (const [value,label] of [[data.modules.length,'modules'],[internal.length,'connections'],[data.modules.filter(m=>m.entry.length).length,'entry points']]) { const stat = el('div'); stat.append(el('strong',String(value)),el('span',String(label))); $('stats').append(stat); }
 for (const group of [...new Set(data.modules.map(m=>m.group))].sort()) { const opt = document.createElement('option'); opt.value = group; opt.textContent = group; $('group').append(opt); }
@@ -53,6 +56,7 @@ if (data.warnings.length) $('notice').className = 'warning';
 function intro(syncRoute=true) {
   const panel = $('inspector'); panel.replaceChildren(el('h2','The source of truth'),el('h3','Architecture you can verify.'),el('p','Select a module to explore its imports and dependents. Select any connection to see the exact code that created it.'));
   panel.append(el('p',`${data.edges.filter(e=>e.resolution==='external').length} external imports · ${data.edges.filter(e=>e.resolution==='unresolved').length} unresolved imports`));
+  if(data.activity)panel.append(el('p',`Optional Git activity view · committed file touches in the last ${data.activity.days} days; not a risk or quality score.`));
   if (data.commit) panel.append(el('p',`Snapshot ${data.commit.slice(0,10)}`));
   if (external.length) {
     const packages=external.filter(usage=>usage.kind==='package');
@@ -164,6 +168,7 @@ function choose(id: string,syncRoute=true) {
   const module=byId.get(id)!; const panel=$('inspector'); panel.replaceChildren(el('h2','Module inspector'),el('h3',id),el('p',`${module.lines} lines · ${module.group}`));
   if(syncRoute)setInspectorRoute({type:'module',id});
   addShareControl(panel);
+  if(data.activity){const activity=module.activity?`${module.activity.commits} committed file ${module.activity.commits===1?'change':'changes'} in ${data.activity.days} days · last changed ${module.activity.lastChanged}`:`No committed file changes in the last ${data.activity.days} days.`;panel.append(el('p',activity,'activity-detail'));}
   if(reachability.known)panel.append(el('span',reachability.unreachable.has(id)?'Outside detected entry-point paths':'Reachable from detected entry points',`pill${reachability.unreachable.has(id)?' orphan-pill':''}`));
   for (const reason of module.entry) panel.append(el('span',reason,'pill'));
   const cycleIndex=cycleByModule.get(id);
@@ -242,6 +247,10 @@ function draw() {
   $('focus').toggleAttribute('disabled',!selected);
   $('focus').classList.toggle('active',focusMap);
   $('focus').setAttribute('aria-pressed',String(focusMap));
+  $('activity').hidden=!data.activity;
+  $('activity').classList.toggle('active',activityMode);
+  $('activity').setAttribute('aria-pressed',String(activityMode));
+  $('activity-legend').hidden=!(activityMode&&data.activity);
   $('impact').toggleAttribute('disabled',!selected);
   $('impact').classList.toggle('active',impactMap);
   $('impact').setAttribute('aria-pressed',String(impactMap));
@@ -274,7 +283,7 @@ function draw() {
   ($('page-next') as HTMLButtonElement).disabled=pageIndex>=pageCount-1;
   const architecture=buildArchitectureOverview(scoped,internal);
   $('view-count').textContent=architectureView ? `${architecture.groups.length} packages / directories` : boundaryView ? 'Boundary matrix' : entryPathView&&entryPath ? `Entry path · ${visible.length} modules` : cyclesOnly ? `${visible.length} modules · ${cycleGroupIndex<0 ? `all ${cycleGroups.length} cycles` : `cycle ${cycleGroupIndex+1}/${cycleGroups.length}`}` : `${visible.length} / ${scoped.length} ${orphansOnly ? 'unreachable' : focused ? 'connected' : impacted ? 'affected' : 'matching'} modules`;
-  $('view-description').textContent=architectureView ? 'Start with package boundaries · click a package to explore its modules or a count for source evidence' : boundaryView ? 'Rows are importers · columns are imported boundaries · choose a count for line-level evidence' : entryPathView&&entryPath ? `Shortest path from ${entryPath.entry} to ${selected} · click a highlighted import for its source line` : cyclesOnly ? `${cycleGroupIndex<0 ? `${cycleGroups.length} circular groups` : `Cycle group ${cycleGroupIndex+1} of ${cycleGroups.length}`} · amber links are part of a cycle` : orphansOnly ? 'Outside paths from detected entry points · entry detection is heuristic' : impacted ? `Potential change impact for ${selected} · reverse imports` : focused ? `Direct neighborhood of ${selected}` : clusterView ? 'Grouped by workspace package or top-level directory · click a connection for its code' : 'Click a connection for its code';
+  $('view-description').textContent=activityMode&&data.activity ? `Git activity · committed file touches in the last ${data.activity.days} days · select a module for its count` : architectureView ? 'Start with package boundaries · click a package to explore its modules or a count for source evidence' : boundaryView ? 'Rows are importers · columns are imported boundaries · choose a count for line-level evidence' : entryPathView&&entryPath ? `Shortest path from ${entryPath.entry} to ${selected} · click a highlighted import for its source line` : cyclesOnly ? `${cycleGroupIndex<0 ? `${cycleGroups.length} circular groups` : `Cycle group ${cycleGroupIndex+1} of ${cycleGroups.length}`} · amber links are part of a cycle` : orphansOnly ? 'Outside paths from detected entry points · entry detection is heuristic' : impacted ? `Potential change impact for ${selected} · reverse imports` : focused ? `Direct neighborhood of ${selected}` : clusterView ? 'Grouped by workspace package or top-level directory · click a connection for its code' : 'Click a connection for its code';
   const list=$('module-list'); list.replaceChildren();
   for (const m of visible) { const b=el('button',`${m.entry.length ? '● ' : ''}${m.id}`,selected===m.id ? 'selected' : ''); b.onclick=()=>choose(m.id); list.append(b); }
   if (!matches.length) list.append(el('p','No matching modules.'));
@@ -389,8 +398,8 @@ function draw() {
     if(group.edges.length>1){const count=svg('text',{x:midpoint.x,y:midpoint.y+4,class:'edge-count','aria-hidden':'true'});count.textContent=`×${group.edges.length}`;graph.append(count);}
   }
   for(const m of visible) {
-    const {x,y}=positions.get(m.id)!; const g=svg('g',{transform:`translate(${x},${y})`,class:`node${m.entry.length?' entry':''}${cycleByModule.has(m.id)?' cyclic':''}${reachability.unreachable.has(m.id)?' orphan':''}${entryPathModules.has(m.id)?' path-node':''}${selected===m.id?' selected':''}`,tabindex:0,role:'button','aria-label':`${m.id}${entryPathModules.has(m.id)?' · on traced entry path':''}${reachability.unreachable.has(m.id)?' · outside detected entry-point paths':''}${cycleByModule.has(m.id)?' · circular dependency':''}`});
-    const title=svg('title');title.textContent=m.id;g.append(title,svg('rect',{width:240,height:58,rx:8}));
+    const {x,y}=positions.get(m.id)!;const touches=m.activity?.commits??0,heat=activityMode&&touches?(touches>=activityUpper?' activity-high':touches>=activityMedian?' activity-medium':' activity-low'):'';const activityLabel=data.activity?m.activity?` · ${touches} committed file ${touches===1?'change':'changes'} in ${data.activity.days} days; last changed ${m.activity.lastChanged}`:` · no committed file changes in ${data.activity.days} days`:'';const g=svg('g',{transform:`translate(${x},${y})`,class:`node${m.entry.length?' entry':''}${cycleByModule.has(m.id)?' cyclic':''}${reachability.unreachable.has(m.id)?' orphan':''}${entryPathModules.has(m.id)?' path-node':''}${selected===m.id?' selected':''}${heat}`,tabindex:0,role:'button','aria-label':`${m.id}${activityLabel}${entryPathModules.has(m.id)?' · on traced entry path':''}${reachability.unreachable.has(m.id)?' · outside detected entry-point paths':''}${cycleByModule.has(m.id)?' · circular dependency':''}`});
+    const title=svg('title');title.textContent=`${m.id}${activityLabel}`;g.append(title,svg('rect',{width:240,height:58,rx:8}));
     const text=svg('text',{x:12,y:24}); const name=m.id.split('/').at(-1)!;text.textContent=(m.entry.length?'● ':'')+(name.length>28?name.slice(0,25)+'…':name);
     const meta=svg('text',{x:12,y:43,class:'meta'});meta.textContent=m.group.length>32?'…'+m.group.slice(-31):m.group;g.append(text,meta);
     g.addEventListener('click',()=>choose(m.id));g.addEventListener('keydown',(e)=>activateOnKeyboard(e as KeyboardEvent,()=>choose(m.id)));graph.append(g);
@@ -405,10 +414,11 @@ $('boundaries').onclick=()=>{boundaryView=!boundaryView;architectureView=false;a
 $('architecture').onclick=()=>{boundaryView=false;if(architectureGroup){architectureGroup=undefined;architectureView=true;}else architectureView=!architectureView;pageIndex=0;draw();};
 $('clusters').onclick=()=>{clusterView=!clusterView;draw();};
 $('impact').onclick=()=>{if(selected){impactMap=!impactMap;entryPathView=false;focusMap=false;cyclesOnly=false;orphansOnly=false;pageIndex=0;draw();}};
+$('activity').onclick=()=>{activityMode=!activityMode;pageIndex=0;draw();};
 $('focus').onclick=()=>{if(selected){focusMap=!focusMap;entryPathView=false;impactMap=false;cyclesOnly=false;orphansOnly=false;pageIndex=0;draw();}};
 $('cycles').onclick=()=>{cyclesOnly=!cyclesOnly;entryPathView=false;focusMap=false;impactMap=false;orphansOnly=false;pageIndex=0;draw();};
 $('cycle-group').addEventListener('change',()=>{cycleGroupIndex=Number(($('cycle-group') as HTMLSelectElement).value);pageIndex=0;draw();});
-$('reset').onclick=()=>{($('search') as HTMLInputElement).value='';($('group') as HTMLSelectElement).value='';entriesOnly=false;focusMap=false;impactMap=false;entryPathView=false;cyclesOnly=false;orphansOnly=false;boundaryView=false;architectureView=false;architectureGroup=undefined;clusterView=false;cycleGroupIndex=0;pageIndex=0;selected=undefined;selectedEdge=undefined;zoom=1;$('entries').classList.remove('active');$('entries').setAttribute('aria-pressed','false');intro();draw();};
+$('reset').onclick=()=>{($('search') as HTMLInputElement).value='';($('group') as HTMLSelectElement).value='';entriesOnly=false;focusMap=false;impactMap=false;activityMode=false;entryPathView=false;cyclesOnly=false;orphansOnly=false;boundaryView=false;architectureView=false;architectureGroup=undefined;clusterView=false;cycleGroupIndex=0;pageIndex=0;selected=undefined;selectedEdge=undefined;zoom=1;$('entries').classList.remove('active');$('entries').setAttribute('aria-pressed','false');intro();draw();};
 $('zoom-in').onclick=()=>{zoom=Math.min(2,zoom+0.2);draw();};$('zoom-out').onclick=()=>{zoom=Math.max(0.4,zoom-0.2);draw();};
 $('overview-center').addEventListener('click',()=>{const canvas=$('graph').parentElement!;canvas.scrollTo({left:Math.max(0,(canvas.scrollWidth-canvas.clientWidth)/2),top:Math.max(0,(canvas.scrollHeight-canvas.clientHeight)/2),behavior:'smooth'});});
 $('graph').parentElement!.addEventListener('scroll',updateOverviewViewport);

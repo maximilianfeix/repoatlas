@@ -1,5 +1,18 @@
 # Changelog
 
+## [2.9.0] - 2026-09-28
+
+### Added
+
+- Add an opt-in `--activity-days` lens for local Git history and CLI-cloned public repositories.
+- Color modules by committed file-change frequency, show each module's last changed date, and keep the history window visible in the standalone map.
+- Bound the scan to 2,000 commits and 365 days, omit author identities, and label shallow or capped history.
+
+### Quality
+
+- Test time-window filtering, filenames with spaces, shallow-history metadata, commit caps, and invalid/non-Git inputs.
+- Keep activity metadata additive and optional in snapshots; animate the lens with reduced-motion support.
+
 ## [2.8.0] - 2026-09-28
 
 ### Added

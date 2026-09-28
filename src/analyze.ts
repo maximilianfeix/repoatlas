@@ -5,6 +5,7 @@ import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { builtinModules } from 'node:module';
 import type { Atlas, Edge } from './types.js';
+import { activityCommitLimit, parseGitActivity } from './activity.js';
 import { visitModuleDependencies } from './syntax.js';
 
 const ignored = new Set(['node_modules', '.git', 'dist', 'build', 'coverage', '.next', '.turbo', 'vendor']);
@@ -51,7 +52,7 @@ function git(root: string, args: string[]): string | undefined {
   try { return execFileSync('git', ['-C', root, ...args], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'], timeout: 10000 }).trim(); } catch { return undefined; }
 }
 
-export async function analyze(input: string, options: { includeTests?: boolean; includeJS?: boolean; repository?: string } = {}): Promise<Atlas> {
+export async function analyze(input: string, options: { includeTests?: boolean; includeJS?: boolean; repository?: string; activityDays?: number } = {}): Promise<Atlas> {
   const root = await realpath(input);
   if (!(await lstat(root)).isDirectory()) throw new Error('Input must be a directory.');
   const files: string[] = [], configs = new Map<string, ts.CompilerOptions>(), packages: {dir: string; data: any}[] = [];
@@ -128,6 +129,22 @@ export async function analyze(input: string, options: { includeTests?: boolean; 
   const prefix = git(root, ['rev-parse', '--show-prefix']) || '';
   let tracked = new Set<string>();
   try { tracked = new Set(execFileSync('git', ['-C', root, 'ls-files', '-z'], { encoding: 'buffer', stdio: ['ignore', 'pipe', 'ignore'], timeout: 10000 }).toString('utf8').split('\0')); } catch { /* not a Git repository */ }
+  let activity:Atlas['activity'];
+  let activityChanges:Map<string,{commits:number;lastChanged:string}>|undefined;
+  if(options.activityDays!==undefined){
+    if(!Number.isSafeInteger(options.activityDays)||options.activityDays<1||options.activityDays>365)throw new Error('--activity-days must be a whole number from 1 to 365.');
+    if(!commit||!tracked.size)throw new Error('--activity-days requires a Git repository with at least one commit.');
+    if(prefix)throw new Error('--activity-days requires the Git repository root, not a subdirectory.');
+    const shallow=git(root,['rev-parse','--is-shallow-repository'])==='true';
+    let log:string;
+    try{log=execFileSync('git',['-C',root,'log','--format=x%ct','--name-only','-z','--no-renames',`--since=${options.activityDays} days ago`,'--max-count=2000'],{encoding:'utf8',stdio:['ignore','pipe','ignore'],timeout:15000,maxBuffer:16*1024*1024});}
+    catch{throw new Error('Could not read recent Git activity. The repository history exceeded the bounded scan; use a shorter --activity-days window.');}
+    const parsed=parseGitActivity(log,tracked);
+    activity={days:options.activityDays,commitsScanned:parsed.commitsScanned,truncated:parsed.truncated,shallow};
+    activityChanges=parsed.changes;
+    if(shallow)warnings.push('Git history is shallow; the activity view may omit earlier commits in the selected window.');
+    if(parsed.truncated)warnings.push(`Git activity scan reached its ${activityCommitLimit}-commit cap; some modules may be missing recent changes.`);
+  }
   const id = (f: string) => slash(path.relative(root, f));
   const url = (f: string, line = 1) => repository && commit && !dirty && tracked.has(id(f)) ? `${repository}/blob/${commit}/${(prefix + id(f)).split('/').map(encodeURIComponent).join('/')}#L${line}` : undefined;
   const fileSet = new Set(files);
@@ -232,7 +249,8 @@ export async function analyze(input: string, options: { includeTests?: boolean; 
     const reasons = entries.get(file) || [];
     if (/^(?:index|main|app|server|cli)\.(?:ts|tsx|mts|cts)$/.test(path.basename(file))) reasons.push('filename convention (heuristic)');
     const workspace=workspacePackages.filter(pkg=>file.startsWith(`${pkg.dir}${path.sep}`)).sort((a,b)=>b.dir.length-a.dir.length)[0];
-    modules.push({id: id(file), group: slash(path.relative(root,path.dirname(file))) || '.', lines: lines.length, entry: [...new Set(reasons)], url: url(file), ...(workspace?{workspace:slash(path.relative(root,workspace.dir))}:{})});
+    const moduleId=id(file),moduleActivity=activityChanges?.get(moduleId);
+    modules.push({id: moduleId, group: slash(path.relative(root,path.dirname(file))) || '.', lines: lines.length, entry: [...new Set(reasons)], url: url(file), ...(workspace?{workspace:slash(path.relative(root,workspace.dir))}:{}),...(moduleActivity?{activity:moduleActivity}:{})});
     function add(literal: ts.StringLiteralLike, node: ts.Node, kind: Edge['kind']) {
       const specifier = literal.text;
       const resolved = ts.resolveModuleName(specifier, file, compilerOptions(file), host).resolvedModule;
@@ -270,5 +288,5 @@ export async function analyze(input: string, options: { includeTests?: boolean; 
   const unresolved = edges.filter(e => e.resolution === 'unresolved').length;
   if (unresolved) warnings.push(`${unresolved} imports could not be mapped to included source files. See the dependency inspector.`);
   if (computedImportCount) warnings.push(`${computedImportCount} computed import expression${computedImportCount === 1 ? '' : 's'} shown as unresolved evidence; targets are not inferred.`);
-  return {schemaVersion:1, name: repository?.split('/').slice(-2).join('/') || path.basename(root), repository, commit, modules, edges, warnings};
+  return {schemaVersion:1, name: repository?.split('/').slice(-2).join('/') || path.basename(root), repository, commit,...(activity?{activity}:{}), modules, edges, warnings};
 }
