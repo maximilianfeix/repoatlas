@@ -28,7 +28,8 @@ test('snapshot parser and published schema accept additive computed-import and e
   const schema=JSON.parse(await readFile('schemas/snapshot.schema.json','utf8'));
   assert.deepEqual(schema.properties.edges.items.properties.externalKind.enum,['package','builtin','url','other']);
   assert.equal(schema.properties.edges.items.properties.computed.const,true);
-  const snapshot={schemaVersion:1,name:'Fixture',modules:[{id:'a.ts',group:'.',lines:1,entry:[]}],edges:[{source:'a.ts',target:'pkg',specifier:'pkg',kind:'import',line:1,code:"import 'pkg';",resolution:'external',externalKind:'package',externalName:'pkg'},{source:'a.ts',target:'name',specifier:'name',kind:'dynamic',line:1,code:'import(name)',resolution:'unresolved',computed:true}],warnings:[]};
+  assert.deepEqual(schema.properties.modules.items.properties.exports.items.properties.kind.enum,['function','class','interface','type','variable','enum','namespace','re-export','re-export-all','assignment']);
+  const snapshot={schemaVersion:1,name:'Fixture',modules:[{id:'a.ts',group:'.',lines:1,entry:[],exports:[{name:'Thing',kind:'interface',line:1}]}],edges:[{source:'a.ts',target:'pkg',specifier:'pkg',kind:'import',line:1,code:"import 'pkg';",resolution:'external',externalKind:'package',externalName:'pkg'},{source:'a.ts',target:'name',specifier:'name',kind:'dynamic',line:1,code:'import(name)',resolution:'unresolved',computed:true}],warnings:[]};
   assert.deepEqual(parseAtlas(snapshot),snapshot);
 });
 

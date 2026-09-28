@@ -67,6 +67,21 @@ export async function runMcpServer(root: string, version: string, options: { inc
     return result({ query, total: matches.length, modules: matches.slice(0, limit).map(module => ({ id: module.id, group: module.group, lines: module.lines, entry: module.entry, workspace: module.workspace })) });
   });
 
+  server.registerTool('search_exports', {
+    title: 'Search public TypeScript exports',
+    description: 'Find syntax-declared top-level TypeScript exports by name, with exact source lines and pinned URLs when available. This is static syntax evidence, not runtime reachability.',
+    annotations: { readOnlyHint: true, openWorldHint: false },
+    inputSchema: z.object({ query: z.string().trim().min(1).max(200), limit: z.number().int().min(1).max(100).default(20) }),
+  }, async ({ query, limit }) => {
+    const needle = query.toLocaleLowerCase();
+    const matches = atlas.modules.flatMap(module => {
+      return (module.exports ?? [])
+        .filter(item => `${item.name} ${item.localName ?? ''} ${item.source ?? ''} ${item.kind}`.toLocaleLowerCase().includes(needle))
+        .map(item => ({ moduleId: module.id, ...item, ...(module.url ? { url: `${module.url.replace(/#L\d+$/, '')}#L${item.line}` } : {}) }));
+    }).sort((a, b) => a.moduleId.localeCompare(b.moduleId) || a.line - b.line || a.name.localeCompare(b.name));
+    return result({ query, total: matches.length, items: matches.slice(0, limit), truncated: matches.length > limit });
+  });
+
   server.registerTool('inspect_module', {
     title: 'Inspect module imports',
     description: 'Return a module and its direct incoming and outgoing import evidence, including exact source lines and pinned source URLs when available.',
@@ -79,6 +94,7 @@ export async function runMcpServer(root: string, version: string, options: { inc
     const incoming = atlas.edges.filter(edge => edge.resolution === 'internal' && edge.target === moduleId).sort((a, b) => a.source.localeCompare(b.source) || a.line - b.line);
     return result({
       module: { id: module.id, group: module.group, lines: module.lines, entry: module.entry, workspace: module.workspace, url: module.url },
+      exports: module.exports === undefined ? { available: false, total: 0, items: [], truncated: false } : { available: true, total: module.exports.length, items: module.exports.slice(0, limit).map(item => ({ ...item, ...(module.url ? { url: `${module.url.replace(/#L\d+$/, '')}#L${item.line}` } : {}) })), truncated: module.exports.length > limit },
       outgoing: { total: outgoing.length, evidence: outgoing.slice(0, limit).map(edgeEvidence) },
       incoming: { total: incoming.length, evidence: incoming.slice(0, limit).map(edgeEvidence) },
       truncated: outgoing.length > limit || incoming.length > limit,
@@ -99,6 +115,7 @@ export async function runMcpServer(root: string, version: string, options: { inc
     const hasEntries = atlas.modules.some(item => item.entry.length > 0);
     return result({
       module: { id: module.id, group: module.group, lines: module.lines, entry: module.entry, workspace: module.workspace, url: module.url },
+      exports: module.exports === undefined ? { available: false, total: 0, items: [], truncated: false } : { available: true, total: module.exports.length, items: module.exports.slice(0, limit).map(item => ({ ...item, ...(module.url ? { url: `${module.url.replace(/#L\d+$/, '')}#L${item.line}` } : {}) })), truncated: module.exports.length > limit },
       imports: { total: outgoing.length, evidence: outgoing.slice(0, limit).map(edgeEvidence), truncated: outgoing.length > limit },
       importedBy: { total: incoming.length, evidence: incoming.slice(0, limit).map(edgeEvidence), truncated: incoming.length > limit },
       entryPath: path ? {

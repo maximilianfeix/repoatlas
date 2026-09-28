@@ -33,6 +33,10 @@ test('browser analyzer shares CLI AST edges, path aliases, exact source lines, a
   const atlas=analyzeRepositoryFiles({files,owner:'owner',repo:'repo',commit,compiler:ts});
   assert.equal(atlas.name,'owner/repo');assert.equal(atlas.commit,commit);
   assert.deepEqual(atlas.modules.find(module=>module.id==='src/index.ts').entry,['package.json main','filename convention (heuristic)']);
+  assert.deepEqual(atlas.modules.find(module=>module.id==='src/index.ts').exports.slice(0,2),[
+    {name:'run',kind:'re-export',line:2,source:'./util.js'},
+    {name:'Utility',kind:'re-export',line:7},
+  ]);
   const edge=(specifier)=>atlas.edges.find(item=>item.specifier===specifier);
   assert.deepEqual([edge('@/util.js').resolution,edge('@/util.js').target,edge('@/util.js').line],['internal','src/util.ts',1]);
   assert.deepEqual([edge('./util.js').resolution,edge('./util.js').target,edge('./util.js').line],['internal','src/util.ts',2]);

@@ -69,14 +69,14 @@ Want to explore before installing? [Paste a public TypeScript repository or choo
 For a versioned command-line run, install nothing globally. The CLI requires **Node.js 22 or later** and **Git**. Point it at a public GitHub repository:
 
 ```sh
-npx --yes --package=github:maximilianfeix/repoatlas#v2.12.0 -- \
+npx --yes --package=github:maximilianfeix/repoatlas#v2.13.0 -- \
   repoatlas-cli https://github.com/pmndrs/zustand --out zustand-map.html
 ```
 
 Open `zustand-map.html` in your browser. RepoAtlas also analyzes a local checkout:
 
 ```sh
-npx --yes --package=github:maximilianfeix/repoatlas#v2.12.0 -- \
+npx --yes --package=github:maximilianfeix/repoatlas#v2.13.0 -- \
   repoatlas-cli ./my-project --out architecture.html
 ```
 
@@ -110,7 +110,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: maximilianfeix/repoatlas@v2.12.0
+      - uses: maximilianfeix/repoatlas@v2.13.0
         with:
           output: repoatlas-map.html
 ```
@@ -127,7 +127,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: maximilianfeix/repoatlas@v2.12.0
+      - uses: maximilianfeix/repoatlas@v2.13.0
         with:
           compare-to: ${{ github.event.pull_request.base.sha }}
           output: architecture-diff.html
@@ -149,7 +149,7 @@ Add this server entry to an MCP client configuration and replace the project pat
       "command": "npx",
       "args": [
         "--yes",
-        "--package=github:maximilianfeix/repoatlas#v2.12.0",
+        "--package=github:maximilianfeix/repoatlas#v2.13.0",
         "repoatlas-cli",
         "mcp",
         "/absolute/path/to/project"
@@ -159,7 +159,7 @@ Add this server entry to an MCP client configuration and replace the project pat
 }
 ```
 
-The tools summarize architecture, search modules, inspect full direct-import evidence, bundle one module with bounded neighboring edges and its entry path through `module_context`, trace paths, and refresh analysis after edits. Its `limit` defaults to 8 and can be set from 1 to 40; results include full totals and explicit truncation. Every reported edge includes its exact source line; no runtime call graph or inferred import target is claimed. The server requires Node.js 22 or later and analyzes TypeScript by default. Use `--include-js` or `--include-tests` after `mcp` to opt in to those files.
+The tools summarize architecture, search modules and public TypeScript exports, inspect direct-import evidence, bundle a module's imports, exports, and detected-entry path through `module_context`, trace paths, and refresh analysis after edits. Results are bounded and expose totals and truncation. Exports and edges include exact source lines; neither is a claim about runtime behavior. The server requires Node.js 22 or later and analyzes TypeScript by default. Use `--include-js` or `--include-tests` after `mcp` to opt in to those files.
 
 ### Install the RepoAtlas agent skill
 
@@ -194,6 +194,9 @@ Each example below was generated from a pinned upstream commit. The counts and e
   <tr>
     <td colspan="2" valign="top"><a href="https://maximilianfeix.github.io/repoatlas/examples/repoatlas-v1-to-v2.html"><img src="docs/assets/architecture-diff.png" alt="A searchable architecture comparison between real RepoAtlas v1.10 and v2 snapshots, showing added modules and imports" width="100%"></a><sub>A real RepoAtlas 1.10 → 2.0 comparison. Expand an import to trace its source line in the pinned snapshot.</sub></td>
   </tr>
+  <tr>
+    <td colspan="2" valign="top"><a href="https://maximilianfeix.github.io/repoatlas/examples/hono.html#module=src%2Fadapter%2Faws-lambda%2Fhandler.ts"><img src="docs/assets/export-surface.png" alt="The Hono module inspector lists exported TypeScript names with links to exact lines in the pinned GitHub source" width="100%"></a><sub>Inspect a file's public API and jump straight to each export in the pinned source.</sub></td>
+  </tr>
 </table>
 
 The analyzed revisions and upstream license notices are recorded in [`docs/examples/manifest.json`](docs/examples/manifest.json) and [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md).
@@ -209,6 +212,7 @@ The RepoAtlas comparison uses real snapshots from [v1.10.0](https://github.com/m
     <td width="50%" valign="top"><strong>Get oriented quickly</strong><br>Walk a detected entry path one import at a time, with the exact source line highlighted at every stop. Explore reachability, cycles, impact, and external packages, then share a focused view with a deep link.</td>
   </tr>
   <tr>
+    <td width="50%" valign="top"><strong>Find the public API</strong><br>Browse each file's TypeScript exports, aliases, and re-exports. Search public names through MCP, then jump to the exact declaration or export line.</td>
     <td width="50%" valign="top"><strong>Read workspace boundaries</strong><br>Start with a ranked package and directory overview, then drill into a package or open any import count to inspect its exact source lines. Resolve declared npm, Yarn, and pnpm workspace packages through export maps in CLI and browser analysis.</td>
     <td width="50%" valign="top"><strong>See active hotspots</strong><br>Optionally color modules by bounded local Git history, with committed touch counts and the last changed date. No author identities, risk grades, or implicit history scan.</td>
   </tr>

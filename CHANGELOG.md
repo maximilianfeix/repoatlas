@@ -1,5 +1,17 @@
 # Changelog
 
+## [2.13.0] - 2026-09-28
+
+### Added
+
+- Show each module's static TypeScript export surface with exact line links, including aliases and re-exports.
+- Add bounded MCP `search_exports` and include export evidence in focused module context.
+- Preserve compatibility with snapshots created before export metadata was recorded.
+
+### Quality
+
+- Test TypeScript declarations, destructured variables, aliases, default exports, namespace re-exports, bounded search, and line evidence.
+
 ## [2.12.0] - 2026-09-28
 
 ### Added

@@ -5,6 +5,7 @@ import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { builtinModules } from 'node:module';
 import type { Atlas, Edge } from './types.js';
+import { collectExports } from './exports.js';
 import { activityCommitLimit, parseGitActivity } from './activity.js';
 import { visitModuleDependencies } from './syntax.js';
 
@@ -250,7 +251,7 @@ export async function analyze(input: string, options: { includeTests?: boolean; 
     if (/^(?:index|main|app|server|cli)\.(?:ts|tsx|mts|cts)$/.test(path.basename(file))) reasons.push('filename convention (heuristic)');
     const workspace=workspacePackages.filter(pkg=>file.startsWith(`${pkg.dir}${path.sep}`)).sort((a,b)=>b.dir.length-a.dir.length)[0];
     const moduleId=id(file),moduleActivity=activityChanges?.get(moduleId);
-    modules.push({id: moduleId, group: slash(path.relative(root,path.dirname(file))) || '.', lines: lines.length, entry: [...new Set(reasons)], url: url(file), ...(workspace?{workspace:slash(path.relative(root,workspace.dir))}:{}),...(moduleActivity?{activity:moduleActivity}:{})});
+    modules.push({id: moduleId, group: slash(path.relative(root,path.dirname(file))) || '.', lines: lines.length, entry: [...new Set(reasons)], url: url(file), exports: collectExports(sf), ...(workspace?{workspace:slash(path.relative(root,workspace.dir))}:{}),...(moduleActivity?{activity:moduleActivity}:{})});
     function add(literal: ts.StringLiteralLike, node: ts.Node, kind: Edge['kind']) {
       const specifier = literal.text;
       const resolved = ts.resolveModuleName(specifier, file, compilerOptions(file), host).resolvedModule;
