@@ -19,8 +19,13 @@ test('composite action keeps its node setup structure and JavaScript input wired
   assert.match(action,/REPOATLAS_INCLUDE_JS: \$\{\{ inputs\.include-js \}\}/);
   assert.match(action,/args\+=\(--include-js\)/);
   assert.match(action,/  compare-to:\n    description: Optional base commit SHA/);
+  assert.match(action,/  check-config:\n    description: Optional RepoAtlas JSON rule config/);
   assert.match(action,/REPOATLAS_COMPARE_TO: \$\{\{ inputs\.compare-to \}\}/);
+  assert.match(action,/REPOATLAS_CHECK_CONFIG: \$\{\{ inputs\.check-config \}\}/);
   assert.match(action,/compare-to must be a full Git commit SHA/);
   assert.match(action,/git worktree add --quiet --detach/);
   assert.match(action,/--format html --output/);
+  assert.match(action,/args\+=\(--baseline "\$REPOATLAS_BASELINE_SNAPSHOT"\)/);
+  assert.match(action,/--format github/);
+  assert.ok(action.indexOf('name: Upload architecture map') < action.indexOf('name: Check architecture rules'));
 });

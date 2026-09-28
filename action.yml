@@ -22,6 +22,10 @@ inputs:
     description: Optional base commit SHA; generate an architecture diff against this revision instead of a map
     required: false
     default: ''
+  check-config:
+    description: Optional RepoAtlas JSON rule config; compare-to makes the check baseline-aware
+    required: false
+    default: ''
   artifact-name:
     description: Name of the downloadable workflow artifact
     required: false
@@ -59,6 +63,7 @@ runs:
         REPOATLAS_INCLUDE_JS: ${{ inputs.include-js }}
         REPOATLAS_CLI: ${{ github.action_path }}/dist/cli.js
         REPOATLAS_COMPARE_TO: ${{ inputs.compare-to }}
+        REPOATLAS_CHECK_CONFIG: ${{ inputs.check-config }}
       run: |
         args=()
         if [[ "$REPOATLAS_INCLUDE_TESTS" == "true" ]]; then args+=(--include-tests); fi
@@ -77,12 +82,19 @@ runs:
           after_json="$(mktemp)"
           comparison_json="$(mktemp)"
           echo "comparison_json=$comparison_json" >> "$GITHUB_OUTPUT"
-          trap 'git worktree remove --force "$baseline" >/dev/null 2>&1 || true; rm -f "$before_json" "$after_json"' EXIT
+          trap 'git worktree remove --force "$baseline" >/dev/null 2>&1 || true' EXIT
           node "$REPOATLAS_CLI" "$baseline" "${args[@]}" --json > "$before_json"
           node "$REPOATLAS_CLI" "$REPOATLAS_PATH" "${args[@]}" --json > "$after_json"
+          echo "baseline_snapshot=$before_json" >> "$GITHUB_OUTPUT"
+          echo "head_snapshot=$after_json" >> "$GITHUB_OUTPUT"
           node "$REPOATLAS_CLI" compare "$before_json" "$after_json" --format json > "$comparison_json"
           node "$REPOATLAS_CLI" compare "$before_json" "$after_json" --format html --output "$REPOATLAS_OUTPUT"
         else
+          if [[ -n "$REPOATLAS_CHECK_CONFIG" ]]; then
+            head_json="$(mktemp)"
+            echo "head_snapshot=$head_json" >> "$GITHUB_OUTPUT"
+            node "$REPOATLAS_CLI" "$REPOATLAS_PATH" "${args[@]}" --json > "$head_json"
+          fi
           node "$REPOATLAS_CLI" "$REPOATLAS_PATH" -o "$REPOATLAS_OUTPUT" "${args[@]}"
         fi
     - name: Upload architecture map
@@ -93,8 +105,20 @@ runs:
         path: ${{ inputs.output }}
         if-no-files-found: error
         retention-days: ${{ inputs.retention-days }}
+    - name: Check architecture rules
+      if: inputs.check-config != ''
+      shell: bash
+      env:
+        REPOATLAS_CONFIG: ${{ inputs.check-config }}
+        REPOATLAS_HEAD_SNAPSHOT: ${{ steps.generate.outputs.head_snapshot }}
+        REPOATLAS_BASELINE_SNAPSHOT: ${{ steps.generate.outputs.baseline_snapshot }}
+        REPOATLAS_CLI: ${{ github.action_path }}/dist/cli.js
+      run: |
+        args=()
+        if [[ -n "$REPOATLAS_BASELINE_SNAPSHOT" ]]; then args+=(--baseline "$REPOATLAS_BASELINE_SNAPSHOT"); fi
+        node "$REPOATLAS_CLI" check "$REPOATLAS_HEAD_SNAPSHOT" --config "$REPOATLAS_CONFIG" "${args[@]}" --format github
     - name: Add architecture summary
-      if: inputs.compare-to != ''
+      if: ${{ always() && inputs.compare-to != '' && steps.generate.outcome == 'success' }}
       shell: bash
       env:
         REPOATLAS_COMPARISON_JSON: ${{ steps.generate.outputs.comparison_json }}

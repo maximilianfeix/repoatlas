@@ -1,0 +1,7 @@
+{
+  "forbiddenImports": [],
+  "limits": {
+    "cycleGroups": 999,
+    "unreachableModules": 999
+  }
+}
