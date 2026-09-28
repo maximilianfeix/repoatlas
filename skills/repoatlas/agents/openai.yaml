@@ -1,0 +1,4 @@
+interface:
+  display_name: "RepoAtlas"
+  short_description: "Map TypeScript architecture with exact import evidence"
+  default_prompt: "Use $repoatlas to map this TypeScript repository and trace important imports to their source lines."

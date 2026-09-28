@@ -10,6 +10,7 @@
   <a href="https://github.com/maximilianfeix/repoatlas/actions/workflows/ci.yml"><img alt="Tests" src="https://img.shields.io/github/actions/workflow/status/maximilianfeix/repoatlas/ci.yml?branch=main&label=tests&style=for-the-badge&color=92EDC7&labelColor=0B0E14"></a>
   <a href="https://github.com/maximilianfeix/repoatlas/actions/workflows/codeql.yml"><img alt="CodeQL" src="https://img.shields.io/github/actions/workflow/status/maximilianfeix/repoatlas/codeql.yml?branch=main&label=CodeQL&style=for-the-badge&color=B4A0FF&labelColor=0B0E14"></a>
   <a href="https://github.com/maximilianfeix/repoatlas/blob/main/LICENSE"><img alt="MIT license" src="https://img.shields.io/github/license/maximilianfeix/repoatlas?style=for-the-badge&color=92EDC7&labelColor=0B0E14"></a>
+  <a href="https://skills.sh/maximilianfeix/repoatlas"><img alt="RepoAtlas agent skill installs" src="https://skills.sh/b/maximilianfeix/repoatlas"></a>
 </p>
 
 <p align="center">
@@ -27,6 +28,7 @@
 - [Quickstart](#quickstart)
 - [GitHub Actions](#github-actions)
 - [MCP server](#mcp-server)
+- [Agent skill](#install-the-repoatlas-agent-skill)
 - [What the map shows](#what-the-map-shows)
 - [Features](#features)
 - [Compare snapshots](#compare-snapshots)
@@ -67,14 +69,14 @@ Want to explore before installing? [Paste a public TypeScript repository or choo
 For a versioned command-line run, install nothing globally. The CLI requires **Node.js 22 or later** and **Git**. Point it at a public GitHub repository:
 
 ```sh
-npx --yes --package=github:maximilianfeix/repoatlas#v2.9.0 -- \
+npx --yes --package=github:maximilianfeix/repoatlas#v2.10.0 -- \
   repoatlas-cli https://github.com/pmndrs/zustand --out zustand-map.html
 ```
 
 Open `zustand-map.html` in your browser. RepoAtlas also analyzes a local checkout:
 
 ```sh
-npx --yes --package=github:maximilianfeix/repoatlas#v2.9.0 -- \
+npx --yes --package=github:maximilianfeix/repoatlas#v2.10.0 -- \
   repoatlas-cli ./my-project --out architecture.html
 ```
 
@@ -108,7 +110,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: maximilianfeix/repoatlas@v2.9.0
+      - uses: maximilianfeix/repoatlas@v2.10.0
         with:
           output: repoatlas-map.html
 ```
@@ -125,7 +127,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: maximilianfeix/repoatlas@v2.9.0
+      - uses: maximilianfeix/repoatlas@v2.10.0
         with:
           compare-to: ${{ github.event.pull_request.base.sha }}
           output: architecture-diff.html
@@ -147,7 +149,7 @@ Add this server entry to an MCP client configuration and replace the project pat
       "command": "npx",
       "args": [
         "--yes",
-        "--package=github:maximilianfeix/repoatlas#v2.9.0",
+        "--package=github:maximilianfeix/repoatlas#v2.10.0",
         "repoatlas-cli",
         "mcp",
         "/absolute/path/to/project"
@@ -158,6 +160,16 @@ Add this server entry to an MCP client configuration and replace the project pat
 ```
 
 The tools summarize the architecture, search modules, inspect direct import evidence, trace a module from a detected entry, and refresh the analysis after edits. Every reported edge includes its exact source line; no runtime call graph or inferred import target is claimed. The server requires Node.js 22 or later and analyzes TypeScript by default. Use `--include-js` or `--include-tests` after `mcp` to opt in to those files.
+
+### Install the RepoAtlas agent skill
+
+Give a coding agent RepoAtlas's evidence-first workflow with one command:
+
+```sh
+npx skills add maximilianfeix/repoatlas --skill repoatlas --agent codex --yes
+```
+
+The skill uses a configured RepoAtlas MCP server when available and otherwise guides the agent to the local CLI or browser map. It keeps source evidence grounded in TypeScript files, distinguishes imports from runtime behavior, and does not install packages or write into a project on its own. Replace `codex` with another supported agent name to target that agent.
 
 ## What the map shows
 
