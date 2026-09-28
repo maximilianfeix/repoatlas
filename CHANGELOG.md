@@ -1,5 +1,16 @@
 # Changelog
 
+## [2.31.0] - 2026-09-28
+
+### Improved
+
+- Make the repository-star action explicit in the landing-page header and use a compact star mark on narrow screens.
+- Add a live GitHub stars badge in the README, linked to the stargazers page.
+
+### Quality
+
+- Verify the star action and badge link to the correct repository.
+
 ## [2.30.0] - 2026-09-28
 
 ### Improved
