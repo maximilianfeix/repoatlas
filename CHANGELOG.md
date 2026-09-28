@@ -1,5 +1,19 @@
 # Changelog
 
+## [2.6.0] - 2026-09-28
+
+### Added
+
+- Analyze a private or unpushed TypeScript project by selecting its local folder in the browser; no repository files are uploaded.
+- Reuse the same TypeScript compiler settings, path-alias resolver, dependency visitor, interactive map, and standalone HTML export for local folders.
+- Set browser limits before reading files, skip oversized files and declarations, and keep tests excluded unless requested.
+
+### Quality
+
+- Test local source evidence, path aliases, private-source URL omission, test/declaration filtering, and file/byte limits.
+- Exercise folder selection, map rendering, and offline export in a real browser.
+
+
 ## [2.5.0] - 2026-09-28
 
 ### Added

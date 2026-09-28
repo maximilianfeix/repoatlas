@@ -1,4 +1,4 @@
-import { analyzePublicRepository, parsePublicRepositoryInput } from './repository-analysis.js';
+import { analyzeLocalRepositoryFiles, analyzePublicRepository, parsePublicRepositoryInput } from './repository-analysis.js';
 
 const compilerUrl='https://cdn.jsdelivr.net/npm/typescript@6.0.3/lib/typescript.js';
 const compilerIntegrity='sha384-hLq9xq2/tlk0vqCTYY2KECZxYi9UuHw/GLg6biud4KQQhLlq4x/OouQB+CusnUN3';
@@ -44,32 +44,47 @@ function progress(item){
   bar.style.width=`${value}%`;
 }
 
-const input=byId('repo-url'),analyzeButton=byId('browser-analyze'),cancelButton=byId('browser-cancel'),progressPanel=byId('browser-progress'),errorPanel=byId('browser-error'),result=byId('browser-result'),frame=byId('browser-map'),download=byId('download-browser-map');
+const input=byId('repo-url'),analyzeButton=byId('browser-analyze'),localButton=byId('browser-local'),localPicker=byId('browser-local-picker'),cancelButton=byId('browser-cancel'),progressPanel=byId('browser-progress'),errorPanel=byId('browser-error'),result=byId('browser-result'),frame=byId('browser-map'),download=byId('download-browser-map');
 
-analyzeButton.addEventListener('click',async()=>{
+async function runAnalysis(analyze){
   errorPanel.textContent='';result.hidden=true;frame.classList.remove('loaded');frame.srcdoc='';currentHtml=undefined;
-  try{parsePublicRepositoryInput(input.value);}catch(error){errorPanel.textContent=error.message;input.focus();return;}
-  currentController=new AbortController();analyzeButton.disabled=true;cancelButton.hidden=false;progressPanel.hidden=false;progressPanel.setAttribute('aria-busy','true');progress({stage:'repository',message:'Loading the pinned TypeScript compiler…'});
+  currentController=new AbortController();analyzeButton.disabled=true;localButton.disabled=true;cancelButton.hidden=false;progressPanel.hidden=false;progressPanel.setAttribute('aria-busy','true');progress({stage:'repository',message:'Loading the pinned TypeScript compiler…'});
   try{
     const ts=await loadCompiler();
-    const atlas=await analyzePublicRepository(input.value,{compiler:ts,includeTests:byId('browser-tests').checked,signal:currentController.signal,onProgress:progress});
+    const atlas=await analyze(ts,currentController.signal);
     progress({stage:'render',message:'Building the interactive map…'});
     currentHtml=await createMapHtml(atlas);
     byId('browser-result-label').textContent=`${atlas.name} · ${atlas.modules.length.toLocaleString()} modules · ${atlas.edges.length.toLocaleString()} imports`;
+    byId('browser-map').title=`Interactive RepoAtlas map of ${atlas.name}`;
+    byId('browser-disclosure').textContent=atlas.commit
+      ?'Source files are fetched directly from GitHub and analyzed on this device. The TypeScript compiler is loaded from jsDelivr’s version-pinned TypeScript package; it receives no repository data. GitHub’s public API limits unauthenticated requests to 60 per hour per IP. Large repositories work best with the local CLI.'
+      :'Selected folder contents are analyzed on this device and never sent to a RepoAtlas server. Source snippets are included in the exported HTML; review the map before sharing it. The TypeScript compiler is loaded from jsDelivr’s version-pinned TypeScript package.';
     result.hidden=false;
     await new Promise((resolve,reject)=>{
       frame.onload=()=>{frame.classList.add('loaded');resolve();};
       frame.onerror=()=>reject(new Error('The interactive map could not be rendered.'));
       frame.srcdoc=currentHtml;
     });
-    progress({stage:'complete',message:`Map ready at commit ${atlas.commit.slice(0,10)}.`});
-    byId('command-status').textContent=`Browser map ready for ${atlas.name} at ${atlas.commit.slice(0,10)}.`;
+    const snapshot=atlas.commit?`commit ${atlas.commit.slice(0,10)}`:'local source';
+    progress({stage:'complete',message:`Map ready from ${snapshot}.`});
+    byId('command-status').textContent=`Browser map ready for ${atlas.name} from ${snapshot}.`;
   }catch(error){
     if(currentController.signal.aborted)progress({stage:'canceled',message:'Analysis canceled.'});
     else errorPanel.textContent=error instanceof Error?error.message:'Could not analyze this repository.';
   }finally{
-    analyzeButton.disabled=false;cancelButton.hidden=true;progressPanel.removeAttribute('aria-busy');currentController=undefined;
+    analyzeButton.disabled=false;localButton.disabled=false;cancelButton.hidden=true;progressPanel.removeAttribute('aria-busy');currentController=undefined;
   }
+}
+
+analyzeButton.addEventListener('click',()=>{
+  try{parsePublicRepositoryInput(input.value);}catch(error){errorPanel.textContent=error.message;input.focus();return;}
+  void runAnalysis((compiler,signal)=>analyzePublicRepository(input.value,{compiler,includeTests:byId('browser-tests').checked,signal,onProgress:progress}));
+});
+localButton.addEventListener('click',()=>localPicker.click());
+localPicker.addEventListener('change',()=>{
+  if(!localPicker.files?.length)return;
+  const files=[...localPicker.files];localPicker.value='';
+  void runAnalysis((compiler,signal)=>analyzeLocalRepositoryFiles(files,{compiler,includeTests:byId('browser-tests').checked,signal,onProgress:progress}));
 });
 
 cancelButton.addEventListener('click',()=>currentController?.abort(new DOMException('Canceled by user','AbortError')));

@@ -3,6 +3,7 @@ import { visitModuleDependencies } from './assets/syntax.js';
 const API='https://api.github.com';
 const ignoredDirectories=new Set(['node_modules','.git','dist','build','coverage','.next','.turbo','vendor']);
 const sourcePattern=/\.(?:ts|tsx|mts|cts)$/i;
+const declarationPattern=/\.d\.(?:ts|mts|cts)$/i;
 const testPattern=/(^|\/)(?:__tests__|tests?|fixtures?|mocks?)(\/|$)|\.(?:test|spec|stories)\.(?:ts|tsx|mts|cts)$/i;
 const normalized=(value)=>{
   const parts=[];for(const part of value.replaceAll('\\','/').split('/')){if(!part||part==='.')continue;if(part==='..')parts.pop();else parts.push(part);}return `${value.startsWith('/')?'/':''}${parts.join('/')}`;
@@ -45,7 +46,7 @@ async function requestJson(fetchImpl,url,signal){
 }
 
 function isIgnored(path){return path.split('/').some(part=>ignoredDirectories.has(part));}
-function eligibleSource(path,includeTests){return sourcePattern.test(path)&&!isIgnored(path)&&(includeTests||!testPattern.test(path));}
+function eligibleSource(path,includeTests){return sourcePattern.test(path)&&!declarationPattern.test(path)&&!isIgnored(path)&&(includeTests||!testPattern.test(path));}
 function rawUrl(repository,commit,path){return `https://raw.githubusercontent.com/${repository.owner}/${repository.repo}/${commit}/${path.split('/').map(encodeURIComponent).join('/')}`;}
 
 async function loadFiles(entries,repository,commit,{fetchImpl,signal,onProgress,includeTests}){
@@ -84,7 +85,7 @@ async function loadFiles(entries,repository,commit,{fetchImpl,signal,onProgress,
   return {files,excluded};
 }
 
-function sourceFiles(files){return [...files.keys()].filter(file=>sourcePattern.test(file)).sort(compare);}
+function sourceFiles(files){return [...files.keys()].filter(file=>sourcePattern.test(file)&&!declarationPattern.test(file)).sort(compare);}
 function absolute(root,file){return join(root,file);}
 function relative(root,file){const path=normalized(file);return path.startsWith(`${root}/`)?path.slice(root.length+1):path===root?'':path;}
 function compilerOptions(compiler,files,root,warnings){
@@ -145,12 +146,12 @@ export function analyzeRepositoryFiles({files,owner,repo,commit,compiler,include
   const modulesSet=new Set(paths),moduleEntries=entryTargets(files,root,modulesSet);
   const options=compilerOptions(compiler,files,root,warnings);
   const host=makeCompilerHost(compiler,files,root),modules=[],edges=[];let computed=0;
-  const fileUrl=(file,line)=>`https://github.com/${owner}/${repo}/blob/${commit}/${file.split('/').map(encodeURIComponent).join('/')}#L${line}`;
+  const fileUrl=(file,line)=>commit?`https://github.com/${owner}/${repo}/blob/${commit}/${file.split('/').map(encodeURIComponent).join('/')}#L${line}`:undefined;
   for(const file of paths){
     const text=files.get(file);if(text===undefined)continue;
     const absoluteFile=absolute(root,file),source=compiler.createSourceFile(absoluteFile,text,compiler.ScriptTarget.Latest,true,/\.tsx$/i.test(file)?compiler.ScriptKind.TSX:compiler.ScriptKind.TS);
     const group=file.includes('/')?file.slice(0,file.lastIndexOf('/')):'.',lineCount=text.split(/\r?\n/).length;
-    modules.push({id:file,group,lines:lineCount,entry:moduleEntries.get(file)??[],url:fileUrl(file,1)});
+    modules.push({id:file,group,lines:lineCount,entry:moduleEntries.get(file)??[],...(fileUrl(file,1)?{url:fileUrl(file,1)}:{})});
     const lines=text.split(/\r?\n/);
     const add=(expression,node,kind)=>{
       const specifier=expression.text,resolved=compiler.resolveModuleName(specifier,absoluteFile,options,host).resolvedModule?.resolvedFileName;
@@ -158,18 +159,18 @@ export function analyzeRepositoryFiles({files,owner,repo,commit,compiler,include
       const internal=!!targetPath&&modulesSet.has(targetPath);
       const resolution=internal?'internal':specifier.startsWith('.')||specifier.startsWith('/')||!!targetPath?'unresolved':'external';
       const line=source.getLineAndCharacterOfPosition(node.getStart(source)).line+1,end=source.getLineAndCharacterOfPosition(node.end).line+1;
-      edges.push({source:file,target:internal?targetPath:specifier,specifier,kind,line,code:lines.slice(line-1,Math.min(end,line+7)).join('\n').slice(0,3000),url:fileUrl(file,line),resolution,...(resolution==='external'?externalInfo(specifier):{})});
+      edges.push({source:file,target:internal?targetPath:specifier,specifier,kind,line,code:lines.slice(line-1,Math.min(end,line+7)).join('\n').slice(0,3000),...(fileUrl(file,line)?{url:fileUrl(file,line)}:{}),resolution,...(resolution==='external'?externalInfo(specifier):{})});
     };
     const addComputed=(expression,node,kind)=>{
       const specifier=expression.getText(source),line=source.getLineAndCharacterOfPosition(node.getStart(source)).line+1,end=source.getLineAndCharacterOfPosition(node.end).line+1;
-      computed++;edges.push({source:file,target:specifier,specifier,kind,line,code:lines.slice(line-1,Math.min(end,line+7)).join('\n').slice(0,3000),url:fileUrl(file,line),resolution:'unresolved',computed:true});
+      computed++;edges.push({source:file,target:specifier,specifier,kind,line,code:lines.slice(line-1,Math.min(end,line+7)).join('\n').slice(0,3000),...(fileUrl(file,line)?{url:fileUrl(file,line)}:{}),resolution:'unresolved',computed:true});
     };
     visitModuleDependencies(compiler,source,add,addComputed);
   }
   const unresolved=edges.filter(edge=>edge.resolution==='unresolved').length;
   if(unresolved)warnings.push(`${unresolved} imports could not be mapped to included TypeScript source files. See the dependency inspector.`);
   if(computed)warnings.push(`${computed} computed import expression${computed===1?'':'s'} shown as unresolved evidence; targets are not inferred.`);
-  return {schemaVersion:1,name:`${owner}/${repo}`,repository:`https://github.com/${owner}/${repo}`,commit,modules,edges,warnings};
+  return {schemaVersion:1,name:`${owner}/${repo}`,...(commit?{repository:`https://github.com/${owner}/${repo}`,commit}:{}),modules,edges,warnings};
 }
 
 export async function analyzePublicRepository(input,{compiler,includeTests=false,fetchImpl=fetch,signal,onProgress}={}){
@@ -197,5 +198,48 @@ export async function analyzePublicRepository(input,{compiler,includeTests=false
   const atlas=analyzeRepositoryFiles({files,owner:repository.owner,repo:repository.repo,commit,compiler,includeTests});
   atlas.warnings.unshift('Browser mode analyzes public TypeScript files on this device. It uses the root tsconfig compilerOptions; inherited tsconfig settings are not fetched.');
   if(excluded.length)atlas.warnings.unshift(`${excluded.length} oversized repository file${excluded.length===1?' was':'s were'} skipped (1 MB per-file browser limit).`);
+  return atlas;
+}
+
+export async function analyzeLocalRepositoryFiles(fileList,{compiler,includeTests=false,signal,onProgress}={}){
+  if(!compiler)throw new Error('The TypeScript compiler is not loaded.');
+  const inputFiles=[...fileList];
+  if(!inputFiles.length)throw new Error('Choose a folder containing TypeScript source files.');
+  const firstPath=(inputFiles[0].webkitRelativePath||inputFiles[0].name).replaceAll('\\','/');
+  const projectName=firstPath.includes('/')?firstPath.split('/')[0]:'local-project';
+  const project=projectName.replace(/[^A-Za-z0-9._-]+/g,'-').replace(/^-+|-+$/g,'')||'local-project';
+  const entries=[];
+  for(const file of inputFiles){
+    const raw=(file.webkitRelativePath||file.name).replaceAll('\\','/');
+    const pieces=raw.split('/').filter(Boolean);
+    if(pieces.some(part=>part==='..'))continue;
+    const path=pieces.length>1&&pieces[0]===projectName?pieces.slice(1).join('/'):pieces.join('/');
+    if(!path||isIgnored(path))continue;
+    const source=eligibleSource(path,includeTests),manifest=path==='package.json'||/(^|\/)tsconfig(?:\.[^/]+)?\.json$/i.test(path);
+    if(source||manifest)entries.push({path,file,size:Number(file.size)});
+  }
+  const sources=entries.filter(entry=>eligibleSource(entry.path,includeTests));
+  if(sources.length>1200)throw new Error(`This folder has ${sources.length.toLocaleString()} TypeScript files. Browser analysis is capped at 1,200; use the local CLI for larger repositories.`);
+  if(entries.filter(entry=>entry.path==='package.json'||/(^|\/)tsconfig(?:\.[^/]+)?\.json$/i.test(entry.path)).length>300)throw new Error('This folder has too many package and TypeScript configuration files for browser analysis.');
+  const oversized=entries.filter(entry=>entry.size>1_000_000),oversizedSet=new Set(oversized);
+  const work=entries.filter(entry=>!oversizedSet.has(entry));
+  const estimatedBytes=work.reduce((sum,entry)=>sum+entry.size,0);
+  if(estimatedBytes>25_000_000)throw new Error('This folder exceeds the 25 MB browser source limit. Use the local CLI for larger repositories.');
+  if(!sources.some(entry=>!oversizedSet.has(entry)))throw new Error('No readable TypeScript source files fit the 1 MB per-file browser limit.');
+  const files=new Map();let next=0,completed=0,actualBytes=0;
+  async function worker(){
+    while(next<work.length){
+      if(signal?.aborted)throw signal.reason??new DOMException('Aborted','AbortError');
+      const entry=work[next++],text=await entry.file.text();
+      actualBytes+=new TextEncoder().encode(text).byteLength;
+      if(actualBytes>25_000_000)throw new Error('This folder exceeds the 25 MB browser source limit. Use the local CLI for larger repositories.');
+      files.set(entry.path,text);completed++;onProgress?.({stage:'sources',completed,total:work.length,path:entry.path});
+    }
+  }
+  onProgress?.({stage:'sources',message:`Reading ${sources.length.toLocaleString()} local TypeScript files…`});
+  await Promise.all(Array.from({length:Math.min(8,work.length)},worker));
+  const atlas=analyzeRepositoryFiles({files,owner:'Local',repo:project,compiler,includeTests});
+  atlas.warnings.unshift('Local folder analysis stays in this browser. Source snippets are embedded in this HTML map; review them before sharing.');
+  if(oversized.length)atlas.warnings.unshift(`${oversized.length} oversized repository file${oversized.length===1?' was':'s were'} skipped (1 MB per-file browser limit).`);
   return atlas;
 }
