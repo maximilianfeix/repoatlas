@@ -69,14 +69,14 @@ Want to explore before installing? [Paste a public TypeScript repository or choo
 For a versioned command-line run, install nothing globally. The CLI requires **Node.js 22 or later** and **Git**. Point it at a public GitHub repository:
 
 ```sh
-npx --yes --package=github:maximilianfeix/repoatlas#v2.11.0 -- \
+npx --yes --package=github:maximilianfeix/repoatlas#v2.12.0 -- \
   repoatlas-cli https://github.com/pmndrs/zustand --out zustand-map.html
 ```
 
 Open `zustand-map.html` in your browser. RepoAtlas also analyzes a local checkout:
 
 ```sh
-npx --yes --package=github:maximilianfeix/repoatlas#v2.11.0 -- \
+npx --yes --package=github:maximilianfeix/repoatlas#v2.12.0 -- \
   repoatlas-cli ./my-project --out architecture.html
 ```
 
@@ -110,7 +110,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: maximilianfeix/repoatlas@v2.11.0
+      - uses: maximilianfeix/repoatlas@v2.12.0
         with:
           output: repoatlas-map.html
 ```
@@ -127,7 +127,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: maximilianfeix/repoatlas@v2.11.0
+      - uses: maximilianfeix/repoatlas@v2.12.0
         with:
           compare-to: ${{ github.event.pull_request.base.sha }}
           output: architecture-diff.html
@@ -149,7 +149,7 @@ Add this server entry to an MCP client configuration and replace the project pat
       "command": "npx",
       "args": [
         "--yes",
-        "--package=github:maximilianfeix/repoatlas#v2.11.0",
+        "--package=github:maximilianfeix/repoatlas#v2.12.0",
         "repoatlas-cli",
         "mcp",
         "/absolute/path/to/project"
@@ -159,7 +159,7 @@ Add this server entry to an MCP client configuration and replace the project pat
 }
 ```
 
-The tools summarize the architecture, search modules, inspect direct import evidence, trace a module from a detected entry, and refresh the analysis after edits. Every reported edge includes its exact source line; no runtime call graph or inferred import target is claimed. The server requires Node.js 22 or later and analyzes TypeScript by default. Use `--include-js` or `--include-tests` after `mcp` to opt in to those files.
+The tools summarize architecture, search modules, inspect full direct-import evidence, bundle one module with bounded neighboring edges and its entry path through `module_context`, trace paths, and refresh analysis after edits. Its `limit` defaults to 8 and can be set from 1 to 40; results include full totals and explicit truncation. Every reported edge includes its exact source line; no runtime call graph or inferred import target is claimed. The server requires Node.js 22 or later and analyzes TypeScript by default. Use `--include-js` or `--include-tests` after `mcp` to opt in to those files.
 
 ### Install the RepoAtlas agent skill
 

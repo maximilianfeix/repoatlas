@@ -4,7 +4,7 @@ description: Map or explain an unfamiliar TypeScript repository with RepoAtlas. 
 license: MIT
 metadata:
   author: maximilianfeix
-  version: "2.10.0"
+  version: "2.12.0"
 ---
 
 # RepoAtlas
@@ -13,7 +13,7 @@ Use RepoAtlas for evidence from the current TypeScript repository, not for imagi
 
 ## Workflow
 
-1. If a RepoAtlas MCP server is already available for this repository, call `architecture_summary` first. Use `search_modules` to find files, `inspect_module` to inspect exact incoming and outgoing imports, and `trace_entry_path` to connect a detected entry point to a module. Call `refresh_analysis` only when the existing snapshot is stale; it rereads local files and does not write to the repository.
+1. If a RepoAtlas MCP server is already available, choose the smallest useful call: use `architecture_summary` for a repository-wide overview; use `search_modules` only when the requested module is unknown; use `module_context` for a known module that needs its details, nearby import evidence, and path from an entry in one bounded response. Use `inspect_module` when the user needs fuller direct-import evidence or `trace_entry_path` when they ask only for a path. Call `refresh_analysis` only when the existing snapshot is stale; it rereads local files and does not write to the repository.
 2. Otherwise, use an installed `repoatlas` CLI on the repository root. Run `repoatlas . --json` to inspect evidence, or `repoatlas . --out <temporary-path>/architecture.html` when the user asks to explore or share an HTML map. Keep generated snapshots and maps outside the project unless the user requests a repository artifact.
 3. If the CLI is missing, do not install packages automatically. Offer the versioned CLI command from the project README, or point the user to the browser map for a public GitHub URL or explicitly selected local folder.
 4. When a user requests a map, produce one standalone HTML file and give its path. Preserve existing files: omit `--force` unless the user explicitly asks to replace the chosen output.
