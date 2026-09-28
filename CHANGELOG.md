@@ -1,5 +1,28 @@
 # Changelog
 
+## [2.4.0] - 2026-09-28
+
+### Added
+
+- Add an evidence-count summary and direct HTML artifact link to GitHub Actions job summaries for pull-request architecture comparisons.
+- Keep summary generation read-only and omit arbitrary repository/source text from Markdown output.
+
+### Quality
+
+- Test count rendering, commit labels, artifact URL validation, and job-summary file integration.
+- Verify the composite action writes a summary when running its pull-request smoke test.
+
+## [2.3.0] - 2026-09-28
+
+### Added
+
+- Export a compact, accessible README SVG card with module, entry-point, resolved-import, and dependency-cycle counts.
+- Add a pinned GitHub Actions workflow that refreshes the card through a reviewable pull request.
+
+### Quality
+
+- Test deterministic SVG output, escaped repository names, static-analysis caveats, CLI validation, and overwrite protection.
+
 ## [2.2.0] - 2026-09-28
 
 ### Added
@@ -309,14 +332,3 @@
 
 - Expanded automated coverage for transitive impact, circular groups, self-imports, excluded external/unresolved imports, and maximum-length dependency chains.
 - Verified generated examples, desktop and mobile layouts, cross-platform CI, CodeQL, and the published Pages site.
-
-## [2.3.0] - 2026-09-28
-
-### Added
-
-- Export a compact, accessible README SVG card with module, entry-point, resolved-import, and dependency-cycle counts.
-- Add a pinned GitHub Actions workflow that refreshes the card through a reviewable pull request.
-
-### Quality
-
-- Test deterministic SVG output, escaped repository names, static-analysis caveats, CLI validation, and overwrite protection.

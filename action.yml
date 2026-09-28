@@ -1,5 +1,5 @@
 name: RepoAtlas architecture map
-description: Generate a shareable, interactive architecture map for a TypeScript repository.
+description: Generate a shareable architecture map and summarize pull-request architecture changes.
 author: maximilianfeix
 inputs:
   path:
@@ -49,6 +49,7 @@ runs:
       working-directory: ${{ github.action_path }}
       run: npm ci && npm run build
     - name: Generate architecture map
+      id: generate
       shell: bash
       working-directory: ${{ github.workspace }}
       env:
@@ -74,9 +75,12 @@ runs:
           git worktree add --quiet --detach "$baseline" "$REPOATLAS_COMPARE_TO"
           before_json="$(mktemp)"
           after_json="$(mktemp)"
+          comparison_json="$(mktemp)"
+          echo "comparison_json=$comparison_json" >> "$GITHUB_OUTPUT"
           trap 'git worktree remove --force "$baseline" >/dev/null 2>&1 || true; rm -f "$before_json" "$after_json"' EXIT
           node "$REPOATLAS_CLI" "$baseline" "${args[@]}" --json > "$before_json"
           node "$REPOATLAS_CLI" "$REPOATLAS_PATH" "${args[@]}" --json > "$after_json"
+          node "$REPOATLAS_CLI" compare "$before_json" "$after_json" --format json > "$comparison_json"
           node "$REPOATLAS_CLI" compare "$before_json" "$after_json" --format html --output "$REPOATLAS_OUTPUT"
         else
           node "$REPOATLAS_CLI" "$REPOATLAS_PATH" -o "$REPOATLAS_OUTPUT" "${args[@]}"
@@ -89,3 +93,10 @@ runs:
         path: ${{ inputs.output }}
         if-no-files-found: error
         retention-days: ${{ inputs.retention-days }}
+    - name: Add architecture summary
+      if: inputs.compare-to != ''
+      shell: bash
+      env:
+        REPOATLAS_COMPARISON_JSON: ${{ steps.generate.outputs.comparison_json }}
+        REPOATLAS_ARTIFACT_URL: ${{ steps.upload.outputs.artifact-url }}
+      run: node "$GITHUB_ACTION_PATH/scripts/write-action-summary.mjs" "$REPOATLAS_COMPARISON_JSON"
