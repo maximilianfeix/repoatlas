@@ -317,18 +317,20 @@ export async function analyzeLocalRepositoryFiles(fileList,{compiler,includeTest
   if(!compiler)throw new Error('The TypeScript compiler is not loaded.');
   const inputFiles=[...fileList];
   if(!inputFiles.length)throw new Error('Choose a folder containing TypeScript source files.');
-  const firstPath=(inputFiles[0].webkitRelativePath||inputFiles[0].name).replaceAll('\\','/');
+  const firstEntry=inputFiles[0],firstFile=firstEntry.file??firstEntry;
+  const firstPath=(firstEntry.path||firstFile.webkitRelativePath||firstFile.name).replaceAll('\\','/');
   const projectName=firstPath.includes('/')?firstPath.split('/')[0]:'local-project';
   const project=projectName.replace(/[^A-Za-z0-9._-]+/g,'-').replace(/^-+|-+$/g,'')||'local-project';
   const entries=[];
-  for(const file of inputFiles){
-    const raw=(file.webkitRelativePath||file.name).replaceAll('\\','/');
+  for(const entry of inputFiles){
+    const file=entry.file??entry;
+    const raw=(entry.path||file.webkitRelativePath||file.name).replaceAll('\\','/');
     const pieces=raw.split('/').filter(Boolean);
     if(pieces.some(part=>part==='..'))continue;
     const path=pieces.length>1&&pieces[0]===projectName?pieces.slice(1).join('/'):pieces.join('/');
     if(!path||isIgnored(path))continue;
     const source=eligibleSource(path,includeTests),manifest=isManifest(path);
-    if(source||manifest)entries.push({path,file,size:Number(file.size)});
+    if(source||manifest)entries.push({path,file,size:Number(entry.size??file.size)});
   }
   const sources=entries.filter(entry=>eligibleSource(entry.path,includeTests));
   if(sources.length>1200)throw new Error(`This folder has ${sources.length.toLocaleString()} TypeScript files. Browser analysis is capped at 1,200; use the local CLI for larger repositories.`);

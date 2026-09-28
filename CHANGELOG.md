@@ -1,5 +1,18 @@
 # Changelog
 
+## [2.8.0] - 2026-09-28
+
+### Added
+
+- Run public-repository and private-folder browser analysis in a dedicated Web Worker so the map page remains responsive.
+- Keep progress updates flowing while analysis runs and stop CPU and network work immediately when canceled.
+- Preserve relative paths when local `File` objects cross the worker boundary.
+
+### Quality
+
+- Verify the pinned TypeScript compiler's SHA-384 digest inside the worker before loading it.
+- Test worker progress, successful results, errors, cancellation, and local path transfer; exercise both browser input modes against real projects.
+
 ## [2.7.0] - 2026-09-28
 
 ### Added

@@ -103,14 +103,14 @@
   <section id="mcp" class="section workflow" aria-labelledby="mcp-title">
     <div><div class="kicker">For coding agents</div><h2 id="mcp-title">Architecture context with receipts.</h2><p>RepoAtlas serves a read-only TypeScript map over local MCP stdio. Agents can search modules, trace an entry path, and inspect the imports behind an answer.</p><a href="https://github.com/maximilianfeix/repoatlas#mcp-server">Connect an MCP client →</a></div>
     <pre class="code-sample"><code><span class="comment"># Local process · read-only · no RepoAtlas credentials</span>
-npx --yes --package=github:maximilianfeix/repoatlas#v2.7.0 repoatlas-cli mcp /path/to/project</code></pre>
+npx --yes --package=github:maximilianfeix/repoatlas#v2.8.0 repoatlas-cli mcp /path/to/project</code></pre>
   </section>
 
   <section id="github-actions" class="section workflow" aria-labelledby="workflow-title">
     <div><div class="kicker">In your workflow</div><h2 id="workflow-title">Review the shape of every change.</h2><p>Build an architecture diff for a pull request, scan its module and import counts in the job summary, then follow each changed import to the exact base or head source line. RepoAtlas needs read-only access.</p><a href="https://github.com/maximilianfeix/repoatlas#github-actions">See the complete GitHub Actions setup →</a></div>
     <pre class="code-sample"><code><span class="comment"># .github/workflows/architecture.yml</span>
 - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 <span class="comment"># v7.0.1</span>
-<span class="mark">- uses:</span> maximilianfeix/repoatlas@v2.7.0
+<span class="mark">- uses:</span> maximilianfeix/repoatlas@v2.8.0
   with:
     compare-to: ${{ github.event.pull_request.base.sha }}
     output: architecture-diff.html
