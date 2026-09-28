@@ -13,6 +13,8 @@ export interface RuleViolation {
   source?: string;
   target?: string;
   edge?: Edge;
+  edges?: Edge[];
+  omittedEdges?: number;
   actual?: number;
   maximum?: number;
   modules?: string[];
@@ -99,7 +101,10 @@ export function checkArchitecture(atlas: Atlas, config: ArchitectureConfig, base
   const oldCycleKeys=new Set((baselineCycles??[]).map(cycleKey));
   const addedCycles=baseline?cycles.filter(group=>!oldCycleKeys.has(cycleKey(group))):cycles;
   if (config.limits?.cycleGroups !== undefined && addedCycles.length > config.limits.cycleGroups) {
-    violations.push({ rule: 'max-cycle-groups', message: baseline?`Found ${addedCycles.length} new cycle groups; maximum new groups is ${config.limits.cycleGroups}.`:`Found ${cycles.length} cycle groups; maximum is ${config.limits.cycleGroups}.`, actual: baseline?addedCycles.length:cycles.length, maximum: config.limits.cycleGroups, modules: (baseline?addedCycles:cycles).flat().map(module => module.id) });
+    const violatingCycles=baseline?addedCycles:cycles;
+    const cycleModules=new Set(violatingCycles.flat().map(module=>module.id));
+    const edges=atlas.edges.filter(edge=>edge.resolution==='internal'&&cycleModules.has(edge.source)&&cycleModules.has(edge.target)).sort((a,b)=>a.source<b.source?-1:a.source>b.source?1:a.line-b.line||(a.target<b.target?-1:a.target>b.target?1:0));
+    violations.push({ rule: 'max-cycle-groups', message: baseline?`Found ${addedCycles.length} new cycle groups; maximum new groups is ${config.limits.cycleGroups}.`:`Found ${cycles.length} cycle groups; maximum is ${config.limits.cycleGroups}.`, actual: baseline?addedCycles.length:cycles.length, maximum: config.limits.cycleGroups, modules: [...cycleModules].sort(), edges:edges.slice(0,19), omittedEdges:Math.max(0,edges.length-19) });
   }
   const baselineReachability=baseline?analyzeReachability(baseline.modules,baseline.edges):undefined;
   const comparableReachability=reachability.known&&(!baseline||baselineReachability?.known);
@@ -133,8 +138,18 @@ export function renderRuleReport(result: RuleResult): string {
 export function renderGitHubAnnotations(result: RuleResult): string {
   const escapeProperty=(value:string)=>value.replace(/[%\r\n:,]/g,char=>({ '%':'%25','\r':'%0D','\n':'%0A',':':'%3A',',':'%2C' }[char]!));
   const escapeData=(value:string)=>value.replace(/[%\r\n]/g,char=>({ '%':'%25','\r':'%0D','\n':'%0A' }[char]!));
-  return result.violations.map(violation=>{
-    const properties=violation.edge?` file=${escapeProperty(violation.edge.source)},line=${violation.edge.line},title=RepoAtlas forbidden import`:' title=RepoAtlas architecture rule';
-    return `::error${properties}::${escapeData(violation.message)}`;
-  }).join('\n')+(result.violations.length?'\n':'');
+  const annotations:string[]=[];
+  for(const violation of result.violations){
+    if(violation.edge){
+      const edge=violation.edge;annotations.push(`::error file=${escapeProperty(edge.source)},line=${edge.line},title=RepoAtlas forbidden import::${escapeData(violation.message)}`);
+    }else if(violation.edges?.length){
+      for(const edge of violation.edges)annotations.push(`::error file=${escapeProperty(edge.source)},line=${edge.line},title=RepoAtlas dependency cycle::${escapeData(`${violation.message} ${edge.source}:${edge.line} imports ${edge.target}.`)}`);
+    }else if(violation.modules?.length){
+      for(const module of violation.modules)annotations.push(`::error file=${escapeProperty(module)},title=RepoAtlas unreachable module::${escapeData(`${violation.message} ${module} is outside detected entry paths.`)}`);
+    }else annotations.push(`::error title=RepoAtlas architecture rule::${escapeData(violation.message)}`);
+  }
+  const omitted=Math.max(0,annotations.length-19)+result.violations.reduce((sum,violation)=>sum+(violation.omittedEdges??0),0);
+  const lines=annotations.length>19?annotations.slice(0,19):annotations;
+  if(omitted)lines.push(`::warning title=RepoAtlas annotation limit::${omitted} additional source annotations omitted; inspect the architecture artifact for full evidence.`);
+  return lines.join('\n')+(lines.length?'\n':'');
 }
