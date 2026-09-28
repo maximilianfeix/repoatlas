@@ -24,6 +24,7 @@ jobs:
         uses: ./
         with:
           compare-to: ${{ github.event.pull_request.base.sha }}
+          check-config: .github/repoatlas-smoke-rules.json
           output: repoatlas-smoke-diff.html
           artifact-name: repoatlas-smoke-diff
           retention-days: 1

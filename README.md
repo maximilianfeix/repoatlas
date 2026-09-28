@@ -69,14 +69,14 @@ Want to explore before installing? [Paste a public TypeScript repository or choo
 For a versioned command-line run, install nothing globally. The CLI requires **Node.js 22 or later** and **Git**. Point it at a public GitHub repository:
 
 ```sh
-npx --yes --package=github:maximilianfeix/repoatlas#v2.22.0 -- \
+npx --yes --package=github:maximilianfeix/repoatlas#v2.23.0 -- \
   repoatlas-cli https://github.com/pmndrs/zustand --out zustand-map.html
 ```
 
 Open `zustand-map.html` in your browser. Search by module path or public export, then select a result to inspect its exact source evidence. RepoAtlas also analyzes a local checkout:
 
 ```sh
-npx --yes --package=github:maximilianfeix/repoatlas#v2.22.0 -- \
+npx --yes --package=github:maximilianfeix/repoatlas#v2.23.0 -- \
   repoatlas-cli ./my-project --out architecture.html
 ```
 
@@ -110,7 +110,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: maximilianfeix/repoatlas@v2.22.0
+      - uses: maximilianfeix/repoatlas@v2.23.0
         with:
           output: repoatlas-map.html
 ```
@@ -127,14 +127,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: maximilianfeix/repoatlas@v2.22.0
+      - uses: maximilianfeix/repoatlas@v2.23.0
         with:
           compare-to: ${{ github.event.pull_request.base.sha }}
+          check-config: repoatlas.config.json
           output: architecture-diff.html
           artifact-name: architecture-diff
 ```
 
-Download `architecture-diff` from the workflow run to explore added and removed modules, imports, imported names, public exports, and shortest routes from detected entries; each link points to the exact base or head line. Older snapshots without binding or export indexes are marked unavailable instead of being treated as unchanged. Reports describe syntax and static reachability, not runtime calls, TypeScript assignability, or semver safety. The action accepts `path`, `compare-to`, `artifact-name`, `retention-days`, `include-tests`, and `include-js`. It needs read-only repository access and no token input. Maps and diffs include project paths and source snippets, so restrict artifacts from private repositories.
+Download `architecture-diff` from the workflow run to explore added and removed modules, imports, imported names, public exports, and shortest routes from detected entries; each link points to the exact base or head line. With `check-config`, the action applies the configured architecture rules to the same base/head snapshots and annotates only new violations. The artifact uploads before the check, so it remains available when a rule fails. Without `compare-to`, the config checks the current snapshot against absolute limits. Older snapshots without binding or export indexes are marked unavailable instead of being treated as unchanged. Reports describe syntax and static reachability, not runtime calls, TypeScript assignability, or semver safety. The action accepts `path`, `compare-to`, `check-config`, `artifact-name`, `retention-days`, `include-tests`, and `include-js`. It needs read-only repository access and no token input. Maps and diffs include project paths and source snippets, so restrict artifacts from private repositories.
 
 ## MCP server
 
@@ -149,7 +150,7 @@ Add this server entry to an MCP client configuration and replace the project pat
       "command": "npx",
       "args": [
         "--yes",
-        "--package=github:maximilianfeix/repoatlas#v2.22.0",
+        "--package=github:maximilianfeix/repoatlas#v2.23.0",
         "repoatlas-cli",
         "mcp",
         "/absolute/path/to/project"
@@ -233,7 +234,7 @@ The RepoAtlas comparison uses real snapshots from [v1.10.0](https://github.com/m
   </tr>
   <tr>
     <td width="50%" valign="top"><strong>Catch architecture drift</strong><br>Compare JSON snapshots to find changed modules, dependencies, and import specifiers. Export the comparison as a searchable standalone HTML report with source links. Formatting and line shifts alone do not count as drift.</td>
-    <td width="50%" valign="top"><strong>Set rules for CI</strong><br>Fail builds on new forbidden boundaries, dependency cycles, or unreachable modules. Compare to a baseline to adopt rules gradually; reports include exact source lines.</td>
+    <td width="50%" valign="top"><strong>Gate architecture in CI</strong><br>Check forbidden boundaries, dependency cycles, and unreachable modules in the CLI or GitHub Action. Baseline mode lets you adopt rules gradually, with source-linked annotations for new drift.</td>
     <td width="50%" valign="top"><strong>Share a portable map</strong><br>Export one offline HTML file, the full JSON snapshot, a boundary SVG, or a concise CI report. The viewer makes no network requests.</td>
   </tr>
 </table>

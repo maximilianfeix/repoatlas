@@ -1,5 +1,16 @@
 # Changelog
 
+## [2.23.0] - 2026-09-28
+
+### Added
+
+- Add optional `check-config` support to the GitHub Action. Pull-request checks reuse the visual diff's exact base/head snapshots and emit annotations only for newly introduced architecture violations.
+- Upload the architecture artifact before rule enforcement so it remains available when a check fails.
+
+### Quality
+
+- Exercise the baseline-aware Action path in the GitHub Actions smoke workflow.
+
 ## [2.22.0] - 2026-09-28
 
 ### Added
