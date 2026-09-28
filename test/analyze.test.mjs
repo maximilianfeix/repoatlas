@@ -218,17 +218,24 @@ test('CLI runs outside project, returns JSON, and refuses accidental overwrite',
 test('CLI init creates a safe editable rule config and baseline, passes its own baseline check, and protects existing files',async t=>{
   const dir=await fixture(t,{'src/index.ts':"import './helper.js';",'src/helper.js':'export const value=1;'});
   const run=(...args)=>spawnSync(process.execPath,[cli,'init','.','--include-js',...args],{cwd:dir,encoding:'utf8'});
-  const initialized=run('--config-out','rules.json','--baseline-out','baseline.json');
+  const initialized=run('--config-out','rules.json','--baseline-out','baseline.json','--with-workflow');
   assert.equal(initialized.status,0,initialized.stderr);assert.match(initialized.stdout,/Starter rules: no forbidden boundaries inferred/);
   const config=JSON.parse(await readFile(path.join(dir,'rules.json'),'utf8')),baseline=JSON.parse(await readFile(path.join(dir,'baseline.json'),'utf8'));
+  const workflow=await readFile(path.join(dir,'.github/workflows/repoatlas.yml'),'utf8');
   assert.deepEqual(config,{forbiddenImports:[],limits:{cycleGroups:0,unreachableModules:0}});
+  assert.match(workflow,/on:\n  pull_request:/);assert.match(workflow,/permissions:\n  contents: read/);assert.match(workflow,/actions\/checkout@[a-f\d]{40} # v7\.0\.1/);
+  assert.match(workflow,/maximilianfeix\/repoatlas@v2\.27\.0/);assert.match(workflow,/compare-to: \$\{\{ github\.event\.pull_request\.base\.sha \}\}/);assert.match(workflow,/check-config: "rules\.json"/);assert.match(workflow,/artifact-name: repoatlas-architecture-diff/);
+  assert.doesNotMatch(workflow,/pull_request_target|secrets\./);
   assert.ok(baseline.modules.some(module=>module.id==='src/helper.js'));
   const check=spawnSync(process.execPath,[cli,'check','baseline.json','--baseline','baseline.json','--config','rules.json','--json'],{cwd:dir,encoding:'utf8'});
   assert.equal(check.status,0,check.stderr);assert.equal(JSON.parse(check.stdout).passed,true);
-  const overwrite=run('--config-out','rules.json','--baseline-out','baseline.json');assert.equal(overwrite.status,1);assert.match(overwrite.stderr,/Output exists.*--force/);
-  const forced=run('--config-out','rules.json','--baseline-out','baseline.json','--force');assert.equal(forced.status,0,forced.stderr);
+  const overwrite=run('--config-out','rules.json','--baseline-out','baseline.json','--with-workflow');assert.equal(overwrite.status,1);assert.match(overwrite.stderr,/Output exists.*--force/);
+  const forced=run('--config-out','rules.json','--baseline-out','baseline.json','--with-workflow','--force');assert.equal(forced.status,0,forced.stderr);
   const defaults=run();assert.equal(defaults.status,0,defaults.stderr);assert.ok(JSON.parse(await readFile(path.join(dir,'repoatlas-baseline.json'),'utf8')).modules.some(module=>module.id==='src/helper.js'));
   const samePath=run('--config-out','same.json','--baseline-out','same.json');assert.equal(samePath.status,1);assert.match(samePath.stderr,/must use different paths/);
+  const outside=path.resolve(dir,'..','outside-rules.json'),invalidWorkflow=run('--config-out',outside,'--with-workflow');assert.equal(invalidWorkflow.status,1);assert.match(invalidWorkflow.stderr,/--config-out must be inside/);
+  const custom=run('--config-out','.github/rules.json','--baseline-out','custom-baseline.json','--workflow-out','.github/workflows/custom.yml','--with-workflow');assert.equal(custom.status,0,custom.stderr);
+  assert.match(await readFile(path.join(dir,'.github/workflows/custom.yml'),'utf8'),/check-config: "\.github\/rules\.json"/);
 });
 test('CLI enables mixed TypeScript and JavaScript analysis explicitly',async t=>{
   const dir=await fixture(t,{'src/index.ts':"import './helper.js';",'src/helper.js':'export const value=1;'});

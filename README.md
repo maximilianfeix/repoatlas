@@ -69,14 +69,14 @@ Want to explore before installing? [Paste a public TypeScript repository or choo
 For a versioned command-line run, install nothing globally. The CLI requires **Node.js 22 or later** and **Git**. Point it at a public GitHub repository:
 
 ```sh
-npx --yes --package=github:maximilianfeix/repoatlas#v2.26.0 -- \
+npx --yes --package=github:maximilianfeix/repoatlas#v2.27.0 -- \
   repoatlas-cli https://github.com/pmndrs/zustand --out zustand-map.html
 ```
 
 Open `zustand-map.html` in your browser. Search by module path or public export, then select a result to inspect its exact source evidence. RepoAtlas also analyzes a local checkout:
 
 ```sh
-npx --yes --package=github:maximilianfeix/repoatlas#v2.26.0 -- \
+npx --yes --package=github:maximilianfeix/repoatlas#v2.27.0 -- \
   repoatlas-cli ./my-project --out architecture.html
 ```
 
@@ -110,7 +110,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: maximilianfeix/repoatlas@v2.26.0
+      - uses: maximilianfeix/repoatlas@v2.27.0
         with:
           output: repoatlas-map.html
 ```
@@ -127,7 +127,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: maximilianfeix/repoatlas@v2.26.0
+      - uses: maximilianfeix/repoatlas@v2.27.0
         with:
           compare-to: ${{ github.event.pull_request.base.sha }}
           check-config: repoatlas.config.json
@@ -150,7 +150,7 @@ Add this server entry to an MCP client configuration and replace the project pat
       "command": "npx",
       "args": [
         "--yes",
-        "--package=github:maximilianfeix/repoatlas#v2.26.0",
+        "--package=github:maximilianfeix/repoatlas#v2.27.0",
         "repoatlas-cli",
         "mcp",
         "/absolute/path/to/project"
@@ -274,10 +274,12 @@ In the map, choose **Packages** for a ranked overview of workspace packages and 
 Start with a checked-in rules template and a snapshot of the current repository:
 
 ```sh
-repoatlas init ./my-project
+repoatlas init ./my-project --with-workflow
 ```
 
-This writes `repoatlas.config.json` and `repoatlas-baseline.json` in the selected project directory. The starter policy allows zero new cycle groups and unreachable modules, and deliberately does not guess forbidden boundaries; edit `forbiddenImports` after reviewing the workspace matrix. Existing files are never replaced unless you pass `--force`. Baseline snapshots include import snippets and file paths, so review them before committing or sharing.
+This writes `repoatlas.config.json`, `repoatlas-baseline.json`, and `.github/workflows/repoatlas.yml` in the selected project directory. The generated workflow runs only for pull requests, compares against the PR base, uses `contents: read`, and uploads the HTML diff even when a rule fails. `--with-workflow` is optional if you prefer to add the Action yourself.
+
+The starter policy allows zero new cycle groups and unreachable modules, and deliberately does not guess forbidden boundaries; edit `forbiddenImports` after reviewing the workspace matrix. Existing files are never replaced unless you pass `--force`. Use `--config-out`, `--baseline-out`, and `--workflow-out` for custom paths; generated workflow inputs must stay inside the project. Baseline snapshots include import snippets and file paths, so review them before committing or sharing.
 
 Save rules in `repoatlas.config.json`:
 
