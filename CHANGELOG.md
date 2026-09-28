@@ -1,5 +1,18 @@
 # Changelog
 
+## [2.1.0] - 2026-09-28
+
+### Added
+
+- Generate a standalone architecture diff in GitHub Actions by comparing a pull request with its base commit.
+- Keep source links pinned to the exact revision and upload the report as a workflow artifact with read-only repository access.
+- Add a reduced-motion-aware hover cue to architecture diff rows.
+
+### Quality
+
+- Smoke-test both the released map action and the pull request diff mode.
+- Verify generated diffs name the base and head commits; test motion preferences in the offline renderer.
+
 ## [2.0.0] - 2026-09-27
 
 ### Added
