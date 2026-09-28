@@ -1,5 +1,16 @@
 # Changelog
 
+## [2.27.0] - 2026-09-28
+
+### Added
+
+- Add opt-in `repoatlas init --with-workflow` to create a minimal read-only pull-request workflow that compares to the PR base and enforces the generated rules.
+- Validate generated config/workflow paths remain within the selected repository and protect all generated files from accidental overwrite.
+
+### Quality
+
+- Verify generated workflow triggers, read-only permissions, pinned checkout, versioned RepoAtlas Action, rule config, artifact, and path safety.
+
 ## [2.26.0] - 2026-09-28
 
 ### Added

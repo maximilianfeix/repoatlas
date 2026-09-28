@@ -70,25 +70,41 @@ program.command('init').description('Create a starter rule config and a baseline
   .option('--include-tests', 'include test files, fixtures and test directories')
   .option('--include-js', 'include JavaScript and JSX modules in mixed repositories')
   .option('--force', 'replace existing config or baseline files')
+  .option('--with-workflow', 'also create a read-only pull-request workflow')
+  .option('--workflow-out <file>', 'workflow file to create (default: <project>/.github/workflows/repoatlas.yml)')
   .action(async (source:string,opts) => {
     const projectRoot=path.resolve(source);
     const configPath=path.resolve(opts.configOut??path.join(projectRoot,'repoatlas.config.json'));
     const baselinePath=path.resolve(opts.baselineOut??path.join(projectRoot,'repoatlas-baseline.json'));
+    const withWorkflow=opts.withWorkflow??program.opts().withWorkflow;
+    if(opts.workflowOut&&!withWorkflow)throw new Error('--workflow-out requires --with-workflow.');
+    const workflowPath=path.resolve(opts.workflowOut??path.join(projectRoot,'.github/workflows/repoatlas.yml'));
     const force=opts.force??program.opts().force;
-    if(configPath===baselinePath)throw new Error('Config and baseline outputs must use different paths.');
+    const outputs=withWorkflow?[configPath,baselinePath,workflowPath]:[configPath,baselinePath];
+    if(new Set(outputs).size!==outputs.length)throw new Error('Config, baseline, and workflow outputs must use different paths.');
+    const relativeToProject=(file:string,label:string)=>{
+      const relative=path.relative(projectRoot,file).split(path.sep).join('/');
+      if(!relative||relative==='..'||relative.startsWith('../')||path.isAbsolute(relative))throw new Error(`${label} must be inside the selected project when --with-workflow is enabled.`);
+      return relative;
+    };
+    const configRelative=withWorkflow?relativeToProject(configPath,'--config-out'):undefined;
+    if(withWorkflow)relativeToProject(workflowPath,'--workflow-out');
     if(!force){
       const existing:string[]=[];
-      for(const file of [configPath,baselinePath])try{await access(file);existing.push(file);}catch(error){if(!(error instanceof Error&&'code'in error&&error.code==='ENOENT'))throw error;}
+      for(const file of outputs)try{await access(file);existing.push(file);}catch(error){if(!(error instanceof Error&&'code'in error&&error.code==='ENOENT'))throw error;}
       if(existing.length)throw new Error(`Output exists: ${existing.join(', ')}. Choose other paths or pass --force.`);
     }
     const atlas=await analyze(projectRoot,{includeTests:opts.includeTests??program.opts().includeTests,includeJS:opts.includeJs??program.opts().includeJs});
     const config={forbiddenImports:[],limits:{cycleGroups:0,unreachableModules:0}};
-    await Promise.all([configPath,baselinePath].map(file=>mkdir(path.dirname(file),{recursive:true})));
-    await Promise.all([
+    const workflow=withWorkflow?`name: RepoAtlas architecture\non:\n  pull_request:\npermissions:\n  contents: read\njobs:\n  architecture:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1\n        with:\n          fetch-depth: 0\n      - uses: maximilianfeix/repoatlas@v${packageVersion}\n        with:\n          compare-to: \${{ github.event.pull_request.base.sha }}\n          check-config: ${JSON.stringify(configRelative)}\n          output: repoatlas-architecture.html\n          artifact-name: repoatlas-architecture-diff\n`:undefined;
+    await Promise.all(outputs.map(file=>mkdir(path.dirname(file),{recursive:true})));
+    const writes=[
       writeFile(configPath,JSON.stringify(config,null,2)+'\n',{flag:force?'w':'wx'}),
       writeFile(baselinePath,JSON.stringify(atlas,null,2)+'\n',{flag:force?'w':'wx'}),
-    ]);
-    process.stdout.write(`Rule config saved: ${configPath}\nInitial baseline saved: ${baselinePath}\nStarter rules: no forbidden boundaries inferred · allow 0 new cycle groups · allow 0 new unreachable modules\n`);
+    ];
+    if(workflow)writes.push(writeFile(workflowPath,workflow,{flag:force?'w':'wx'}));
+    await Promise.all(writes);
+    process.stdout.write(`Rule config saved: ${configPath}\nInitial baseline saved: ${baselinePath}\n${workflow?`Pull-request workflow saved: ${workflowPath}\n`:''}Starter rules: no forbidden boundaries inferred · allow 0 new cycle groups · allow 0 new unreachable modules\n`);
   });
 program.command('compare').description('Compare two RepoAtlas JSON snapshots for architecture drift')
   .argument('<base>', 'baseline RepoAtlas JSON file')
