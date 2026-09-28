@@ -1,5 +1,15 @@
 # Changelog
 
+## [2.24.0] - 2026-09-28
+
+### Improved
+
+- Update the live-site MCP and GitHub Action quick starts to v2.24. Show the optional baseline-aware `check-config` input and explain that the visual artifact remains available when rules fail.
+
+### Quality
+
+- Tie the published homepage install examples to the package release version in tests.
+
 ## [2.23.0] - 2026-09-28
 
 ### Added
