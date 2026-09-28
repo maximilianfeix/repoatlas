@@ -1,5 +1,16 @@
 # Changelog
 
+## [2.33.0] - 2026-09-28
+
+### Improved
+
+- Replace the README process graphic with a compact recording of the real Hono map, from overview to a selected import and exact source line.
+- Keep the static source-evidence screenshots directly below the demo as a still alternative.
+
+### Quality
+
+- Capture and inspect both product states from the pinned Hono example; keep the optimized README animation below 300 KB.
+
 ## [2.32.0] - 2026-09-28
 
 ### Improved

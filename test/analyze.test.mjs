@@ -224,7 +224,7 @@ test('CLI init creates a safe editable rule config and baseline, passes its own 
   const workflow=await readFile(path.join(dir,'.github/workflows/repoatlas.yml'),'utf8');
   assert.deepEqual(config,{forbiddenImports:[],limits:{cycleGroups:0,unreachableModules:0}});
   assert.match(workflow,/on:\n  pull_request:/);assert.match(workflow,/permissions:\n  contents: read/);assert.match(workflow,/actions\/checkout@[a-f\d]{40} # v7\.0\.1/);
-  assert.match(workflow,/maximilianfeix\/repoatlas@v2\.32\.0/);assert.match(workflow,/compare-to: \$\{\{ github\.event\.pull_request\.base\.sha \}\}/);assert.match(workflow,/check-config: "rules\.json"/);assert.match(workflow,/artifact-name: repoatlas-architecture-diff/);
+  assert.match(workflow,/maximilianfeix\/repoatlas@v2\.33\.0/);assert.match(workflow,/compare-to: \$\{\{ github\.event\.pull_request\.base\.sha \}\}/);assert.match(workflow,/check-config: "rules\.json"/);assert.match(workflow,/artifact-name: repoatlas-architecture-diff/);
   assert.doesNotMatch(workflow,/pull_request_target|secrets\./);
   assert.ok(baseline.modules.some(module=>module.id==='src/helper.js'));
   const check=spawnSync(process.execPath,[cli,'check','baseline.json','--baseline','baseline.json','--config','rules.json','--json'],{cwd:dir,encoding:'utf8'});
