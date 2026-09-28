@@ -1,5 +1,17 @@
 # Changelog
 
+## [2.15.0] - 2026-09-28
+
+### Added
+
+- Search the interactive architecture map by module path or exported TypeScript name, alias, re-export source, and kind.
+- Show matching export names and exact lines inline with filtered modules so selecting a result opens its existing source-backed export list.
+- Keep path search available for older snapshots without export metadata.
+
+### Quality
+
+- Test case-insensitive export search, aliases, re-export sources, and legacy snapshot behavior.
+
 ## [2.14.0] - 2026-09-28
 
 ### Added
