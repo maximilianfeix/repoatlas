@@ -3,6 +3,7 @@ import { runAnalysisInWorker } from './analysis-client.js';
 
 let currentController;
 let currentHtml;
+let currentAtlas;
 const byId=(id)=>document.getElementById(id);
 
 function base64(bytes){let binary='';for(const byte of new Uint8Array(bytes))binary+=String.fromCharCode(byte);return btoa(binary);}
@@ -30,13 +31,16 @@ function progress(item){
   bar.style.width=`${value}%`;
 }
 
-const form=byId('repo-command-form'),input=byId('repo-url'),analyzeButton=byId('browser-analyze'),localButton=byId('browser-local'),localPicker=byId('browser-local-picker'),cancelButton=byId('browser-cancel'),progressPanel=byId('browser-progress'),errorPanel=byId('browser-error'),result=byId('browser-result'),frame=byId('browser-map'),download=byId('download-browser-map');
+const form=byId('repo-command-form'),input=byId('repo-url'),analyzeButton=byId('browser-analyze'),localButton=byId('browser-local'),localPicker=byId('browser-local-picker'),cancelButton=byId('browser-cancel'),progressPanel=byId('browser-progress'),errorPanel=byId('browser-error'),result=byId('browser-result'),frame=byId('browser-map'),download=byId('download-browser-map'),share=byId('share-browser-map');
+const sharedParams=new URLSearchParams(location.search),sharedRepository=sharedParams.get('repo');
+let pinnedRef=sharedParams.get('ref')||undefined;
 
 async function runAnalysis(request){
-  errorPanel.textContent='';result.hidden=true;frame.classList.remove('loaded');frame.srcdoc='';currentHtml=undefined;
+  errorPanel.textContent='';result.hidden=true;frame.classList.remove('loaded');frame.srcdoc='';currentHtml=undefined;currentAtlas=undefined;share.hidden=true;
   currentController=new AbortController();analyzeButton.disabled=true;localButton.disabled=true;cancelButton.hidden=false;progressPanel.hidden=false;progressPanel.setAttribute('aria-busy','true');progress({stage:'repository',message:'Preparing background analysis…'});
   try{
-    const atlas=await runAnalysisInWorker({...request,includeTests:byId('browser-tests').checked,signal:currentController.signal,onProgress:progress});
+    const atlas=await runAnalysisInWorker({...request,ref:pinnedRef,includeTests:byId('browser-tests').checked,signal:currentController.signal,onProgress:progress});
+    currentAtlas=atlas;
     progress({stage:'render',message:'Building the interactive map…'});
     currentHtml=await createMapHtml(atlas);
     byId('browser-result-label').textContent=`${atlas.name} · ${atlas.modules.length.toLocaleString()} modules · ${atlas.edges.length.toLocaleString()} imports`;
@@ -45,6 +49,7 @@ async function runAnalysis(request){
       ?'Source files are fetched directly from GitHub and analyzed on this device. The TypeScript compiler is loaded from jsDelivr’s version-pinned TypeScript package; it receives no repository data. GitHub’s public API limits unauthenticated requests to 60 per hour per IP. Large repositories work best with the local CLI.'
       :'Selected folder contents are analyzed on this device and never sent to a RepoAtlas server. Source snippets are included in the exported HTML; review the map before sharing it. The TypeScript compiler is loaded from jsDelivr’s version-pinned TypeScript package.';
     result.hidden=false;
+    share.hidden=!(atlas.repository&&atlas.commit);
     await new Promise((resolve,reject)=>{
       frame.onload=()=>{frame.classList.add('loaded');resolve();};
       frame.onerror=()=>reject(new Error('The interactive map could not be rendered.'));
@@ -64,8 +69,9 @@ async function runAnalysis(request){
 form.addEventListener('submit',event=>{
   event.preventDefault();
   try{parsePublicRepositoryInput(input.value);}catch(error){errorPanel.textContent=error.message;input.focus();return;}
-  void runAnalysis({type:'public',input:input.value});
+  void runAnalysis({type:'public',input:input.value,ref:pinnedRef});
 });
+input.addEventListener('input',()=>{if(input.value.trim()!==sharedRepository)pinnedRef=undefined;});
 localButton.addEventListener('click',()=>localPicker.click());
 localPicker.addEventListener('change',()=>{
   if(!localPicker.files?.length)return;
@@ -74,6 +80,14 @@ localPicker.addEventListener('change',()=>{
 });
 
 cancelButton.addEventListener('click',()=>currentController?.abort(new DOMException('Canceled by user','AbortError')));
+share.addEventListener('click',async()=>{
+  if(!currentAtlas?.repository||!currentAtlas.commit)return;
+  const url=new URL(location.href);url.search='';url.hash='';
+  url.searchParams.set('repo',currentAtlas.repository);url.searchParams.set('ref',currentAtlas.commit);
+  if(byId('browser-tests').checked)url.searchParams.set('tests','1');
+  try{await navigator.clipboard.writeText(url.href);byId('command-status').textContent='Pinned map link copied. It opens this repository at the same commit.';}
+  catch{byId('command-status').textContent=`Copy this pinned map link: ${url.href}`;}
+});
 download.addEventListener('click',()=>{
   if(!currentHtml)return;
   const repository=(byId('browser-result-label').textContent.split(' · ')[0]||'repository').replace(/[^A-Za-z0-9._-]+/g,'-');
@@ -83,3 +97,13 @@ download.addEventListener('click',()=>{
 });
 
 document.querySelectorAll('[data-repo]').forEach(button=>button.addEventListener('click',()=>{input.value=button.dataset.repo;}));
+
+if(sharedRepository){
+  input.value=sharedRepository;
+  if(sharedParams.get('tests')==='1')byId('browser-tests').checked=true;
+  if(pinnedRef&&!/^(?:[0-9a-f]{40}|[0-9a-f]{64})$/i.test(pinnedRef)){
+    errorPanel.textContent='This shared map link contains an invalid commit ID.';
+  }else form.requestSubmit();
+}else if(pinnedRef){
+  errorPanel.textContent='A shared map commit must include its repository URL.';
+}

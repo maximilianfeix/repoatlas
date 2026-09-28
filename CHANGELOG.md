@@ -1,5 +1,16 @@
 # Changelog
 
+## [2.29.0] - 2026-09-28
+
+### Added
+
+- Copy a share link for a browser map that pins the repository to its exact analyzed commit and preserves whether tests were included.
+- Open shared links directly into the browser analysis flow; reject malformed commit IDs and keep local-folder maps unshareable.
+
+### Quality
+
+- Verify the commit pin travels through the worker to the GitHub analyzer and that shared snapshots read source only from the requested commit.
+
 ## [2.28.0] - 2026-09-28
 
 ### Improved

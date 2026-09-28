@@ -80,6 +80,25 @@ test('public GitHub analysis pins all reads to a commit and avoids sending file 
   assert.equal(atlas.warnings.some(warning=>warning.includes('inherited tsconfig settings')),true);
 });
 
+test('public browser analysis accepts only full SHA links and rebuilds the requested snapshot',async()=>{
+  await assert.rejects(()=>analyzePublicRepository('owner/repo',{compiler:ts,ref:'main'}),/full 40- or 64-character Git SHA/);
+  const requested=[];
+  const fetchImpl=async url=>{
+    const parsed=new URL(url);requested.push(parsed.href);
+    if(parsed.hostname==='api.github.com'){
+      if(parsed.pathname==='/repos/owner/repo')return jsonResponse({private:false,default_branch:'main'});
+      if(parsed.pathname===`/repos/owner/repo/commits/${commit}`)return jsonResponse({sha:commit,commit:{tree:{sha:'abcdef0123456789'}}});
+      if(parsed.pathname==='/repos/owner/repo/git/trees/abcdef0123456789')return jsonResponse({truncated:false,tree:[{type:'blob',path:'src/index.ts',size:25}]});
+    }
+    if(parsed.hostname==='raw.githubusercontent.com'&&parsed.pathname.endsWith(`/${commit}/src/index.ts`))return new Response('export const entry = true;',{status:200});
+    return new Response('unexpected request',{status:500});
+  };
+  const atlas=await analyzePublicRepository('owner/repo',{compiler:ts,ref:commit,fetchImpl});
+  assert.equal(atlas.commit,commit);assert.equal(atlas.repository,'https://github.com/owner/repo');
+  assert.equal(requested.some(url=>url.endsWith(`/commits/${commit}`)),true);
+  assert.equal(requested.every(url=>!url.includes('contents')),true);
+});
+
 test('browser analysis reports rate limits, truncated trees, and honors cancellation',async()=>{
   const rateLimit=async(url)=>new URL(url).pathname==='/repos/owner/repo'?jsonResponse({},403,{'x-ratelimit-remaining':'0','x-ratelimit-reset':String(Math.floor(Date.now()/1000)+60)}):jsonResponse({});
   await assert.rejects(()=>analyzePublicRepository('owner/repo',{compiler:ts,fetchImpl:rateLimit}),/rate limit is exhausted/);
