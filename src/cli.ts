@@ -2,7 +2,7 @@
 import { Command } from 'commander';
 import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
-import { mkdtemp, rm, writeFile, mkdir, readFile } from 'node:fs/promises';
+import { mkdtemp, rm, writeFile, mkdir, readFile, access } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { analyze, githubURL } from './analyze.js';
@@ -63,6 +63,33 @@ program.command('doctor').description('Check runtime and Git; local analysis nee
   const result = {node:process.version,git,offline:true,auth:'Git credential helper for private repositories; not required for local/public repositories'};
   console.log(program.opts().json ? JSON.stringify(result) : `Node ${result.node}\nGit: ${git ? 'available':'missing (needed for GitHub URLs)'}\nLocal analysis: ready, no auth required`);
 });
+program.command('init').description('Create a starter rule config and a baseline snapshot for gradual architecture checks')
+  .argument('[path]', 'local TypeScript project directory', '.')
+  .option('--config-out <file>', 'rule config to create (default: <project>/repoatlas.config.json)')
+  .option('--baseline-out <file>', 'initial JSON snapshot to create (default: <project>/repoatlas-baseline.json)')
+  .option('--include-tests', 'include test files, fixtures and test directories')
+  .option('--include-js', 'include JavaScript and JSX modules in mixed repositories')
+  .option('--force', 'replace existing config or baseline files')
+  .action(async (source:string,opts) => {
+    const projectRoot=path.resolve(source);
+    const configPath=path.resolve(opts.configOut??path.join(projectRoot,'repoatlas.config.json'));
+    const baselinePath=path.resolve(opts.baselineOut??path.join(projectRoot,'repoatlas-baseline.json'));
+    const force=opts.force??program.opts().force;
+    if(configPath===baselinePath)throw new Error('Config and baseline outputs must use different paths.');
+    if(!force){
+      const existing:string[]=[];
+      for(const file of [configPath,baselinePath])try{await access(file);existing.push(file);}catch(error){if(!(error instanceof Error&&'code'in error&&error.code==='ENOENT'))throw error;}
+      if(existing.length)throw new Error(`Output exists: ${existing.join(', ')}. Choose other paths or pass --force.`);
+    }
+    const atlas=await analyze(projectRoot,{includeTests:opts.includeTests??program.opts().includeTests,includeJS:opts.includeJs??program.opts().includeJs});
+    const config={forbiddenImports:[],limits:{cycleGroups:0,unreachableModules:0}};
+    await Promise.all([configPath,baselinePath].map(file=>mkdir(path.dirname(file),{recursive:true})));
+    await Promise.all([
+      writeFile(configPath,JSON.stringify(config,null,2)+'\n',{flag:force?'w':'wx'}),
+      writeFile(baselinePath,JSON.stringify(atlas,null,2)+'\n',{flag:force?'w':'wx'}),
+    ]);
+    process.stdout.write(`Rule config saved: ${configPath}\nInitial baseline saved: ${baselinePath}\nStarter rules: no forbidden boundaries inferred · allow 0 new cycle groups · allow 0 new unreachable modules\n`);
+  });
 program.command('compare').description('Compare two RepoAtlas JSON snapshots for architecture drift')
   .argument('<base>', 'baseline RepoAtlas JSON file')
   .argument('<head>', 'current RepoAtlas JSON file')

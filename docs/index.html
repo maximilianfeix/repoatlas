@@ -97,6 +97,7 @@
       <article class="feature-row"><h3>Review architecture drift in pull requests</h3><p>Generate a downloadable HTML diff from the base commit and PR revision. Changed modules trace back to detected entries through source-linked imports, alongside added or removed bindings and exports; the workflow needs read-only access. <a href="https://maximilianfeix.github.io/repoatlas/examples/entry-impact-diff.html">Explore an interactive sample.</a></p></article>
       <article class="feature-row"><h3>Give coding agents grounded context</h3><p>Connect over MCP to search modules, public exports, or imported names and aliases, or get bounded module evidence and an entry path. Results include exact source lines; analysis stays local.</p></article>
       <article class="feature-row"><h3>Keep a snapshot in your README</h3><p>Export a small, deterministic SVG card with module, entry-point, import, and cycle counts. A pinned workflow can propose refreshes as pull requests.</p></article>
+      <article class="feature-row"><h3>Start from a safe baseline</h3><p>Run <code>repoatlas init</code> to create an editable starter policy and a snapshot of existing architecture. CI can then block new cycles or unreachable modules without failing on unchanged debt.</p></article>
       <article class="feature-row"><h3>Keep it portable</h3><p>Share one offline HTML map, an architecture diff, a boundary matrix, or enforced rules in GitHub Actions.</p></article>
     </div>
   </section>
@@ -107,14 +108,14 @@
 npx skills add maximilianfeix/repoatlas --skill repoatlas --agent codex --yes
 
 <span class="comment"># Local MCP process · read-only · no RepoAtlas credentials</span>
-npx --yes --package=github:maximilianfeix/repoatlas#v2.25.0 repoatlas-cli mcp /path/to/project</code></pre>
+npx --yes --package=github:maximilianfeix/repoatlas#v2.26.0 repoatlas-cli mcp /path/to/project</code></pre>
   </section>
 
   <section id="github-actions" class="section workflow" aria-labelledby="workflow-title">
     <div><div class="kicker">In your workflow</div><h2 id="workflow-title">Review the shape of every change.</h2><p>Build an architecture diff for a pull request, scan its module and import counts in the job summary, then follow each changed import to the exact base or head source line. Add a rule config to annotate violating import lines and files; the HTML artifact stays available if a rule fails. RepoAtlas needs read-only access.</p><a href="https://github.com/maximilianfeix/repoatlas#github-actions">See the complete GitHub Actions setup →</a></div>
     <pre class="code-sample"><code><span class="comment"># .github/workflows/architecture.yml</span>
 - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 <span class="comment"># v7.0.1</span>
-<span class="mark">- uses:</span> maximilianfeix/repoatlas@v2.25.0
+<span class="mark">- uses:</span> maximilianfeix/repoatlas@v2.26.0
   with:
     compare-to: ${{ github.event.pull_request.base.sha }}
     check-config: repoatlas.config.json

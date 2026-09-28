@@ -1,5 +1,16 @@
 # Changelog
 
+## [2.26.0] - 2026-09-28
+
+### Added
+
+- Add `repoatlas init` to create a conservative rule config and initial architecture snapshot in one command, with explicit output paths and overwrite protection.
+- Start with zero newly introduced cycle groups or unreachable modules while leaving forbidden boundaries unset for project-specific review.
+
+### Quality
+
+- Verify initialized output through the CLI's own baseline check and test overwrite protection and mixed TypeScript/JavaScript projects.
+
 ## [2.25.0] - 2026-09-28
 
 ### Improved
