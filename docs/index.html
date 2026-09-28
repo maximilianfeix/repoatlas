@@ -58,7 +58,7 @@
     <div class="eyebrow">A source-backed map of your TypeScript project</div>
     <h1 id="page-title"><span>Know what</span><span>imports what.</span></h1>
     <div class="hero-bottom">
-      <div class="hero-copy"><p>RepoAtlas turns unfamiliar code into a map you can check. <strong>Click an edge to open the import line behind it.</strong></p><div class="hero-actions"><a class="button primary" href="examples/hono.html">Explore the Hono map ↗</a><a class="button" href="#make-a-map">Map your repository ↓</a></div></div>
+      <div class="hero-copy"><p>RepoAtlas turns unfamiliar code into a map you can check. <strong>Click an edge to open the import line behind it.</strong></p><div class="hero-actions"><a class="button primary" href="#make-a-map">Map your repository ↓</a><a class="button" href="examples/hono.html">Explore the Hono map ↗</a></div></div>
       <div class="snapshot" aria-label="Hono demo snapshot metrics"><div class="snapshot-label"><span class="snapshot-dot" aria-hidden="true"></span><span>Hono snapshot · commit <a class="snapshot-link" href="https://github.com/honojs/hono/tree/52f6c7ec865b31001a14eed9b323a0235f0a3156">52f6c7e</a></span></div><div class="snapshot-stats"><div><strong>247</strong><span>modules</span></div><div><strong>676</strong><span>connections</span></div><div><strong>65</strong><span>detected entries</span></div></div></div>
     </div>
   </section>
@@ -114,14 +114,14 @@
 npx skills add maximilianfeix/repoatlas --skill repoatlas --agent codex --yes
 
 <span class="comment"># Local MCP process · read-only · no RepoAtlas credentials</span>
-npx --yes --package=github:maximilianfeix/repoatlas#v2.31.0 repoatlas-cli mcp /path/to/project</code></pre>
+npx --yes --package=github:maximilianfeix/repoatlas#v2.32.0 repoatlas-cli mcp /path/to/project</code></pre>
   </section>
 
   <section id="github-actions" class="section workflow" aria-labelledby="workflow-title">
     <div><div class="kicker">In your workflow</div><h2 id="workflow-title">Review the shape of every change.</h2><p>Build an architecture diff for a pull request, scan its module and import counts in the job summary, then follow each changed import to the exact base or head source line. Add a rule config to annotate violating import lines and files; the HTML artifact stays available if a rule fails. RepoAtlas needs read-only access.</p><a href="https://github.com/maximilianfeix/repoatlas#github-actions">See the complete GitHub Actions setup →</a></div>
     <pre class="code-sample"><code><span class="comment"># .github/workflows/architecture.yml</span>
 - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 <span class="comment"># v7.0.1</span>
-<span class="mark">- uses:</span> maximilianfeix/repoatlas@v2.31.0
+<span class="mark">- uses:</span> maximilianfeix/repoatlas@v2.32.0
   with:
     compare-to: ${{ github.event.pull_request.base.sha }}
     check-config: repoatlas.config.json
