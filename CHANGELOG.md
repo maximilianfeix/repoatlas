@@ -1,5 +1,16 @@
 # Changelog
 
+## [2.22.0] - 2026-09-28
+
+### Added
+
+- Add baseline-aware architecture checks so CI can report only newly introduced forbidden imports, dependency cycles, and unreachable modules while keeping existing debt visible.
+- Explain baseline counts in text and JSON results, with unknown entry reachability preserved instead of guessed.
+
+### Quality
+
+- Verify unchanged debt, new violations, and unknown baseline reachability through the check API and CLI.
+
 ## [2.21.0] - 2026-09-28
 
 ### Improved
