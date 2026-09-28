@@ -4,7 +4,7 @@ description: Map or explain an unfamiliar TypeScript repository with RepoAtlas. 
 license: MIT
 metadata:
   author: maximilianfeix
-  version: "2.13.0"
+  version: "2.14.0"
 ---
 
 # RepoAtlas
@@ -18,6 +18,7 @@ Use RepoAtlas for evidence from the current TypeScript repository, not for imagi
 3. If the CLI is missing, do not install packages automatically. Offer the versioned CLI command from the project README, or point the user to the browser map for a public GitHub URL or explicitly selected local folder.
 4. When a user requests a map, produce one standalone HTML file and give its path. Preserve existing files: omit `--force` unless the user explicitly asks to replace the chosen output.
 5. For a question about recent change activity, use `--activity-days <days>` only when Git history is available and within the supported 365-day window. Report committed file-touch counts as activity, never as code risk or quality.
+6. When a user asks what changed between snapshots, use `repoatlas compare <base.json> <head.json>` or `--format html --output <path>`. Report public export additions/removals as syntax-level surface changes only; do not claim type compatibility or breaking status. Older snapshots may lack export metadata.
 
 ## Evidence rules
 

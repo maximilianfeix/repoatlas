@@ -69,14 +69,14 @@ Want to explore before installing? [Paste a public TypeScript repository or choo
 For a versioned command-line run, install nothing globally. The CLI requires **Node.js 22 or later** and **Git**. Point it at a public GitHub repository:
 
 ```sh
-npx --yes --package=github:maximilianfeix/repoatlas#v2.13.0 -- \
+npx --yes --package=github:maximilianfeix/repoatlas#v2.14.0 -- \
   repoatlas-cli https://github.com/pmndrs/zustand --out zustand-map.html
 ```
 
 Open `zustand-map.html` in your browser. RepoAtlas also analyzes a local checkout:
 
 ```sh
-npx --yes --package=github:maximilianfeix/repoatlas#v2.13.0 -- \
+npx --yes --package=github:maximilianfeix/repoatlas#v2.14.0 -- \
   repoatlas-cli ./my-project --out architecture.html
 ```
 
@@ -110,12 +110,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: maximilianfeix/repoatlas@v2.13.0
+      - uses: maximilianfeix/repoatlas@v2.14.0
         with:
           output: repoatlas-map.html
 ```
 
-For pull requests, set `compare-to` to the base commit SHA to make the artifact a source-linked architecture diff. RepoAtlas also adds a short change summary and direct artifact link to the GitHub Actions job summary. This uses only `contents: read`; it does not post a comment or need a write token.
+For pull requests, set `compare-to` to the base commit SHA to make the artifact a source-linked architecture diff. RepoAtlas adds module, import, and export counts with a direct artifact link to the GitHub Actions job summary. Export changes describe file-level TypeScript syntax, not package entry-point accessibility or type compatibility. This uses only `contents: read`; it does not post a comment or need a write token.
 
 ```yaml
 name: Architecture review
@@ -127,14 +127,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: maximilianfeix/repoatlas@v2.13.0
+      - uses: maximilianfeix/repoatlas@v2.14.0
         with:
           compare-to: ${{ github.event.pull_request.base.sha }}
           output: architecture-diff.html
           artifact-name: architecture-diff
 ```
 
-Download `architecture-diff` from the workflow run to explore added and removed modules and imports; each edge links to the exact base or head source line. The action accepts `path`, `compare-to`, `artifact-name`, `retention-days`, `include-tests`, and `include-js`. It needs read-only repository access and no token input. Maps and diffs include project paths and source snippets, so restrict artifacts from private repositories.
+Download `architecture-diff` from the workflow run to explore added and removed modules, imports, and public exports; each source link points to the exact base or head line. The export report tracks syntax-level names and aliases, not TypeScript assignability or semver safety. The action accepts `path`, `compare-to`, `artifact-name`, `retention-days`, `include-tests`, and `include-js`. It needs read-only repository access and no token input. Maps and diffs include project paths and source snippets, so restrict artifacts from private repositories.
 
 ## MCP server
 
@@ -149,7 +149,7 @@ Add this server entry to an MCP client configuration and replace the project pat
       "command": "npx",
       "args": [
         "--yes",
-        "--package=github:maximilianfeix/repoatlas#v2.13.0",
+        "--package=github:maximilianfeix/repoatlas#v2.14.0",
         "repoatlas-cli",
         "mcp",
         "/absolute/path/to/project"
@@ -196,6 +196,9 @@ Each example below was generated from a pinned upstream commit. The counts and e
   </tr>
   <tr>
     <td colspan="2" valign="top"><a href="https://maximilianfeix.github.io/repoatlas/examples/hono.html#module=src%2Fadapter%2Faws-lambda%2Fhandler.ts"><img src="docs/assets/export-surface.png" alt="The Hono module inspector lists exported TypeScript names with links to exact lines in the pinned GitHub source" width="100%"></a><sub>Inspect a file's public API and jump straight to each export in the pinned source.</sub></td>
+  </tr>
+  <tr>
+    <td colspan="2" valign="top"><a href="https://maximilianfeix.github.io/repoatlas/examples/repoatlas-v2.12-to-v2.13.html"><img src="docs/assets/public-export-diff.png" alt="A snapshot comparison showing added TypeScript exports with exact line links" width="100%"></a><sub>Review export-surface changes beside ordinary module and import drift.</sub></td>
   </tr>
 </table>
 
@@ -244,7 +247,9 @@ repoatlas compare before.json after.json
 repoatlas compare before.json after.json --format html --output architecture-diff.html
 ```
 
-Open `architecture-diff.html` to filter added, removed, and changed relationships, search paths or imports, and expand each dependency to its source line in both snapshots. The report is a single offline file. It links to commit-pinned source on GitHub when the snapshots contain source URLs.
+Open `architecture-diff.html` to filter added, removed, and changed relationships, search paths or imports, and expand each dependency to its source line in both snapshots. The report also tracks added or removed file-level TypeScript exports and links to their exact lines. It does not infer package entry-point accessibility or semantic type compatibility; snapshots without export metadata are called out as unavailable. The report is a single offline file.
+
+The [v2.12 → v2.13 comparison example](https://maximilianfeix.github.io/repoatlas/examples/repoatlas-v2.12-to-v2.13.html) shows a real source change with export evidence.
 
 In the map, choose **Packages** for a ranked overview of workspace packages and top-level source directories. The dependency rows count resolved internal import sites; selecting a package opens its modules, and selecting a count lists every contributing source line. Use **Boundaries** for the full source-by-target matrix.
 

@@ -13,12 +13,17 @@ const edge=(source,target,specifier)=>({source,target,specifier,kind:'import',li
 test('job summary shows compact architecture counts, pinned snapshots, and a GitHub artifact link',()=>{
   const base=atlas(['src/main.ts','src/old.ts'],[edge('src/main.ts','src/old.ts','./old')],'abcdef1234567890');
   const head=atlas(['src/main.ts','src/new.ts'],[edge('src/main.ts','src/new.ts','./new')],'123456abcdef7890');
+  base.modules.find(module=>module.id==='src/main.ts').exports=[{name:'oldApi',kind:'function',line:1}];
+  base.modules.find(module=>module.id==='src/old.ts').exports=[];
+  head.modules.find(module=>module.id==='src/main.ts').exports=[{name:'newApi',kind:'function',line:2}];
+  head.modules.find(module=>module.id==='src/new.ts').exports=[];
   const result=renderActionSummary(compareAtlases(base,head),'https://github.com/example/demo/actions/runs/12/artifacts/34?download=1#file');
   assert.match(result,/\*\*Modules:\*\* \+1 added · −1 removed/);
   assert.match(result,/\*\*Imports:\*\* \+1 added · −1 removed · 0 changed specifiers/);
+  assert.match(result,/\*\*Exports:\*\* \+1 added · −1 removed · 0 unavailable/);
   assert.match(result,/`abcdef1234` → `123456abcd`/);
   assert.match(result,/\[Download the interactive, source-linked HTML diff\]\(<https:\/\/github\.com\/example\/demo\/actions\/runs\/12\/artifacts\/34>\)/);
-  assert.match(result,/resolved static source imports/);
+  assert.match(result,/syntax-level names, not type compatibility/);
   assert.doesNotMatch(result,/untrusted project|src\/new\.ts|javascript:/);
 });
 

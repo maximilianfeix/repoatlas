@@ -42,17 +42,47 @@ test('ignores line and code shifts when the dependency relationship is unchanged
   assert.deepEqual(compareAtlases(before,after).dependencies,{added:[],removed:[],changedSpecifier:[]});
 });
 
+test('compares static public exports, ignores line shifts, and identifies snapshots without export data',()=>{
+  const base=atlas(['src/api.ts','src/old-snapshot.ts','src/removed.ts'],[],'base-sha');
+  const head=atlas(['src/api.ts','src/old-snapshot.ts','src/new.ts'],[],'head-sha');
+  const record=(snapshot,id,exports,commit)=>{const module=snapshot.modules.find(item=>item.id===id);module.exports=exports;module.url=`https://github.com/example/demo/blob/${commit}/${id}#L1`;};
+  record(base,'src/api.ts',[
+    {name:'keep',kind:'function',line:2},
+    {name:'gone',kind:'variable',line:3},
+    {name:'legacy',kind:'re-export',line:4,source:'./old.js'},
+  ],'base-sha');
+  record(head,'src/api.ts',[
+    {name:'keep',kind:'function',line:42},
+    {name:'added',kind:'interface',line:5},
+    {name:'legacy',kind:'re-export',line:4,source:'./new.js'},
+  ],'head-sha');
+  record(base,'src/removed.ts',[{name:'goneFile',kind:'class',line:1}],'base-sha');
+  record(head,'src/new.ts',[{name:'newFile',kind:'type',line:1}],'head-sha');
+  const diff=compareAtlases(base,head);
+  assert.deepEqual(diff.exports.added.map(item=>[item.moduleId,item.name,item.kind,item.line]),[
+    ['src/api.ts','legacy','re-export',4],['src/api.ts','added','interface',5],['src/new.ts','newFile','type',1],
+  ]);
+  assert.deepEqual(diff.exports.removed.map(item=>[item.moduleId,item.name,item.kind,item.line]),[
+    ['src/api.ts','gone','variable',3],['src/api.ts','legacy','re-export',4],['src/removed.ts','goneFile','class',1],
+  ]);
+  assert.match(diff.exports.added[0].url,/head-sha\/src\/api\.ts#L4$/);
+  assert.deepEqual(diff.exports.unavailableModules,['src/old-snapshot.ts']);
+});
+
 test('renders an offline, searchable HTML diff with exact source evidence and escaped input',()=>{
   const base=atlas(['a.ts','b.ts'],[edge('a.ts','b.ts','./b',{line:3,url:'https://github.com/example/demo/blob/old/a.ts#L3'})],'old');
   const head=atlas(['a.ts','c.ts'],[edge('a.ts','c.ts','</script><script>alert(1)</script>',{line:8,code:"import '</script><script>alert(1)</script>';",url:'https://github.com/example/demo/blob/new/a.ts#L8'})],'new');
   head.edges[0].url='javascript:alert(3)';
+  base.modules[0].exports=[];head.modules[0].exports=[{name:'untrusted',kind:'function',line:1}];head.modules[0].url='https://github.com.evil.example/blob/head/a.ts#L1';
   head.name='demo <script>alert(2)</script>';
   const html=renderComparisonHtml(compareAtlases(base,head));
   assert.match(html,/Architecture report/);assert.match(html,/type="application\/json"/);
   assert.match(html,/\\u003c\/script>/);assert.doesNotMatch(html,/<script>alert\([12]\)<\/script>/);
   assert.match(html,/blob\/old\/a\.ts#L3/);assert.doesNotMatch(html,/href="javascript:/);
+  assert.doesNotMatch(html,/href="https:\/\/github\.com\.evil/);
   assert.match(html,/aria-label="Search architecture changes"/);assert.match(html,/No tracking or network requests/);
   assert.match(html,/prefers-reduced-motion:reduce/);assert.match(html,/translateY\(-1px\)/);
+  assert.match(html,/Exports added/);assert.match(html,/export-changes/);
 });
 
 test('keeps base and head dependency links pinned to their respective commits',()=>{
@@ -81,6 +111,7 @@ test('compare CLI emits text, JSON and a safe standalone HTML file, refuses over
   assert.equal(json.status,0);assert.deepEqual(JSON.parse(json.stdout).modules,{added:['b.ts'],removed:[]});
   const text=spawnSync(process.execPath,[cli,'compare',base,head],{encoding:'utf8'});
   assert.equal(text.status,0);assert.match(text.stdout,/Architecture drift: demo \(base\) → demo \(head\)/);assert.match(text.stdout,/Modules: \+1 added · −0 removed/);
+  assert.match(text.stdout,/Public exports: \+0 added · −0 removed/);
   const htmlFile=path.join(dir,'diff.html');
   const html=spawnSync(process.execPath,[cli,'compare',base,head,'--format','html','--output',htmlFile],{encoding:'utf8'});
   assert.equal(html.status,0);assert.match(readFileSync(htmlFile,'utf8'),/What changed in the architecture/);
