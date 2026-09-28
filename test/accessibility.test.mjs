@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {activateOnKeyboard} from '../dist/accessibility.js';
+import {activateOnKeyboard,motionAwareScrollBehavior} from '../dist/accessibility.js';
 
 test('custom SVG buttons activate once with Enter or Space and suppress page scrolling',()=>{
   for(const key of ['Enter',' ']){
@@ -18,4 +18,9 @@ test('unrelated keyboard input does not activate custom SVG buttons',()=>{
   assert.equal(handled,false);
   assert.equal(prevented,0);
   assert.equal(activated,0);
+});
+
+test('shared-edge map navigation animates unless reduced motion is requested',()=>{
+  assert.equal(motionAwareScrollBehavior(false),'smooth');
+  assert.equal(motionAwareScrollBehavior(true),'auto');
 });

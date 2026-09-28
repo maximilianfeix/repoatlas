@@ -1,5 +1,16 @@
 # Changelog
 
+## [2.39.0] - 2026-09-28
+
+### Improved
+
+- Guide source-linked map navigation with a short, smooth focus motion when the user allows it.
+- Use immediate navigation when the system requests reduced motion.
+
+### Quality
+
+- Test motion preferences and verify both navigation modes in a real browser.
+
 ## [2.38.0] - 2026-09-28
 
 ### Improved

@@ -6,7 +6,7 @@ import { analyzeReachability, findCycles, findEntryPath } from './insights.js';
 import { groupExternalDependencies, type ExternalUsage } from './packages.js';
 import { encodeInspectorRoute, resolveInspectorRoute } from './routes.js';
 import { groupParallelEdges, type ParallelEdgeGroup } from './graph.js';
-import { activateOnKeyboard } from './accessibility.js';
+import { activateOnKeyboard, motionAwareScrollBehavior } from './accessibility.js';
 import { buildEntryTour, clampEntryTourStep } from './tour.js';
 import { matchesModuleSearch, matchingExports, matchingImports } from './search.js';
 import { pageWindow } from './pagination.js';
@@ -511,9 +511,10 @@ function restoreInspectorRoute() {
   if(route.type==='edge'){
     const canvas=$('graph').parentElement!,target=$('graph').querySelector('.edge.selected');
     if(target){
-      canvas.scrollIntoView({block:'nearest',inline:'nearest'});
+      const behavior=motionAwareScrollBehavior(window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+      canvas.scrollIntoView({behavior,block:'nearest',inline:'nearest'});
       const view=canvas.getBoundingClientRect(),edge=target.getBoundingClientRect();
-      canvas.scrollTo({left:canvas.scrollLeft+edge.left-view.left+edge.width/2-view.width/2,top:canvas.scrollTop+edge.top-view.top+edge.height/2-view.height/2,behavior:'auto'});
+      canvas.scrollTo({left:canvas.scrollLeft+edge.left-view.left+edge.width/2-view.width/2,top:canvas.scrollTop+edge.top-view.top+edge.height/2-view.height/2,behavior});
     }
   }
 }

@@ -4,3 +4,7 @@ export function activateOnKeyboard(event:Pick<KeyboardEvent,'key'|'preventDefaul
   activate();
   return true;
 }
+
+export function motionAwareScrollBehavior(reducedMotion:boolean):ScrollBehavior {
+  return reducedMotion?'auto':'smooth';
+}
