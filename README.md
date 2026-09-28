@@ -1,8 +1,10 @@
 <p align="center">
+  <a href="https://maximilianfeix.github.io/repoatlas/#make-a-map">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/maximilianfeix/repoatlas/main/docs/assets/banner-dark.svg">
     <img src="https://raw.githubusercontent.com/maximilianfeix/repoatlas/main/docs/assets/banner-light.svg" alt="RepoAtlas — trace imports and verify every edge in a clickable TypeScript architecture map" width="100%">
   </picture>
+  </a>
 </p>
 
 <p align="center">
