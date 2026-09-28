@@ -71,14 +71,14 @@ Want to explore before installing? [Paste a public TypeScript repository or choo
 For a versioned command-line run, install nothing globally. The CLI requires **Node.js 22 or later** and **Git**. Point it at a public GitHub repository:
 
 ```sh
-npx --yes --package=github:maximilianfeix/repoatlas#v2.35.0 -- \
+npx --yes --package=github:maximilianfeix/repoatlas#v2.36.0 -- \
   repoatlas-cli https://github.com/pmndrs/zustand --out zustand-map.html
 ```
 
 Open `zustand-map.html` in your browser. Search by module path or public export, then select a result to inspect its exact source evidence. RepoAtlas also analyzes a local checkout:
 
 ```sh
-npx --yes --package=github:maximilianfeix/repoatlas#v2.35.0 -- \
+npx --yes --package=github:maximilianfeix/repoatlas#v2.36.0 -- \
   repoatlas-cli ./my-project --out architecture.html
 ```
 
@@ -112,7 +112,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: maximilianfeix/repoatlas@v2.35.0
+      - uses: maximilianfeix/repoatlas@v2.36.0
         with:
           output: repoatlas-map.html
 ```
@@ -129,7 +129,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: maximilianfeix/repoatlas@v2.35.0
+      - uses: maximilianfeix/repoatlas@v2.36.0
         with:
           compare-to: ${{ github.event.pull_request.base.sha }}
           check-config: repoatlas.config.json
@@ -152,7 +152,7 @@ Add this server entry to an MCP client configuration and replace the project pat
       "command": "npx",
       "args": [
         "--yes",
-        "--package=github:maximilianfeix/repoatlas#v2.35.0",
+        "--package=github:maximilianfeix/repoatlas#v2.36.0",
         "repoatlas-cli",
         "mcp",
         "/absolute/path/to/project"
