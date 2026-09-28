@@ -69,14 +69,14 @@ Want to explore before installing? [Paste a public TypeScript repository or choo
 For a versioned command-line run, install nothing globally. The CLI requires **Node.js 22 or later** and **Git**. Point it at a public GitHub repository:
 
 ```sh
-npx --yes --package=github:maximilianfeix/repoatlas#v2.10.0 -- \
+npx --yes --package=github:maximilianfeix/repoatlas#v2.11.0 -- \
   repoatlas-cli https://github.com/pmndrs/zustand --out zustand-map.html
 ```
 
 Open `zustand-map.html` in your browser. RepoAtlas also analyzes a local checkout:
 
 ```sh
-npx --yes --package=github:maximilianfeix/repoatlas#v2.10.0 -- \
+npx --yes --package=github:maximilianfeix/repoatlas#v2.11.0 -- \
   repoatlas-cli ./my-project --out architecture.html
 ```
 
@@ -110,7 +110,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: maximilianfeix/repoatlas@v2.10.0
+      - uses: maximilianfeix/repoatlas@v2.11.0
         with:
           output: repoatlas-map.html
 ```
@@ -127,7 +127,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: maximilianfeix/repoatlas@v2.10.0
+      - uses: maximilianfeix/repoatlas@v2.11.0
         with:
           compare-to: ${{ github.event.pull_request.base.sha }}
           output: architecture-diff.html
@@ -149,7 +149,7 @@ Add this server entry to an MCP client configuration and replace the project pat
       "command": "npx",
       "args": [
         "--yes",
-        "--package=github:maximilianfeix/repoatlas#v2.10.0",
+        "--package=github:maximilianfeix/repoatlas#v2.11.0",
         "repoatlas-cli",
         "mcp",
         "/absolute/path/to/project"
@@ -184,11 +184,12 @@ Each example below was generated from a pinned upstream commit. The counts and e
 
 <table>
   <tr>
-    <td width="50%" valign="top"><a href="https://maximilianfeix.github.io/repoatlas/examples/hono.html"><img src="docs/assets/entry-path-trace.png" alt="A highlighted shortest import path from a detected Hono entry point to a selected module" width="100%"></a><sub>Follow the shortest path from an entry point.</sub></td>
-    <td width="50%" valign="top"><a href="https://maximilianfeix.github.io/repoatlas/examples/hono.html"><img src="docs/assets/boundary-matrix-preview.png" alt="A directory boundary matrix showing source-backed imports between parts of Hono" width="100%"></a><sub>See which package and directory boundaries imports cross.</sub></td>
+    <td width="50%" valign="top"><a href="https://maximilianfeix.github.io/repoatlas/examples/hono.html"><img src="docs/assets/entry-path-trace.png" alt="A highlighted shortest import path from a detected Hono entry point to a selected module" width="100%"></a><sub>Find the shortest detected path to a module.</sub></td>
+    <td width="50%" valign="top"><a href="https://maximilianfeix.github.io/repoatlas/examples/hono.html"><img src="docs/assets/guided-entry-tour.png" alt="Guided Hono entry-path stop showing the exact import line, pinned GitHub link, and previous or next controls" width="100%"></a><sub>Walk the path one import at a time and inspect its exact source line.</sub></td>
   </tr>
   <tr>
-    <td colspan="2" valign="top"><a href="https://maximilianfeix.github.io/repoatlas/examples/hono.html"><img src="docs/assets/package-overview.png" alt="The package overview for Hono ranks source directories by dependency connections and shows cross-package import counts" width="100%"></a><sub>Start broad, then drill into a package or open a count to inspect its exact source imports.</sub></td>
+    <td width="50%" valign="top"><a href="https://maximilianfeix.github.io/repoatlas/examples/hono.html"><img src="docs/assets/package-overview.png" alt="The package overview for Hono ranks source directories by dependency connections and shows cross-package import counts" width="100%"></a><sub>Start broad, then drill into a package or inspect its source imports.</sub></td>
+    <td width="50%" valign="top"><a href="https://maximilianfeix.github.io/repoatlas/examples/hono.html"><img src="docs/assets/boundary-matrix-preview.png" alt="A directory boundary matrix showing source-backed imports between parts of Hono" width="100%"></a><sub>See which package and directory boundaries imports cross.</sub></td>
   </tr>
   <tr>
     <td colspan="2" valign="top"><a href="https://maximilianfeix.github.io/repoatlas/examples/repoatlas-v1-to-v2.html"><img src="docs/assets/architecture-diff.png" alt="A searchable architecture comparison between real RepoAtlas v1.10 and v2 snapshots, showing added modules and imports" width="100%"></a><sub>A real RepoAtlas 1.10 → 2.0 comparison. Expand an import to trace its source line in the pinned snapshot.</sub></td>
@@ -205,7 +206,7 @@ The RepoAtlas comparison uses real snapshots from [v1.10.0](https://github.com/m
   <tr>
     <td width="50%" valign="top"><strong>Trace every connection</strong><br>Open the import statement and exact line behind an edge. Bundled imports keep every individual location; clean checkouts link to the pinned source on GitHub.</td>
     <td width="50%" valign="top"><strong>Start in the browser</strong><br>Paste a public GitHub URL or choose a private local folder. A cancellable background worker keeps the page responsive and shows progress. Inspect the interactive map and download a standalone HTML file; project source stays on your device.</td>
-    <td width="50%" valign="top"><strong>Get oriented quickly</strong><br>See detected entries, reachability, cycles, impact, external packages, and shortest entry paths. Share a focused view with a deep link.</td>
+    <td width="50%" valign="top"><strong>Get oriented quickly</strong><br>Walk a detected entry path one import at a time, with the exact source line highlighted at every stop. Explore reachability, cycles, impact, and external packages, then share a focused view with a deep link.</td>
   </tr>
   <tr>
     <td width="50%" valign="top"><strong>Read workspace boundaries</strong><br>Start with a ranked package and directory overview, then drill into a package or open any import count to inspect its exact source lines. Resolve declared npm, Yarn, and pnpm workspace packages through export maps in CLI and browser analysis.</td>
