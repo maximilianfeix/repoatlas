@@ -134,6 +134,15 @@ program.command('schema').description('Print a published JSON Schema for a RepoA
     const schema=readFileSync(new URL(`../schemas/${format}.schema.json`,import.meta.url),'utf8');
     process.stdout.write(schema.trimEnd()+'\n');
   });
+program.command('mcp').description('Expose local architecture evidence to an MCP-compatible coding agent')
+  .argument('[path]', 'local TypeScript project directory', '.')
+  .option('--include-tests', 'include test files, fixtures and test directories')
+  .option('--include-js', 'include JavaScript and JSX modules in mixed repositories')
+  .action(async (source:string,opts) => {
+    if(/^[a-z]+:\/\//i.test(source))throw new Error('The MCP server reads a local directory. Clone the repository first.');
+    const {runMcpServer}=await import('./mcp.js');
+    await runMcpServer(path.resolve(source),packageVersion,{includeTests:opts.includeTests,includeJS:opts.includeJs});
+  });
 program.configureOutput({outputError: (str, write) => write(process.argv.includes('--json') ? JSON.stringify({error:str.trim()})+'\n' : str)});
 program.parseAsync().catch((error: Error) => {
   const message = 'code' in error && error.code === 'EEXIST' ? 'Output exists. Choose another --out path or pass --force.' : error.message;

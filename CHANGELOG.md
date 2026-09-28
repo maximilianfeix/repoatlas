@@ -1,5 +1,19 @@
 # Changelog
 
+## [2.2.0] - 2026-09-28
+
+### Added
+
+- Expose the local architecture graph through MCP stdio tools for summaries, module search, direct import evidence, entry paths, and refresh.
+- Keep agent context read-only and repository-scoped; include exact source lines and commit-pinned URLs when available.
+- Document an MCP client setup and add a dedicated agent-context section to the project site.
+- Build the CLI when installing directly from a GitHub tag and add a distinct `repoatlas-cli` binary for version-selected `npx` runs.
+
+### Quality
+
+- Exercise MCP initialization, tool discovery, analysis, evidence, refresh-after-edit behavior, and protocol-only stdout in an integration test.
+- Pin the official MCP server SDK and Zod runtime versions.
+
 ## [2.1.0] - 2026-09-28
 
 ### Added

@@ -7,6 +7,9 @@ test('package and lockfile release versions stay aligned',async()=>{
   const lock=JSON.parse(await readFile('package-lock.json','utf8'));
   assert.equal(lock.version,pkg.version);
   assert.equal(lock.packages[''].version,pkg.version);
+  assert.equal(pkg.bin.repoatlas,'dist/cli.js');
+  assert.equal(pkg.bin['repoatlas-cli'],'dist/cli.js');
+  assert.equal(pkg.scripts.prepare,'npm run build');
 });
 
 test('composite action keeps its node setup structure and JavaScript input wired',async()=>{
