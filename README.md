@@ -69,14 +69,14 @@ Want to explore before installing? [Paste a public TypeScript repository or choo
 For a versioned command-line run, install nothing globally. The CLI requires **Node.js 22 or later** and **Git**. Point it at a public GitHub repository:
 
 ```sh
-npx --yes --package=github:maximilianfeix/repoatlas#v2.16.0 -- \
+npx --yes --package=github:maximilianfeix/repoatlas#v2.17.0 -- \
   repoatlas-cli https://github.com/pmndrs/zustand --out zustand-map.html
 ```
 
 Open `zustand-map.html` in your browser. Search by module path or public export, then select a result to inspect its exact source evidence. RepoAtlas also analyzes a local checkout:
 
 ```sh
-npx --yes --package=github:maximilianfeix/repoatlas#v2.16.0 -- \
+npx --yes --package=github:maximilianfeix/repoatlas#v2.17.0 -- \
   repoatlas-cli ./my-project --out architecture.html
 ```
 
@@ -110,7 +110,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: maximilianfeix/repoatlas@v2.16.0
+      - uses: maximilianfeix/repoatlas@v2.17.0
         with:
           output: repoatlas-map.html
 ```
@@ -127,7 +127,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: maximilianfeix/repoatlas@v2.16.0
+      - uses: maximilianfeix/repoatlas@v2.17.0
         with:
           compare-to: ${{ github.event.pull_request.base.sha }}
           output: architecture-diff.html
@@ -149,7 +149,7 @@ Add this server entry to an MCP client configuration and replace the project pat
       "command": "npx",
       "args": [
         "--yes",
-        "--package=github:maximilianfeix/repoatlas#v2.16.0",
+        "--package=github:maximilianfeix/repoatlas#v2.17.0",
         "repoatlas-cli",
         "mcp",
         "/absolute/path/to/project"
@@ -201,6 +201,9 @@ Each example below was generated from a pinned upstream commit. The counts and e
     <td colspan="2" valign="top"><a href="https://maximilianfeix.github.io/repoatlas/examples/hono.html#module=src%2Fhono.ts"><img src="docs/assets/export-import-sites.png" alt="The Hono export inspector shows 18 direct named imports of Hono, each linked to the precise importing line" width="100%"></a><sub>Open an export's direct import sites, then click any result to inspect its exact import statement and pinned source line.</sub></td>
   </tr>
   <tr>
+    <td colspan="2" valign="top"><a href="https://maximilianfeix.github.io/repoatlas/examples/hono.html#module=src%2Fcontext.ts"><img src="docs/assets/export-import-pagination.png" alt="The Hono Context export inspector paginates 39 direct import sites and shows its current range and page controls" width="100%"></a><sub>Large symbol histories stay navigable with bounded pages and clear previous/next controls.</sub></td>
+  </tr>
+  <tr>
     <td colspan="2" valign="top"><a href="https://maximilianfeix.github.io/repoatlas/examples/hono.html"><img src="docs/assets/export-search.png" alt="Searching Hono in the module explorer shows matching exported symbols and their source lines, with the selected export linked in the inspector" width="100%"></a><sub>Find an exported symbol in the map, then open its source line from the selected module.</sub></td>
   </tr>
   <tr>
@@ -221,7 +224,7 @@ The RepoAtlas comparison uses real snapshots from [v1.10.0](https://github.com/m
     <td width="50%" valign="top"><strong>Find a module or export</strong><br>Search the map by file path, exported name, alias, or re-export source. Matching symbols and source lines appear with each result; click a module to open its inspector.</td>
   </tr>
   <tr>
-    <td width="50%" valign="top"><strong>Follow an export to its import sites</strong><br>Browse each file's TypeScript exports and inspect direct named/default imports and re-exports with exact source lines. Click a site to read the import statement and open the pinned GitHub line.</td>
+    <td width="50%" valign="top"><strong>Follow an export to its import sites</strong><br>Browse each file's TypeScript exports and inspect direct named/default imports and re-exports with exact source lines. Long lists paginate; click a site to read the import statement and open the pinned GitHub line.</td>
     <td width="50%" valign="top"><strong>Read workspace boundaries</strong><br>Start with a ranked package and directory overview, then drill into a package or open any import count to inspect its exact source lines. Resolve declared npm, Yarn, and pnpm workspace packages through export maps in CLI and browser analysis.</td>
     <td width="50%" valign="top"><strong>See active hotspots</strong><br>Optionally color modules by bounded local Git history, with committed touch counts and the last changed date. No author identities, risk grades, or implicit history scan.</td>
   </tr>
