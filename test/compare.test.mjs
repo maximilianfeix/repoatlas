@@ -152,6 +152,8 @@ test('renders shortest changed-module entry paths with snapshot-pinned evidence 
   const html=renderComparisonHtml(compareAtlases(base,head));
   assert.match(html,/Changed modules from detected entry points/);assert.match(html,/Trace route · 1 import(?:<|"|\s)/);
   assert.match(html,/blob\/base\/src\/main\.ts#L4/);assert.match(html,/blob\/head\/src\/main\.ts#L8/);
+  assert.match(html,/<ol class="route-rail" aria-label="Shortest import route from src\/main\.ts to src\/api\.ts">/);
+  assert.match(html,/class="route-node route-entry"/);assert.match(html,/class="route-hop-label">Import · line 8/);assert.match(html,/class="route-node route-changed"/);
   assert.match(html,/Reachability does not establish that runtime code executes/);assert.match(html,/entry-impact/);
   assert.match(html,/\.impact-route\{animation:impact-in \.18s ease-out both\}/);assert.match(html,/prefers-reduced-motion:reduce/);
 });
