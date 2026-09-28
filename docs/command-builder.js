@@ -23,7 +23,7 @@ export function parseRepository(value) {
 
 export function createCommand(value) {
   const { owner, name } = parseRepository(value);
-  return `npx --yes --package=github:maximilianfeix/repoatlas#v2.27.0 -- repoatlas-cli 'https://github.com/${owner}/${name}' -o '${name}-architecture.html'`;
+  return `npx --yes --package=github:maximilianfeix/repoatlas#v2.28.0 -- repoatlas-cli 'https://github.com/${owner}/${name}' -o '${name}-architecture.html'`;
 }
 
 if (typeof document !== 'undefined') {
@@ -50,12 +50,12 @@ if (typeof document !== 'undefined') {
     });
   }
 
-  const form = document.querySelector('#repo-command-form');
   const input = document.querySelector('#repo-url');
   const preview = document.querySelector('#command-preview');
   const command = document.querySelector('#command-text');
   const status = document.querySelector('#command-status');
   const copy = document.querySelector('#copy-command');
+  const buildCli = document.querySelector('#build-cli-command');
 
   function updateCommand() {
     try {
@@ -72,11 +72,12 @@ if (typeof document !== 'undefined') {
     }
   }
 
-  form.addEventListener('submit', event => { event.preventDefault(); updateCommand(); });
+  copy.disabled = true;
+  buildCli.addEventListener('click', () => updateCommand());
   document.querySelectorAll('[data-repo]').forEach(button => {
     button.addEventListener('click', () => {
       input.value = button.dataset.repo;
-      updateCommand();
+      if (!preview.hidden) updateCommand();
       input.focus();
     });
   });
@@ -88,5 +89,4 @@ if (typeof document !== 'undefined') {
       status.textContent = 'Select the command above and copy it into your terminal.';
     }
   });
-  updateCommand();
 }
