@@ -1,3 +1,5 @@
+const workerAssetVersion='2.40.2';
+
 export function runAnalysisInWorker({type,input,files,includeTests=false,ref,onProgress,signal,WorkerImpl=globalThis.Worker}={}){
   if(signal?.aborted)return Promise.reject(signal.reason??new DOMException('Canceled by user','AbortError'));
   if(typeof WorkerImpl!=='function')return Promise.reject(new Error('This browser does not support background analysis. Use the RepoAtlas CLI instead.'));
@@ -12,7 +14,9 @@ export function runAnalysisInWorker({type,input,files,includeTests=false,ref,onP
     const finish=(callback,value)=>{if(settled)return;settled=true;cleanup();callback(value);};
     const abort=()=>finish(reject,signal?.reason??new DOMException('Canceled by user','AbortError'));
     try{
-      worker=new WorkerImpl(new URL('./assets/repository-worker.js',import.meta.url),{name:'repoatlas-analysis'});
+      const workerUrl=new URL('./assets/repository-worker.js',import.meta.url);
+      workerUrl.searchParams.set('v',workerAssetVersion);
+      worker=new WorkerImpl(workerUrl,{name:'repoatlas-analysis'});
       worker.onmessage=event=>{
         const message=event.data;
         if(message?.type==='progress'){
