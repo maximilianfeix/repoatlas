@@ -1,5 +1,16 @@
 # Changelog
 
+## [2.25.0] - 2026-09-28
+
+### Improved
+
+- Pin cycle violations to the detected internal import lines and newly unreachable findings to their affected files in GitHub Actions annotations.
+- Bound source annotations to 19 findings and report the number omitted, with full details remaining in the JSON result and architecture artifact.
+
+### Quality
+
+- Verify source locations, hostile path escaping, deterministic ordering, and annotation truncation.
+
 ## [2.24.0] - 2026-09-28
 
 ### Improved

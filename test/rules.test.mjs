@@ -25,6 +25,7 @@ test('architecture rules report forbidden boundaries with exact source evidence 
   assert.equal(result.violations.length,3);
   const edge=result.violations.find(v=>v.rule==='forbidden-import').edge;
   assert.equal(edge.source,'src/main.ts');assert.equal(edge.line,2);assert.equal(edge.code,"import '@demo/ui';");
+  const cycle=result.violations.find(v=>v.rule==='max-cycle-groups');assert.equal(cycle.edges.length,2);assert.deepEqual(cycle.edges.map(item=>`${item.source}:${item.line}`),['src/a.ts:1','src/main.ts:3']);
   assert.match(renderRuleReport(result),/Architecture checks: failed/);
 });
 
@@ -77,6 +78,23 @@ test('GitHub annotations attach source lines and escape workflow command metacha
   ]};
   assert.equal(renderGitHubAnnotations(result),'::error file=src/a%3A%0D%0A%3Ab%2C%25.ts,line=7,title=RepoAtlas forbidden import::bad%25, line%0Aforged::warning\n::error title=RepoAtlas architecture rule::Found 1%25 cycle%0Agroup; maximum is 0.\n');
   assert.equal(renderGitHubAnnotations({...result,violations:[]}), '');
+});
+
+test('GitHub annotations locate cycle import lines and unreachable files with a bounded omission note',()=>{
+  const result={passed:false,metrics:{cycleGroups:1,unreachableModules:25},violations:[
+    {rule:'max-cycle-groups',message:'One new cycle group.',edges:[{source:'src/a.ts',line:4,target:'src/b.ts'},{source:'src/b.ts',line:8,target:'src/a.ts'}]},
+    {rule:'max-unreachable-modules',message:'New unreachable modules.',modules:['src/orphan:%.ts']},
+  ]};
+  const output=renderGitHubAnnotations(result);
+  assert.match(output,/::error file=src\/a\.ts,line=4,title=RepoAtlas dependency cycle::One new cycle group\. src\/a\.ts:4 imports src\/b\.ts\./);
+  assert.match(output,/::error file=src\/orphan%3A%25\.ts,title=RepoAtlas unreachable module::/);
+  const many=renderGitHubAnnotations({...result,violations:[{rule:'max-unreachable-modules',message:'Too many.',modules:Array.from({length:30},(_,i)=>`src/file-${i}.ts`)}]});
+  assert.equal((many.match(/::error /g)??[]).length,19);assert.match(many,/11 additional source annotations omitted/);
+  const modules=Array.from({length:22},(_,i)=>({id:`src/cycle-${i}.ts`,group:'src',lines:1,entry:i===0?['package script']:[]}));
+  const edges=modules.map((module,i)=>({source:module.id,target:modules[(i+1)%modules.length].id,specifier:'./next',kind:'import',line:i+1,code:"import './next';",resolution:'internal'}));
+  const atlasResult=checkArchitecture({schemaVersion:1,name:'Cycle',modules,edges,warnings:[]},{limits:{cycleGroups:0}});
+  const cycle=atlasResult.violations[0];assert.equal(cycle.edges.length,19);assert.equal(cycle.omittedEdges,3);
+  const cycleAnnotations=renderGitHubAnnotations(atlasResult);assert.equal((cycleAnnotations.match(/::error /g)??[]).length,19);assert.match(cycleAnnotations,/3 additional source annotations omitted/);
 });
 
 test('check CLI emits JSON and a failing exit code, and succeeds when rules pass',async t=>{

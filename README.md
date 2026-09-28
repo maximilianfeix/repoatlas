@@ -69,14 +69,14 @@ Want to explore before installing? [Paste a public TypeScript repository or choo
 For a versioned command-line run, install nothing globally. The CLI requires **Node.js 22 or later** and **Git**. Point it at a public GitHub repository:
 
 ```sh
-npx --yes --package=github:maximilianfeix/repoatlas#v2.24.0 -- \
+npx --yes --package=github:maximilianfeix/repoatlas#v2.25.0 -- \
   repoatlas-cli https://github.com/pmndrs/zustand --out zustand-map.html
 ```
 
 Open `zustand-map.html` in your browser. Search by module path or public export, then select a result to inspect its exact source evidence. RepoAtlas also analyzes a local checkout:
 
 ```sh
-npx --yes --package=github:maximilianfeix/repoatlas#v2.24.0 -- \
+npx --yes --package=github:maximilianfeix/repoatlas#v2.25.0 -- \
   repoatlas-cli ./my-project --out architecture.html
 ```
 
@@ -110,7 +110,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: maximilianfeix/repoatlas@v2.24.0
+      - uses: maximilianfeix/repoatlas@v2.25.0
         with:
           output: repoatlas-map.html
 ```
@@ -127,7 +127,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: maximilianfeix/repoatlas@v2.24.0
+      - uses: maximilianfeix/repoatlas@v2.25.0
         with:
           compare-to: ${{ github.event.pull_request.base.sha }}
           check-config: repoatlas.config.json
@@ -135,7 +135,7 @@ jobs:
           artifact-name: architecture-diff
 ```
 
-Download `architecture-diff` from the workflow run to explore added and removed modules, imports, imported names, public exports, and shortest routes from detected entries; each link points to the exact base or head line. With `check-config`, the action applies the configured architecture rules to the same base/head snapshots and annotates only new violations. The artifact uploads before the check, so it remains available when a rule fails. Without `compare-to`, the config checks the current snapshot against absolute limits. Older snapshots without binding or export indexes are marked unavailable instead of being treated as unchanged. Reports describe syntax and static reachability, not runtime calls, TypeScript assignability, or semver safety. The action accepts `path`, `compare-to`, `check-config`, `artifact-name`, `retention-days`, `include-tests`, and `include-js`. It needs read-only repository access and no token input. Maps and diffs include project paths and source snippets, so restrict artifacts from private repositories.
+Download `architecture-diff` from the workflow run to explore added and removed modules, imports, imported names, public exports, and shortest routes from detected entries; each link points to the exact base or head line. With `check-config`, the action applies the configured architecture rules to the same base/head snapshots and annotates only new violations. Forbidden imports and detected cycle edges link to exact source lines; newly unreachable modules link to their files. Large findings are capped with an explicit annotation omission count. The artifact uploads before the check, so it remains available when a rule fails. Without `compare-to`, the config checks the current snapshot against absolute limits. Older snapshots without binding or export indexes are marked unavailable instead of being treated as unchanged. Reports describe syntax and static reachability, not runtime calls, TypeScript assignability, or semver safety. The action accepts `path`, `compare-to`, `check-config`, `artifact-name`, `retention-days`, `include-tests`, and `include-js`. It needs read-only repository access and no token input. Maps and diffs include project paths and source snippets, so restrict artifacts from private repositories.
 
 ## MCP server
 
@@ -150,7 +150,7 @@ Add this server entry to an MCP client configuration and replace the project pat
       "command": "npx",
       "args": [
         "--yes",
-        "--package=github:maximilianfeix/repoatlas#v2.24.0",
+        "--package=github:maximilianfeix/repoatlas#v2.25.0",
         "repoatlas-cli",
         "mcp",
         "/absolute/path/to/project"
