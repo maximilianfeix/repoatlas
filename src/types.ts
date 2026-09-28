@@ -1,5 +1,6 @@
 export interface Module {
   id: string; group: string; lines: number; entry: string[]; url?: string; workspace?: string;
+  activity?: { commits: number; lastChanged: string };
 }
 export interface Edge {
   source: string; target: string; specifier: string;
@@ -12,5 +13,6 @@ export interface Edge {
 }
 export interface Atlas {
   schemaVersion: 1; name: string; repository?: string; commit?: string;
+  activity?: { days: number; commitsScanned: number; truncated: boolean; shallow: boolean };
   modules: Module[]; edges: Edge[]; warnings: string[];
 }

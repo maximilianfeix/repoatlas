@@ -26,12 +26,15 @@ const program = new Command().name('repoatlas').version(packageVersion).descript
   .option('--json', 'emit the complete graph as JSON; do not write HTML')
   .option('--include-tests', 'include test files, fixtures and test directories')
   .option('--include-js', 'include JavaScript and JSX modules in mixed repositories')
+  .option('--activity-days <days>', 'color modules by committed file changes within 1–365 days (optional Git history scan)')
   .option('--force', 'replace an existing output file')
   .option('--ref <ref>', 'Git branch or tag to clone')
   .action(async (source: string | undefined, opts) => {
     if (!source) { program.help(); return; }
     let temp: string | undefined;
     try {
+      const activityDays=opts.activityDays===undefined?undefined:Number(opts.activityDays);
+      if(activityDays!==undefined&&(!Number.isSafeInteger(activityDays)||activityDays<1||activityDays>365))throw new Error('--activity-days must be a whole number from 1 to 365.');
       let root = path.resolve(source), repository: string | undefined;
       if (/^[a-z]+:\/\//i.test(source)) {
         repository = githubURL(source);
@@ -40,10 +43,10 @@ const program = new Command().name('repoatlas').version(packageVersion).descript
         if (opts.ref && (opts.ref.startsWith('-') || /[\x00-\x20]/.test(opts.ref))) throw new Error('Invalid Git ref.');
         process.stderr.write(`Reading ${repository}…\n`);
         try {
-          execFileSync('git',['-c','core.hooksPath=/dev/null','-c','protocol.file.allow=never','clone','--quiet','--depth','1','--single-branch',...(opts.ref ? ['--branch',opts.ref] : []),'--',repository,root], {stdio:['ignore','pipe','pipe'],timeout:120000,env:{...process.env,GIT_TERMINAL_PROMPT:'0',GIT_LFS_SKIP_SMUDGE:'1'}});
+          execFileSync('git',['-c','core.hooksPath=/dev/null','-c','protocol.file.allow=never','clone','--quiet','--depth',activityDays===undefined?'1':'2000','--single-branch',...(opts.ref ? ['--branch',opts.ref] : []),'--',repository,root], {stdio:['ignore','pipe','pipe'],timeout:120000,env:{...process.env,GIT_TERMINAL_PROMPT:'0',GIT_LFS_SKIP_SMUDGE:'1'}});
         } catch { throw new Error('Could not clone repository. Check its URL, Git credentials, network and --ref.'); }
       } else if (opts.ref) throw new Error('--ref is supported only with a GitHub URL.');
-      const atlas = await analyze(root, {includeTests: opts.includeTests,includeJS:opts.includeJs,repository});
+      const atlas = await analyze(root, {includeTests: opts.includeTests,includeJS:opts.includeJs,repository,activityDays});
       if (opts.json) process.stdout.write(JSON.stringify(atlas,null,2)+'\n');
       else {
         const out = path.resolve(opts.out);
