@@ -71,14 +71,14 @@ Want to explore before installing? [Paste a public TypeScript repository or choo
 For a versioned command-line run, install nothing globally. The CLI requires **Node.js 22 or later** and **Git**. Point it at a public GitHub repository:
 
 ```sh
-npx --yes --package=github:maximilianfeix/repoatlas#v2.39.0 -- \
+npx --yes --package=github:maximilianfeix/repoatlas#v2.40.0 -- \
   repoatlas-cli https://github.com/pmndrs/zustand --out zustand-map.html
 ```
 
 Open `zustand-map.html` in your browser. Search by module path or public export, then select a result to inspect its exact source evidence. RepoAtlas also analyzes a local checkout:
 
 ```sh
-npx --yes --package=github:maximilianfeix/repoatlas#v2.39.0 -- \
+npx --yes --package=github:maximilianfeix/repoatlas#v2.40.0 -- \
   repoatlas-cli ./my-project --out architecture.html
 ```
 
@@ -112,7 +112,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: maximilianfeix/repoatlas@v2.39.0
+      - uses: maximilianfeix/repoatlas@v2.40.0
         with:
           output: repoatlas-map.html
 ```
@@ -129,7 +129,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: maximilianfeix/repoatlas@v2.39.0
+      - uses: maximilianfeix/repoatlas@v2.40.0
         with:
           compare-to: ${{ github.event.pull_request.base.sha }}
           check-config: repoatlas.config.json
@@ -152,7 +152,7 @@ Add this server entry to an MCP client configuration and replace the project pat
       "command": "npx",
       "args": [
         "--yes",
-        "--package=github:maximilianfeix/repoatlas#v2.39.0",
+        "--package=github:maximilianfeix/repoatlas#v2.40.0",
         "repoatlas-cli",
         "mcp",
         "/absolute/path/to/project"
@@ -326,6 +326,8 @@ The CLI is limited to 5,000 source files and 2 MB per file. Tests, generated dir
 The browser can analyze a public URL or a private local folder. Analysis runs in a dedicated worker, and canceling terminates that worker. Selected local source never leaves the browser; choose a folder explicitly, and review the exported snippets before sharing. Browser mode loads the version-pinned TypeScript compiler from jsDelivr, but sends it no project data.
 
 Browser analysis is capped at 1,200 TypeScript files, 25 MB total, and 1 MB per file. For a public URL it fetches the tree and source from GitHub; for a private or unpushed project choose a local folder. In both cases, source files are analyzed in the browser and never sent to a RepoAtlas server. The version-pinned TypeScript compiler loads from jsDelivr; it receives no project data. GitHub allows 60 unauthenticated API requests per hour per IP. Maps contain source snippets, so share them only with people authorized to read that source.
+
+The browser analyzer applies the nearest repository `tsconfig.json` and follows relative `extends` files included in the selected project. Package-based configuration extensions are not downloaded; the map reports that limitation instead of implying those settings were applied.
 
 ## Contribute
 

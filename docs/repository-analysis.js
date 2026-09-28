@@ -51,6 +51,26 @@ function isIgnored(path){return path.split('/').some(part=>ignoredDirectories.ha
 function eligibleSource(path,includeTests){return sourcePattern.test(path)&&!declarationPattern.test(path)&&!isIgnored(path)&&(includeTests||!testPattern.test(path));}
 function rawUrl(repository,commit,path){return `https://raw.githubusercontent.com/${repository.owner}/${repository.repo}/${commit}/${path.split('/').map(encodeURIComponent).join('/')}`;}
 
+function relativeConfigTarget(from,target,available){
+  if(typeof target!=='string'||!target.startsWith('.')||target.startsWith('/'))return undefined;
+  const parts=from.split('/').slice(0,-1);
+  for(const part of target.replaceAll('\\','/').split('/')){
+    if(!part||part==='.')continue;
+    if(part==='..'){if(!parts.length)return undefined;parts.pop();}else parts.push(part);
+  }
+  const base=parts.join('/'),candidates=[base];
+  if(!/\.json$/i.test(base))candidates.push(`${base}.json`);
+  candidates.push(join(base,'tsconfig.json'));
+  return candidates.find(path=>available.has(path));
+}
+
+function extendedConfigPaths(file,text,available){
+  try{
+    const config=JSON.parse(text),extended=Array.isArray(config.extends)?config.extends:[config.extends];
+    return extended.map(target=>relativeConfigTarget(file,target,available)).filter(Boolean);
+  }catch{return [];}
+}
+
 async function loadFiles(entries,repository,commit,{fetchImpl,signal,onProgress,includeTests}){
   const files=new Map();let completed=0,sourceBytes=0,next=0;
   const excluded=[];
@@ -64,7 +84,7 @@ async function loadFiles(entries,repository,commit,{fetchImpl,signal,onProgress,
   const queue=[...sources,...manifests.filter(item=>!sources.some(source=>source.path===item.path))];
   const large=queue.filter(entry=>Number(entry.size)>1_000_000);
   for(const entry of large)excluded.push(`${entry.path} is larger than 1 MB`);
-  const work=queue.filter(entry=>!large.includes(entry));
+  const work=queue.filter(entry=>!large.includes(entry));let total=work.length;
   const controller=new AbortController();
   const abort=()=>controller.abort(signal?.reason);
   if(signal?.aborted)abort();else signal?.addEventListener('abort',abort,{once:true});
@@ -78,10 +98,27 @@ async function loadFiles(entries,repository,commit,{fetchImpl,signal,onProgress,
         const text=await response.text();
         sourceBytes+=new TextEncoder().encode(text).byteLength;
         if(sourceBytes>25_000_000)throw new Error('This repository exceeds the 25 MB browser source limit. Use the local CLI.');
-        files.set(entry.path,text);completed++;onProgress?.({completed,total:work.length,path:entry.path});
+        files.set(entry.path,text);completed++;onProgress?.({completed,total,path:entry.path});
       }
     }
     await Promise.all(Array.from({length:Math.min(8,work.length)},worker));
+    const available=new Set(entries.filter(entry=>entry.type==='blob'&&!isIgnored(entry.path)).map(entry=>entry.path)),pending=[...files.keys()].filter(path=>tsconfigPattern.test(path)),visited=new Set();
+    while(pending.length){
+      if(controller.signal.aborted)throw controller.signal.reason??new DOMException('Aborted','AbortError');
+      const configPath=pending.shift();if(visited.has(configPath))continue;visited.add(configPath);
+      for(const target of extendedConfigPaths(configPath,files.get(configPath),available)){
+        if(files.has(target))continue;
+        if(visited.size>=300)throw new Error('This repository has too many inherited TypeScript configuration files for the browser flow. Use the local CLI.');
+        const entry=entries.find(item=>item.path===target);if(!entry)continue;
+        if(Number(entry.size)>1_000_000){excluded.push(`${entry.path} is larger than 1 MB`);continue;}
+        total++;
+        const response=await fetchImpl(rawUrl(repository,commit,target),{signal:controller.signal});
+        if(!response.ok)throw new Error(`Could not read inherited TypeScript configuration ${target} from the pinned GitHub commit (HTTP ${response.status}).`);
+        const text=await response.text();sourceBytes+=new TextEncoder().encode(text).byteLength;
+        if(sourceBytes>25_000_000)throw new Error('This repository exceeds the 25 MB browser source limit. Use the local CLI.');
+        files.set(target,text);completed++;pending.push(target);onProgress?.({completed,total,path:target});
+      }
+    }
   }catch(error){controller.abort();throw error;}
   finally{signal?.removeEventListener('abort',abort);}
   return {files,excluded};
@@ -91,15 +128,34 @@ function sourceFiles(files){return [...files.keys()].filter(file=>sourcePattern.
 function absolute(root,file){return join(root,file);}
 function relative(root,file){const path=normalized(file);return path.startsWith(`${root}/`)?path.slice(root.length+1):path===root?'':path;}
 function compilerOptions(compiler,files,root,warnings){
-  const configText=files.get('tsconfig.json');
-  if(!configText)return {module:compiler.ModuleKind.ESNext,moduleResolution:compiler.ModuleResolutionKind.Bundler,target:compiler.ScriptTarget.Latest,allowImportingTsExtensions:true};
-  try{
-    const config=JSON.parse(configText);
-    if(config.extends)warnings.push('The root tsconfig extends another configuration; browser analysis uses its local compilerOptions only.');
-    const converted=compiler.convertCompilerOptionsFromJson(config.compilerOptions??{},root);
-    for(const diagnostic of converted.errors)warnings.push(compiler.flattenDiagnosticMessageText(diagnostic.messageText,' '));
-    return {module:compiler.ModuleKind.ESNext,moduleResolution:compiler.ModuleResolutionKind.Bundler,target:compiler.ScriptTarget.Latest,allowImportingTsExtensions:true,...converted.options};
-  }catch{warnings.push('The root tsconfig.json could not be read; default TypeScript module resolution is used.');return {module:compiler.ModuleKind.ESNext,moduleResolution:compiler.ModuleResolutionKind.Bundler,target:compiler.ScriptTarget.Latest,allowImportingTsExtensions:true};}
+  const defaults={module:compiler.ModuleKind.ESNext,moduleResolution:compiler.ModuleResolutionKind.Bundler,target:compiler.ScriptTarget.Latest,allowImportingTsExtensions:true};
+  const host=makeCompilerHost(compiler,files,root),configs=[...files.keys()].filter(file=>tsconfigPattern.test(file)).sort(compare),cache=new Map();
+  const parse=(file)=>{
+    if(cache.has(file))return cache.get(file);
+    const text=files.get(file),configPath=absolute(root,file);
+    if(text===undefined)return undefined;
+    try{
+      const config=JSON.parse(text),directory=file.slice(0,file.lastIndexOf('/')<0?'':file.lastIndexOf('/'));
+      const extended=Array.isArray(config.extends)?config.extends:[config.extends];
+      for(const value of extended)if(typeof value==='string'&&!value.startsWith('.')&&!value.startsWith('/'))warnings.push(`${file}: package-based tsconfig extension "${value}" is not fetched in browser analysis.`);
+      const parsed=compiler.parseJsonConfigFileContent(config,{...host,readDirectory:()=>[]},absolute(root,directory),undefined,configPath);
+      for(const diagnostic of parsed.errors.filter(item=>item.code!==18003))warnings.push(`${file}: ${compiler.flattenDiagnosticMessageText(diagnostic.messageText,' ')}`);
+      cache.set(file,parsed.options);return parsed.options;
+    }catch{
+      warnings.push(`${file} could not be read; default TypeScript module resolution is used for files covered by it.`);cache.set(file,undefined);return undefined;
+    }
+  };
+  const optionsForFile=(source)=>{
+    const directory=source.slice(0,source.lastIndexOf('/')<0?'':source.lastIndexOf('/'));
+    const config=configs.filter(candidate=>{
+      if(candidate!=='tsconfig.json'&&!candidate.endsWith('/tsconfig.json'))return false;
+      const configDirectory=candidate.slice(0,candidate.lastIndexOf('/')<0?'':candidate.lastIndexOf('/'));
+      return !configDirectory||directory===configDirectory||directory.startsWith(`${configDirectory}/`);
+    }).sort((a,b)=>b.slice(0,b.lastIndexOf('/')<0?'':b.lastIndexOf('/')).length-a.slice(0,a.lastIndexOf('/')<0?'':a.lastIndexOf('/')).length)[0];
+    return {...defaults,...(config?parse(config):undefined)};
+  };
+  for(const file of configs)parse(file);
+  return optionsForFile;
 }
 
 function makeCompilerHost(compiler,files,root){
@@ -278,21 +334,22 @@ export function analyzeRepositoryFiles({files,owner,repo,commit,compiler,include
   const warnings=[],root=`/repoatlas/${owner}/${repo}`,paths=sourceFiles(files).filter(file=>includeTests||!testPattern.test(file));
   const modulesSet=new Set(paths),moduleEntries=entryTargets(files,root,modulesSet);
   const workspace=workspaceSettings(files,warnings);
-  const options=compilerOptions(compiler,files,root,warnings);
+  const optionsForFile=compilerOptions(compiler,files,root,warnings);
   const host=makeCompilerHost(compiler,files,root),modules=[],edges=[];let computed=0;
   const fileUrl=(file,line)=>commit?`https://github.com/${owner}/${repo}/blob/${commit}/${file.split('/').map(encodeURIComponent).join('/')}#L${line}`:undefined;
   for(const file of paths){
     const text=files.get(file);if(text===undefined)continue;
     const absoluteFile=absolute(root,file),source=compiler.createSourceFile(absoluteFile,text,compiler.ScriptTarget.Latest,true,/\.tsx$/i.test(file)?compiler.ScriptKind.TSX:compiler.ScriptKind.TS);
+    const moduleOptions=optionsForFile(file);
     const group=file.includes('/')?file.slice(0,file.lastIndexOf('/')):'.',lineCount=text.split(/\r?\n/).length;
     const packageOwner=workspace.workspaces.filter(item=>item.dir&&file.startsWith(`${item.dir}/`)).sort((a,b)=>b.dir.length-a.dir.length)[0];
     modules.push({id:file,group,lines:lineCount,entry:moduleEntries.get(file)??[],exports:publicExports(compiler,source),...(packageOwner?{workspace:packageOwner.dir}:{}),...(fileUrl(file,1)?{url:fileUrl(file,1)}:{})});
     const lines=text.split(/\r?\n/);
     const add=(expression,node,kind)=>{
-      const specifier=expression.text,resolved=compiler.resolveModuleName(specifier,absoluteFile,options,host).resolvedModule?.resolvedFileName;
+      const specifier=expression.text,resolved=compiler.resolveModuleName(specifier,absoluteFile,moduleOptions,host).resolvedModule?.resolvedFileName;
       let targetPath=resolved?relative(root,resolved):undefined;
       let internal=!!targetPath&&modulesSet.has(targetPath);
-      if(!internal){const target=workspaceTarget(specifier,kind,options,workspace,modulesSet);if(target){targetPath=target;internal=true;}}
+      if(!internal){const target=workspaceTarget(specifier,kind,moduleOptions,workspace,modulesSet);if(target){targetPath=target;internal=true;}}
       const ambiguous=workspace.ambiguous.has(workspaceName(specifier));
       const resolution=internal?'internal':ambiguous||specifier.startsWith('.')||specifier.startsWith('/')||!!targetPath?'unresolved':'external';
       const line=source.getLineAndCharacterOfPosition(node.getStart(source)).line+1,end=source.getLineAndCharacterOfPosition(node.end).line+1;
@@ -332,10 +389,10 @@ export async function analyzePublicRepository(input,{compiler,includeTests=false
   const sourceCount=entries.filter(entry=>eligibleSource(entry.path,includeTests)).length;
   if(!sourceCount)throw new Error('No TypeScript source files were found. Use the local CLI for JavaScript repositories.');
   onProgress?.({stage:'sources',message:`Reading ${sourceCount.toLocaleString()} TypeScript files from the pinned commit…`});
-  const {files,excluded}=await loadFiles(entries,repository,commit,{fetchImpl,signal,onProgress:progress=>onProgress?.({stage:'sources',...progress}),includeTests});
+  const {files,excluded}=await loadFiles(treeData.tree,repository,commit,{fetchImpl,signal,onProgress:progress=>onProgress?.({stage:'sources',...progress}),includeTests});
   if(sourceFiles(files).filter(file=>includeTests||!testPattern.test(file)).length===0)throw new Error('No readable TypeScript source files fit the 1 MB per-file browser limit. Use the local CLI for larger repositories.');
   const atlas=analyzeRepositoryFiles({files,owner:repository.owner,repo:repository.repo,commit,compiler,includeTests});
-  atlas.warnings.unshift('Browser mode analyzes public TypeScript files on this device. It uses the root tsconfig compilerOptions; inherited tsconfig settings are not fetched.');
+  atlas.warnings.unshift('Browser mode analyzes public TypeScript files on this device. Repository tsconfig inheritance is resolved from files in the repository; external package-based configs are not fetched.');
   if(excluded.length)atlas.warnings.unshift(`${excluded.length} oversized repository file${excluded.length===1?' was':'s were'} skipped (1 MB per-file browser limit).`);
   return atlas;
 }
@@ -348,7 +405,7 @@ export async function analyzeLocalRepositoryFiles(fileList,{compiler,includeTest
   const firstPath=(firstEntry.path||firstFile.webkitRelativePath||firstFile.name).replaceAll('\\','/');
   const projectName=firstPath.includes('/')?firstPath.split('/')[0]:'local-project';
   const project=projectName.replace(/[^A-Za-z0-9._-]+/g,'-').replace(/^-+|-+$/g,'')||'local-project';
-  const entries=[];
+  const entries=[],availableEntries=[];
   for(const entry of inputFiles){
     const file=entry.file??entry;
     const raw=(entry.path||file.webkitRelativePath||file.name).replaceAll('\\','/');
@@ -356,6 +413,7 @@ export async function analyzeLocalRepositoryFiles(fileList,{compiler,includeTest
     if(pieces.some(part=>part==='..'))continue;
     const path=pieces.length>1&&pieces[0]===projectName?pieces.slice(1).join('/'):pieces.join('/');
     if(!path||isIgnored(path))continue;
+    availableEntries.push({path,file,size:Number(entry.size??file.size)});
     const source=eligibleSource(path,includeTests),manifest=isManifest(path);
     if(source||manifest)entries.push({path,file,size:Number(entry.size??file.size)});
   }
@@ -367,18 +425,32 @@ export async function analyzeLocalRepositoryFiles(fileList,{compiler,includeTest
   const estimatedBytes=work.reduce((sum,entry)=>sum+entry.size,0);
   if(estimatedBytes>25_000_000)throw new Error('This folder exceeds the 25 MB browser source limit. Use the local CLI for larger repositories.');
   if(!sources.some(entry=>!oversizedSet.has(entry)))throw new Error('No readable TypeScript source files fit the 1 MB per-file browser limit.');
-  const files=new Map();let next=0,completed=0,actualBytes=0;
+  const files=new Map();let next=0,completed=0,actualBytes=0,total=work.length;
   async function worker(){
     while(next<work.length){
       if(signal?.aborted)throw signal.reason??new DOMException('Aborted','AbortError');
       const entry=work[next++],text=await entry.file.text();
       actualBytes+=new TextEncoder().encode(text).byteLength;
       if(actualBytes>25_000_000)throw new Error('This folder exceeds the 25 MB browser source limit. Use the local CLI for larger repositories.');
-      files.set(entry.path,text);completed++;onProgress?.({stage:'sources',completed,total:work.length,path:entry.path});
+      files.set(entry.path,text);completed++;onProgress?.({stage:'sources',completed,total,path:entry.path});
     }
   }
   onProgress?.({stage:'sources',message:`Reading ${sources.length.toLocaleString()} local TypeScript files…`});
   await Promise.all(Array.from({length:Math.min(8,work.length)},worker));
+  const available=new Set(availableEntries.map(entry=>entry.path)),pending=[...files.keys()].filter(path=>tsconfigPattern.test(path)),visited=new Set();
+  while(pending.length){
+    if(signal?.aborted)throw signal.reason??new DOMException('Aborted','AbortError');
+    const configPath=pending.shift();if(visited.has(configPath))continue;visited.add(configPath);
+    for(const target of extendedConfigPaths(configPath,files.get(configPath),available)){
+      if(files.has(target))continue;
+      if(visited.size>=300)throw new Error('This folder has too many inherited TypeScript configuration files for browser analysis.');
+      const entry=availableEntries.find(item=>item.path===target);if(!entry)continue;
+      if(entry.size>1_000_000){oversized.push(entry);continue;}
+      total++;const text=await entry.file.text();actualBytes+=new TextEncoder().encode(text).byteLength;
+      if(actualBytes>25_000_000)throw new Error('This folder exceeds the 25 MB browser source limit. Use the local CLI for larger repositories.');
+      files.set(target,text);completed++;pending.push(target);onProgress?.({stage:'sources',completed,total,path:target});
+    }
+  }
   const atlas=analyzeRepositoryFiles({files,owner:'Local',repo:project,compiler,includeTests});
   atlas.warnings.unshift('Local folder analysis stays in this browser. Source snippets are embedded in this HTML map; review them before sharing.');
   if(oversized.length)atlas.warnings.unshift(`${oversized.length} oversized repository file${oversized.length===1?' was':'s were'} skipped (1 MB per-file browser limit).`);

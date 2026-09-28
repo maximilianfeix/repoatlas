@@ -1,5 +1,16 @@
 # Changelog
 
+## [2.40.0] - 2026-09-28
+
+### Improved
+
+- Resolve relative `tsconfig` inheritance and the nearest package configuration in public and local browser maps.
+- Explain when a package-based config extension cannot be loaded, rather than silently implying it was applied.
+
+### Quality
+
+- Cover root inheritance, package-local overrides, public commit-pinned config reads, malformed JSON, and unsupported package extensions.
+
 ## [2.39.0] - 2026-09-28
 
 ### Improved

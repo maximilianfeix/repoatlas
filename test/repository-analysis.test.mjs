@@ -77,7 +77,57 @@ test('public GitHub analysis pins all reads to a commit and avoids sending file 
   assert.equal(progress.some(item=>item.stage==='sources'&&item.completed===7),true,JSON.stringify(progress));
   assert.equal(rawCalls.some(url=>url.endsWith('/pnpm-workspace.yaml')),true);
   assert.deepEqual([atlas.edges.find(edge=>edge.specifier==='@demo/math').resolution,atlas.edges.find(edge=>edge.specifier==='@demo/math').target],['internal','packages/math/src/index.ts']);
-  assert.equal(atlas.warnings.some(warning=>warning.includes('inherited tsconfig settings')),true);
+  assert.equal(atlas.warnings.some(warning=>warning.includes('inherited tsconfig settings')),false);
+});
+
+test('public GitHub browser analysis reads relative tsconfig bases from the pinned commit',async()=>{
+  const tree=[{type:'blob',path:'tsconfig.json'},{type:'blob',path:'configs/base.json'},{type:'blob',path:'src/index.ts'},{type:'blob',path:'src/util.ts'}];
+  const content=new Map([
+    ['tsconfig.json',JSON.stringify({extends:'./configs/base.json'})],
+    ['configs/base.json',JSON.stringify({compilerOptions:{baseUrl:'..',paths:{'@/*':['src/*']}}})],
+    ['src/index.ts',"import { run } from '@/util';"],
+    ['src/util.ts','export const run = true;'],
+  ]);
+  const fetchImpl=async url=>{
+    const parsed=new URL(url),path=parsed.pathname;
+    if(parsed.hostname==='api.github.com'){
+      if(path==='/repos/owner/repo')return jsonResponse({private:false,default_branch:'main'});
+      if(path==='/repos/owner/repo/commits/main')return jsonResponse({sha:commit,commit:{tree:{sha:'abcdef0123456789'}}});
+      if(path==='/repos/owner/repo/git/trees/abcdef0123456789')return jsonResponse({truncated:false,tree});
+    }
+    const sourcePath=decodeURIComponent(path.split('/').slice(4).join('/'));
+    return content.has(sourcePath)?new Response(content.get(sourcePath),{status:200}):new Response('',{status:404});
+  };
+  const atlas=await analyzePublicRepository('owner/repo',{compiler:ts,fetchImpl});
+  assert.deepEqual([atlas.edges[0].resolution,atlas.edges[0].target],['internal','src/util.ts']);
+  assert.equal(atlas.warnings.some(warning=>warning.includes('extends another configuration')),false);
+});
+
+test('browser maps resolve repository-inherited root and package-local tsconfig aliases',()=>{
+  const configured=new Map([
+    ['tsconfig.json',JSON.stringify({extends:'./configs/base.json'})],
+    ['configs/base.json',JSON.stringify({compilerOptions:{baseUrl:'..',paths:{'@/*':['src/*']},moduleResolution:'Bundler'}})],
+    ['src/index.ts',"import { value } from '@/shared';"],
+    ['src/shared.ts','export const value = 1;'],
+    ['packages/app/tsconfig.json',JSON.stringify({extends:'../../tsconfig.json',compilerOptions:{baseUrl:'.',paths:{'@app/*':['src/*']}}})],
+    ['packages/app/src/main.ts',"import { value } from '@app/value';\nimport { shared } from '@/shared';"],
+    ['packages/app/src/value.ts','export const value = 2;'],
+  ]);
+  const atlas=analyzeRepositoryFiles({files:configured,owner:'owner',repo:'repo',commit,compiler:ts});
+  const edge=(source,specifier)=>atlas.edges.find(item=>item.source===source&&item.specifier===specifier);
+  assert.deepEqual([edge('src/index.ts','@/shared').resolution,edge('src/index.ts','@/shared').target],['internal','src/shared.ts']);
+  assert.deepEqual([edge('packages/app/src/main.ts','@app/value').resolution,edge('packages/app/src/main.ts','@app/value').target],['internal','packages/app/src/value.ts']);
+  assert.equal(atlas.warnings.some(warning=>warning.includes('could not be read')),false,atlas.warnings.join('\n'));
+});
+
+test('browser maps explain package-based and malformed tsconfig files without aborting analysis',()=>{
+  for(const text of [JSON.stringify({extends:'@acme/config/tsconfig.json'}),'{ invalid json']){
+    const atlas=analyzeRepositoryFiles({files:new Map([['tsconfig.json',text],['src/index.ts','import { value } from "./value";'],['src/value.ts','export const value = true;']]),owner:'owner',repo:'repo',compiler:ts});
+    assert.deepEqual([atlas.edges[0].resolution,atlas.edges[0].target],['internal','src/value.ts']);
+    assert.equal(atlas.warnings.length>0,true);
+  }
+  const external=analyzeRepositoryFiles({files:new Map([['tsconfig.json',JSON.stringify({extends:'@acme/config/tsconfig.json'})],['src/index.ts','export const entry = true;']]),owner:'owner',repo:'repo',compiler:ts});
+  assert.equal(external.warnings.some(warning=>warning.includes('package-based tsconfig extension')),true);
 });
 
 test('public browser analysis accepts only full SHA links and rebuilds the requested snapshot',async()=>{
@@ -138,7 +188,8 @@ test('local folder analysis shares AST resolution, omits remote links, and exclu
   const localFile=(path,text)=>({name:path.split('/').at(-1),size:new TextEncoder().encode(text).length,webkitRelativePath:`secret-project/${path}`,text:async()=>text});
   const local=await analyzeLocalRepositoryFiles([
     localFile('package.json',JSON.stringify({name:'secret-project',main:'src/index.ts'})),
-    localFile('tsconfig.json',JSON.stringify({compilerOptions:{baseUrl:'.',paths:{'@/*':['src/*']}}})),
+    localFile('tsconfig.json',JSON.stringify({extends:'./config/base.json'})),
+    localFile('config/base.json',JSON.stringify({compilerOptions:{baseUrl:'..',paths:{'@/*':['src/*']}}})),
     localFile('src/index.ts',"import { run } from '@/util.js';\nrun();"),
     localFile('src/util.ts','export const run = () => true;'),
     localFile('src/globals.d.ts','declare const ignored: string;'),
