@@ -338,4 +338,4 @@ npm run check
 npm run check:ts7
 ```
 
-See [`CONTRIBUTING.md`](CONTRIBUTING.md) for development notes and the [Code of Conduct](CODE_OF_CONDUCT.md) for community standards. Report bugs or suggest improvements in [GitHub Issues](https://github.com/maximilianfeix/repoatlas/issues). RepoAtlas is MIT licensed.
+See [`CONTRIBUTING.md`](CONTRIBUTING.md) for development notes, the [Code of Conduct](CODE_OF_CONDUCT.md) for community standards, and [`SECURITY.md`](SECURITY.md) to report a vulnerability privately. Report bugs or suggest improvements in [GitHub Issues](https://github.com/maximilianfeix/repoatlas/issues). RepoAtlas is MIT licensed.
