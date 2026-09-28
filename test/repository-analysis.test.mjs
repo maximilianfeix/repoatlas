@@ -83,8 +83,8 @@ test('public GitHub analysis pins all reads to a commit and avoids sending file 
 test('public GitHub browser analysis reads relative tsconfig bases from the pinned commit',async()=>{
   const tree=[{type:'blob',path:'tsconfig.json'},{type:'blob',path:'configs/base.json'},{type:'blob',path:'src/index.ts'},{type:'blob',path:'src/util.ts'}];
   const content=new Map([
-    ['tsconfig.json',JSON.stringify({extends:'./configs/base.json'})],
-    ['configs/base.json',JSON.stringify({compilerOptions:{baseUrl:'..',paths:{'@/*':['src/*']}}})],
+    ['tsconfig.json','{ "extends": "./configs/base.json", // JSONC comment\n}'],
+    ['configs/base.json','{ "compilerOptions": { "baseUrl": "..", "paths": { "@/*": ["src/*"] }, }, }'],
     ['src/index.ts',"import { run } from '@/util';"],
     ['src/util.ts','export const run = true;'],
   ]);
@@ -110,6 +110,7 @@ test('browser maps resolve repository-inherited root and package-local tsconfig 
     ['src/index.ts',"import { value } from '@/shared';"],
     ['src/shared.ts','export const value = 1;'],
     ['packages/app/tsconfig.json',JSON.stringify({extends:'../../tsconfig.json',compilerOptions:{baseUrl:'.',paths:{'@app/*':['src/*']}}})],
+    ['packages/app/tsconfig.runtime.json','{ // Svelte-style project variant\n "extends": "./tsconfig.json",\n "compilerOptions": { "target": "ES2022", },\n}'],
     ['packages/app/src/main.ts',"import { value } from '@app/value';\nimport { shared } from '@/shared';"],
     ['packages/app/src/value.ts','export const value = 2;'],
   ]);
@@ -118,6 +119,7 @@ test('browser maps resolve repository-inherited root and package-local tsconfig 
   assert.deepEqual([edge('src/index.ts','@/shared').resolution,edge('src/index.ts','@/shared').target],['internal','src/shared.ts']);
   assert.deepEqual([edge('packages/app/src/main.ts','@app/value').resolution,edge('packages/app/src/main.ts','@app/value').target],['internal','packages/app/src/value.ts']);
   assert.equal(atlas.warnings.some(warning=>warning.includes('could not be read')),false,atlas.warnings.join('\n'));
+  assert.equal(atlas.warnings.some(warning=>warning.includes('tsconfig.runtime.json')),false,atlas.warnings.join('\n'));
 });
 
 test('browser maps explain package-based and malformed tsconfig files without aborting analysis',()=>{

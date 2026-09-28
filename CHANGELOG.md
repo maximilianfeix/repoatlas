@@ -1,5 +1,15 @@
 # Changelog
 
+## [2.40.1] - 2026-09-28
+
+### Fixed
+
+- Parse browser `tsconfig` files using TypeScript's JSONC parser so comments and trailing commas do not produce false configuration warnings.
+
+### Quality
+
+- Verify JSONC parsing in a public relative-`extends` chain and package-local configuration.
+
 ## [2.40.0] - 2026-09-28
 
 ### Improved
