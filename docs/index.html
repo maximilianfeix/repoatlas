@@ -95,14 +95,14 @@
       <article class="feature-row"><h3>See project boundaries</h3><p>Resolve declared npm, Yarn, and pnpm workspaces through package exports. Start with a ranked package overview, drill in, or inspect each contributing source line.</p></article>
       <article class="feature-row"><h3>See active hotspots</h3><p>Opt into a bounded Git history window to compare committed change activity across modules. RepoAtlas shows the period, per-file counts, and last changed date without assigning a quality or risk score.</p></article>
       <article class="feature-row"><h3>Review architecture drift in pull requests</h3><p>Generate a downloadable HTML diff from the base commit and PR revision. Every changed import links to its exact source line; the workflow needs read-only access.</p></article>
-      <article class="feature-row"><h3>Give coding agents grounded context</h3><p>Connect over MCP to search modules or get a bounded module context with direct imports and its detected-entry path in one call. Inspect each exact source line; analysis stays local.</p></article>
+      <article class="feature-row"><h3>Give coding agents grounded context</h3><p>Connect over MCP to search modules and public exports, or get bounded imports, exports, and an entry path for one module. Every result links back to its source line; analysis stays local.</p></article>
       <article class="feature-row"><h3>Keep a snapshot in your README</h3><p>Export a small, deterministic SVG card with module, entry-point, import, and cycle counts. A pinned workflow can propose refreshes as pull requests.</p></article>
       <article class="feature-row"><h3>Keep it portable</h3><p>Share one offline HTML map, an architecture diff, a boundary matrix, or enforced rules in GitHub Actions.</p></article>
     </div>
   </section>
 
   <section id="mcp" class="section workflow" aria-labelledby="mcp-title">
-    <div><div class="kicker">For coding agents</div><h2 id="mcp-title">Architecture context with receipts.</h2><p>Install the RepoAtlas skill in Codex or another supported agent, then connect the local MCP server for reusable, read-only architecture context. Agents can search when a module name is unknown, then fetch its direct imports and detected-entry path together with `module_context`.</p><a href="https://github.com/maximilianfeix/repoatlas#mcp-server">MCP setup and agent skill →</a></div>
+    <div><div class="kicker">For coding agents</div><h2 id="mcp-title">Architecture context with receipts.</h2><p>Install the RepoAtlas skill in Codex or another supported agent, then connect the local MCP server for reusable, read-only architecture context. Agents can search module names or public exports, then fetch imports, exports, and a detected-entry path together with `module_context`.</p><a href="https://github.com/maximilianfeix/repoatlas#mcp-server">MCP setup and agent skill →</a></div>
     <pre class="code-sample"><code><span class="comment"># Agent skill · no project files written</span>
 npx skills add maximilianfeix/repoatlas --skill repoatlas --agent codex --yes
 

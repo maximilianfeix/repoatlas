@@ -1,5 +1,6 @@
 export interface Module {
   id: string; group: string; lines: number; entry: string[]; url?: string; workspace?: string;
+  exports?: import('./exports.js').ExportedSymbol[];
   activity?: { commits: number; lastChanged: string };
 }
 export interface Edge {

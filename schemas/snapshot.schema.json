@@ -33,6 +33,21 @@
           "entry": { "type": "array", "items": { "type": "string" } },
           "url": { "type": "string" },
           "workspace": { "type": "string" },
+          "exports": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["name", "kind", "line"],
+              "properties": {
+                "name": { "type": "string" },
+                "kind": { "enum": ["function", "class", "interface", "type", "variable", "enum", "namespace", "re-export", "re-export-all", "assignment"] },
+                "line": { "type": "integer", "minimum": 1 },
+                "localName": { "type": "string" },
+                "source": { "type": "string" }
+              },
+              "additionalProperties": false
+            }
+          },
           "activity": {
             "type": "object",
             "required": ["commits", "lastChanged"],

@@ -249,6 +249,31 @@ function workspaceTarget(specifier,kind,options,settings,modules){
 }
 function workspaceName(specifier){const segments=specifier.split('/');return segments[0]?.startsWith('@')?segments.slice(0,2).join('/'):segments[0];}
 
+function publicExports(compiler,source){
+  const result=[],kind=(node)=>node.modifiers?.some(item=>item.kind===compiler.SyntaxKind.ExportKeyword),isDefault=node=>node.modifiers?.some(item=>item.kind===compiler.SyntaxKind.DefaultKeyword);
+  const add=(node,name,type,extra={})=>result.push({name,kind:type,line:source.getLineAndCharacterOfPosition(node.getStart(source)).line+1,...extra});
+  for(const node of source.statements){
+    if(compiler.isExportDeclaration(node)){
+      const from=node.moduleSpecifier&&compiler.isStringLiteral(node.moduleSpecifier)?node.moduleSpecifier.text:undefined,clause=node.exportClause;
+      if(!clause)add(node,'*','re-export-all',from===undefined?{}:{source:from});
+      else if(compiler.isNamespaceExport(clause))add(node,clause.name.text,'re-export-all',from===undefined?{}:{source:from});
+      else for(const item of clause.elements){const name=item.name.text,local=item.propertyName?.text??name;add(node,name,'re-export',{...(local!==name?{localName:local}:{}),...(from===undefined?{}:{source:from})});}
+      continue;
+    }
+    if(compiler.isExportAssignment(node)){add(node,'=','assignment',{localName:node.expression.getText(source)});continue;}
+    if(!kind(node))continue;
+    const named=(name,type)=>add(node,isDefault(node)?'default':name,type,isDefault(node)&&name!=='default'?{localName:name}:{});
+    if(compiler.isFunctionDeclaration(node))named(node.name?.text??'default','function');
+    else if(compiler.isClassDeclaration(node))named(node.name?.text??'default','class');
+    else if(compiler.isInterfaceDeclaration(node))named(node.name.text,'interface');
+    else if(compiler.isTypeAliasDeclaration(node))named(node.name.text,'type');
+    else if(compiler.isEnumDeclaration(node))named(node.name.text,'enum');
+    else if(compiler.isModuleDeclaration(node))named(node.name.getText(source).replace(/^['"]|['"]$/g,''),'namespace');
+    else if(compiler.isVariableStatement(node))for(const declaration of node.declarationList.declarations){const names=[];const visit=binding=>{if(compiler.isIdentifier(binding))names.push(binding.text);else for(const element of binding.elements)if(!compiler.isOmittedExpression(element))visit(element.name);};visit(declaration.name);for(const name of names)named(name,'variable');}
+  }
+  return result.sort((a,b)=>a.line-b.line||a.name.localeCompare(b.name)||a.kind.localeCompare(b.kind));
+}
+
 export function analyzeRepositoryFiles({files,owner,repo,commit,compiler,includeTests=false}){
   const warnings=[],root=`/repoatlas/${owner}/${repo}`,paths=sourceFiles(files).filter(file=>includeTests||!testPattern.test(file));
   const modulesSet=new Set(paths),moduleEntries=entryTargets(files,root,modulesSet);
@@ -261,7 +286,7 @@ export function analyzeRepositoryFiles({files,owner,repo,commit,compiler,include
     const absoluteFile=absolute(root,file),source=compiler.createSourceFile(absoluteFile,text,compiler.ScriptTarget.Latest,true,/\.tsx$/i.test(file)?compiler.ScriptKind.TSX:compiler.ScriptKind.TS);
     const group=file.includes('/')?file.slice(0,file.lastIndexOf('/')):'.',lineCount=text.split(/\r?\n/).length;
     const packageOwner=workspace.workspaces.filter(item=>item.dir&&file.startsWith(`${item.dir}/`)).sort((a,b)=>b.dir.length-a.dir.length)[0];
-    modules.push({id:file,group,lines:lineCount,entry:moduleEntries.get(file)??[],...(packageOwner?{workspace:packageOwner.dir}:{}),...(fileUrl(file,1)?{url:fileUrl(file,1)}:{})});
+    modules.push({id:file,group,lines:lineCount,entry:moduleEntries.get(file)??[],exports:publicExports(compiler,source),...(packageOwner?{workspace:packageOwner.dir}:{}),...(fileUrl(file,1)?{url:fileUrl(file,1)}:{})});
     const lines=text.split(/\r?\n/);
     const add=(expression,node,kind)=>{
       const specifier=expression.text,resolved=compiler.resolveModuleName(specifier,absoluteFile,options,host).resolvedModule?.resolvedFileName;

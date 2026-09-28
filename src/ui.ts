@@ -175,6 +175,19 @@ function choose(id: string,syncRoute=true) {
   const cycleIndex=cycleByModule.get(id);
   if (cycleIndex !== undefined) panel.append(el('span',`Circular group ${cycleIndex+1} · ${cycleGroups[cycleIndex]!.length} modules`,'pill cycle-pill'));
   if (module.url) panel.append(el('p'),link('Open module on GitHub ↗',module.url));
+  const exportsHeading=el('h3',`Exports · ${module.exports?.length ?? 'not recorded'}`);
+  panel.append(exportsHeading);
+  if(module.exports===undefined) panel.append(el('p','Export surface is not recorded in this snapshot.'));
+  else if(!module.exports.length) panel.append(el('p','No top-level exports found.'));
+  else {
+    for(const item of module.exports.slice(0,30)){
+      const label=`${item.name} · ${item.kind} · line ${item.line}${item.source?` · from ${item.source}`:''}`;
+      const row=item.source?el('p',label,'export-evidence'):el('p',label,'export-evidence');
+      if(module.url){const base=module.url.replace(/#L\d+$/,'');row.replaceChildren(link(label,`${base}#L${item.line}`));}
+      panel.append(row);
+    }
+    if(module.exports.length>30)panel.append(el('p',`${module.exports.length-30} more exports omitted from this panel.`));
+  }
   if(!reachability.known)panel.append(el('p','Entry path is unknown because no entry points were detected.'));
   else if(reachability.reachable.has(id)){
     const path=findEntryPath(data.modules,internal,id)!;
