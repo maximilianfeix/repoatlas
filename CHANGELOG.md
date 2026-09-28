@@ -1,5 +1,18 @@
 # Changelog
 
+## [2.5.0] - 2026-09-28
+
+### Added
+
+- Analyze a public TypeScript GitHub repository in the browser and open the same interactive, commit-pinned source map without installing RepoAtlas.
+- Reuse the TypeScript AST syntax visitor across CLI and browser analysis; keep repository source in the browser and download the result as a standalone HTML file.
+- Show progress, cancellation, test-file opt-in, API rate-limit guidance, and explicit browser size limits.
+
+### Quality
+
+- Test public URL validation, TypeScript path aliases, exact source evidence, GitHub commit pinning, rate limits, truncated trees, and cancellation.
+- Bundle the shared map UI and syntax visitor into deterministic GitHub Pages assets.
+
 ## [2.4.0] - 2026-09-28
 
 ### Added
