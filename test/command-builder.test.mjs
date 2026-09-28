@@ -10,7 +10,7 @@ test('repository input accepts canonical GitHub URLs, short names, and .git URLs
 });
 
 test('command output only contains validated owner and repository names', () => {
-  assert.equal(createCommand('https://github.com/honojs/hono'), "npx --yes --package=github:maximilianfeix/repoatlas#v2.35.0 -- repoatlas-cli 'https://github.com/honojs/hono' -o 'hono-architecture.html'");
+  assert.equal(createCommand('https://github.com/honojs/hono'), "npx --yes --package=github:maximilianfeix/repoatlas#v2.36.0 -- repoatlas-cli 'https://github.com/honojs/hono' -o 'hono-architecture.html'");
 });
 
 test('repository input rejects non-GitHub hosts, credentials, extra paths, and shell syntax', () => {
@@ -52,6 +52,14 @@ test('the landing-page star action and live README stars badge link to the proje
   assert.match(html, /href="https:\/\/github\.com\/maximilianfeix\/repoatlas" aria-label="Star RepoAtlas on GitHub">Star on GitHub/);
   assert.match(html, /\.github-link::before\{content:"★"/);
   assert.match(readme, /href="https:\/\/github\.com\/maximilianfeix\/repoatlas\/stargazers"><img alt="GitHub stars" src="https:\/\/img\.shields\.io\/github\/stars\/maximilianfeix\/repoatlas/);
+});
+
+test('social cards use the branded preview and descriptive image alternative text', async () => {
+  const html = await readFile(new URL('../docs/index.html', import.meta.url), 'utf8');
+  assert.match(html, /<meta name="twitter:card" content="summary_large_image">/);
+  assert.match(html, /<meta name="twitter:image" content="https:\/\/maximilianfeix\.github\.io\/repoatlas\/assets\/social-preview\.png">/);
+  assert.match(html, /<meta name="twitter:image:alt" content="RepoAtlas map of Zustand imports, with entry points, connected modules, dependencies, and a verifiable source line\.">/);
+  assert.match(html, /<meta property="og:image:alt" content="RepoAtlas map of Zustand imports/);
 });
 
 test('hero and README lead with mapping the visitor\'s repository before the sample map', async () => {

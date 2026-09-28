@@ -1,5 +1,15 @@
 # Changelog
 
+## [2.36.0] - 2026-09-28
+
+### Improved
+
+- Add large-image sharing metadata that reuses the designed social preview and gives the architecture image descriptive alternative text.
+
+### Quality
+
+- Check that Open Graph and X card image metadata stay aligned with the live preview asset.
+
 ## [2.35.0] - 2026-09-28
 
 ### Improved
