@@ -1,28 +1,28 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="380" viewBox="0 0 1280 380" fill="none">
-  <defs>
-    <linearGradient id="glow" x1="735" y1="40" x2="1170" y2="350" gradientUnits="userSpaceOnUse"><stop stop-color="#92EDC7" stop-opacity=".17"/><stop offset="1" stop-color="#B4A0FF" stop-opacity=".08"/></linearGradient>
-    <linearGradient id="edge" x1="826" y1="160" x2="1102" y2="273" gradientUnits="userSpaceOnUse"><stop stop-color="#92EDC7"/><stop offset="1" stop-color="#B4A0FF"/></linearGradient>
-    <filter id="shadow" x="730" y="51" width="530" height="300" color-interpolation-filters="sRGB"><feGaussianBlur stdDeviation="28"/></filter>
-  </defs>
-  <rect width="1280" height="380" rx="24" fill="#0B0E14"/>
-  <path d="M0 300C240 240 405 414 686 319S1050 199 1280 284V380H0V300Z" fill="#111620" opacity=".8"/>
-  <ellipse cx="1000" cy="202" rx="220" ry="120" fill="url(#glow)" filter="url(#shadow)"/>
-  <g font-family="Inter,ui-sans-serif,system-ui,-apple-system,Segoe UI,sans-serif">
-    <g transform="translate(64 50)" stroke-linecap="round" stroke-linejoin="round"><path d="M2 14h21M13 3l11 11-11 11M2 38h21M13 27l11 11-11 11" stroke="#92EDC7" stroke-width="4"/><path d="M35 26h10" stroke="#B4A0FF" stroke-width="4"/></g>
-    <text x="122" y="86" fill="#E7EAF0" font-size="25" font-weight="700" letter-spacing=".2">RepoAtlas</text>
-    <text x="64" y="171" fill="#F3F5F8" font-size="48" font-weight="750" letter-spacing="-1.7">Trace imports.</text>
-    <text x="64" y="226" fill="#F3F5F8" font-size="48" font-weight="750" letter-spacing="-1.7">Verify every edge.</text>
-    <text x="66" y="269" fill="#A8B0BD" font-size="18">A clickable map of a TypeScript project,</text>
-    <text x="66" y="296" fill="#A8B0BD" font-size="18">with each connection tied to its source line.</text>
-    <rect x="66" y="324" width="132" height="3" rx="1.5" fill="#92EDC7"/>
-    <text x="212" y="330" fill="#77808E" font-size="13" letter-spacing="1.2">STATIC ANALYSIS · ONE SHAREABLE HTML FILE</text>
-  </g>
-  <g font-family="Inter,ui-sans-serif,system-ui,-apple-system,Segoe UI,sans-serif">
-    <path d="M827 132C884 132 866 205 922 205M1011 205C1065 205 1041 281 1094 281" stroke="#343B49" stroke-width="2"/>
-    <path d="M827 132C884 132 866 205 922 205M1011 205C1065 205 1041 281 1094 281" stroke="url(#edge)" stroke-width="2" stroke-dasharray="5 10" opacity=".8"><animate attributeName="stroke-dashoffset" from="30" to="0" dur="2.4s" repeatCount="indefinite"/></path>
-    <rect x="750" y="98" width="154" height="68" rx="12" fill="#151B25" stroke="#333C4A"/><circle cx="772" cy="121" r="5" fill="#92EDC7"/><text x="786" y="126" fill="#E9EDF2" font-size="13" font-weight="650">entry.ts</text><text x="770" y="149" fill="#8791A0" font-size="11">detected entry</text>
-    <rect x="903" y="171" width="158" height="68" rx="12" fill="#151B25" stroke="#92EDC7" stroke-opacity=".65"/><circle cx="926" cy="194" r="5" fill="#B4A0FF"/><text x="940" y="199" fill="#E9EDF2" font-size="13" font-weight="650">router.ts</text><text x="923" y="222" fill="#8791A0" font-size="11">import · line 17</text>
-    <rect x="1059" y="247" width="156" height="68" rx="12" fill="#151B25" stroke="#333C4A"/><circle cx="1082" cy="270" r="5" fill="#92EDC7"/><text x="1096" y="275" fill="#E9EDF2" font-size="13" font-weight="650">handler.ts</text><text x="1079" y="298" fill="#8791A0" font-size="11">source evidence</text>
-    <rect x="784" y="257" width="190" height="44" rx="9" fill="#10151D" stroke="#2E3541"/><circle cx="801" cy="279" r="4" fill="#92EDC7"/><text x="813" y="283" fill="#9DA7B5" font-size="10">click edge → inspect exact line</text>
-  </g>
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="360" viewBox="0 0 1280 360" role="img" aria-labelledby="title desc">
+  <title id="title">RepoAtlas — Know what imports what</title>
+  <desc id="desc">A source-backed TypeScript architecture map. Follow a connection to the exact import line behind it.</desc>
+  <rect width="1280" height="360" rx="18" fill="#111113"/>
+  <text x="50" y="43" fill="#b4b2b7" font-family="Inter,ui-sans-serif,system-ui,-apple-system,'Segoe UI',sans-serif" font-size="14">Source-backed TypeScript maps</text>
+  <text x="48" y="137" fill="#f0efed" font-family="Inter,ui-sans-serif,system-ui,-apple-system,'Segoe UI',sans-serif" font-size="66" font-weight="680" letter-spacing="-3.2">Know what imports what.</text>
+  <text x="52" y="187" fill="#b4b2b7" font-family="Inter,ui-sans-serif,system-ui,-apple-system,'Segoe UI',sans-serif" font-size="21">Explore your project. Click a connection. Verify its source line.</text>
+  <rect x="50" y="231" width="186" height="43" rx="21.5" fill="#d4f77a"/>
+  <text x="69" y="258" fill="#263300" font-family="Inter,ui-sans-serif,system-ui,-apple-system,'Segoe UI',sans-serif" font-size="15" font-weight="650">OPEN LIVE DEMO  ↗</text>
+  <text x="257" y="258" fill="#b4b2b7" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="13">OPEN SOURCE · MIT</text>
+  <rect x="774" y="40" width="458" height="280" rx="12" fill="#19191c" stroke="#38383d"/>
+  <path d="M774 84h458" stroke="#38383d"/>
+  <circle cx="800" cy="62" r="4" fill="#85838a"/><circle cx="816" cy="62" r="4" fill="#85838a"/><circle cx="832" cy="62" r="4" fill="#85838a"/>
+  <text x="856" y="67" fill="#b4b2b7" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="12">architecture.map</text>
+  <path d="M893 151h36v48h38m0 0h35m-73 0v57h38m0-105h77" fill="none" stroke="#d4f77a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+  <rect x="837" y="126" width="56" height="50" rx="7" fill="#232327" stroke="#f0efed"/>
+  <rect x="837" y="224" width="56" height="50" rx="7" fill="#232327" stroke="#85838a"/>
+  <rect x="1002" y="174" width="62" height="50" rx="7" fill="#d4f77a"/>
+  <rect x="1102" y="126" width="76" height="50" rx="7" fill="#232327" stroke="#b4b2b7"/>
+  <text x="850" y="156" fill="#f0efed" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="11">entry.ts</text>
+  <text x="849" y="254" fill="#b4b2b7" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="11">types.ts</text>
+  <text x="1012" y="204" fill="#263300" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="11">client.ts</text>
+  <text x="1111" y="156" fill="#f0efed" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="11">request.ts</text>
+  <rect x="966" y="239" width="223" height="47" rx="6" fill="#222227" stroke="#45454b"/>
+  <circle cx="983" cy="256" r="4" fill="#d4f77a"/>
+  <text x="995" y="260" fill="#d4f77a" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="11">src/client.ts : 18</text>
+  <text x="982" y="276" fill="#b4b2b7" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="10">import { request } from './request'</text>
 </svg>
