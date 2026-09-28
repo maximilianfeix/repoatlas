@@ -1,5 +1,16 @@
 # Changelog
 
+## [2.37.0] - 2026-09-28
+
+### Improved
+
+- Complete GitHub's community profile with a project-specific Code of Conduct and valid metadata on the feature request template.
+- Link community standards directly from the README contribution section.
+
+### Quality
+
+- Verify the GitHub community profile recognizes the health files after merge.
+
 ## [2.36.0] - 2026-09-28
 
 ### Improved
