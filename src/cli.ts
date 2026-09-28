@@ -9,7 +9,7 @@ import { analyze, githubURL } from './analyze.js';
 import { render } from './render.js';
 import { compareAtlases, parseAtlas } from './compare.js';
 import { renderComparisonHtml } from './compare-render.js';
-import { renderBoundarySvg, renderTextReport } from './report.js';
+import { renderArchitectureCard, renderBoundarySvg, renderTextReport } from './report.js';
 import { checkArchitecture, parseArchitectureConfig, renderGitHubAnnotations, renderRuleReport } from './rules.js';
 
 const packageVersion=JSON.parse(readFileSync(new URL('../package.json',import.meta.url),'utf8')).version as string;
@@ -93,16 +93,16 @@ program.command('compare').description('Compare two RepoAtlas JSON snapshots for
     const omitted=Math.max(0,comparison.modules.added.length-20)+Math.max(0,comparison.modules.removed.length-20)+Math.max(0,comparison.dependencies.added.length-20)+Math.max(0,comparison.dependencies.removed.length-20)+Math.max(0,comparison.dependencies.changedSpecifier.length-20);
     if(omitted)process.stdout.write(`  … ${omitted} more changes (use --json for the full report)\n`);
   });
-program.command('report').description('Export a concise text report or workspace/directory boundary SVG')
+program.command('report').description('Export a text report, boundary SVG, or README architecture card')
   .argument('<snapshot>', 'RepoAtlas JSON snapshot')
-  .option('--format <format>', 'text or svg', 'text')
+  .option('--format <format>', 'text, svg, or card', 'text')
   .option('--output <file>', 'write the report to a file instead of stdout')
   .option('--overwrite', 'replace an existing --output file')
   .action(async (snapshotFile:string,opts) => {
-    if(opts.format!=='text'&&opts.format!=='svg')throw new Error('--format must be either text or svg.');
+    if(!['text','svg','card'].includes(opts.format))throw new Error('--format must be text, svg, or card.');
     if(opts.overwrite&&!opts.output)throw new Error('--overwrite requires --output.');
     const atlas=await loadSnapshot(snapshotFile);
-    const content=opts.format==='svg'?renderBoundarySvg(atlas):renderTextReport(atlas);
+    const content=opts.format==='svg'?renderBoundarySvg(atlas):opts.format==='card'?renderArchitectureCard(atlas):renderTextReport(atlas);
     if(opts.output){
       const output=path.resolve(opts.output);await writeFile(output,content,{flag:opts.overwrite?'w':'wx'});
       process.stdout.write(`Report saved: ${output}\n`);

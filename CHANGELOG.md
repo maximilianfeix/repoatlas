@@ -309,3 +309,14 @@
 
 - Expanded automated coverage for transitive impact, circular groups, self-imports, excluded external/unresolved imports, and maximum-length dependency chains.
 - Verified generated examples, desktop and mobile layouts, cross-platform CI, CodeQL, and the published Pages site.
+
+## [2.3.0] - 2026-09-28
+
+### Added
+
+- Export a compact, accessible README SVG card with module, entry-point, resolved-import, and dependency-cycle counts.
+- Add a pinned GitHub Actions workflow that refreshes the card through a reviewable pull request.
+
+### Quality
+
+- Test deterministic SVG output, escaped repository names, static-analysis caveats, CLI validation, and overwrite protection.

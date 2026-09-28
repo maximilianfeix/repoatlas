@@ -1,0 +1,40 @@
+name: Refresh architecture card
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'src/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/architecture-card.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: architecture-card-refresh
+  cancel-in-progress: true
+jobs:
+  update-card:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Generate README card
+        run: |
+          node dist/cli.js . --json > "$RUNNER_TEMP/repoatlas-snapshot.json"
+          node dist/cli.js report "$RUNNER_TEMP/repoatlas-snapshot.json" --format card --output docs/assets/architecture-card.svg --overwrite
+      - uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8.1.1
+        with:
+          branch: automation/architecture-card
+          delete-branch: true
+          title: 'docs: refresh architecture card'
+          commit-message: 'docs: refresh architecture card'
+          body: 'Refresh the deterministic RepoAtlas summary after source changes. Review the SVG before merging.'
+          add-paths: docs/assets/architecture-card.svg
