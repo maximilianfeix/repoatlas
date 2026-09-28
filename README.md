@@ -67,14 +67,14 @@ Want to explore before installing? [Paste a public TypeScript repository or choo
 For a versioned command-line run, install nothing globally. The CLI requires **Node.js 22 or later** and **Git**. Point it at a public GitHub repository:
 
 ```sh
-npx --yes --package=github:maximilianfeix/repoatlas#v2.6.0 -- \
+npx --yes --package=github:maximilianfeix/repoatlas#v2.7.0 -- \
   repoatlas-cli https://github.com/pmndrs/zustand --out zustand-map.html
 ```
 
 Open `zustand-map.html` in your browser. RepoAtlas also analyzes a local checkout:
 
 ```sh
-npx --yes --package=github:maximilianfeix/repoatlas#v2.6.0 -- \
+npx --yes --package=github:maximilianfeix/repoatlas#v2.7.0 -- \
   repoatlas-cli ./my-project --out architecture.html
 ```
 
@@ -108,7 +108,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: maximilianfeix/repoatlas@v2.6.0
+      - uses: maximilianfeix/repoatlas@v2.7.0
         with:
           output: repoatlas-map.html
 ```
@@ -125,7 +125,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: maximilianfeix/repoatlas@v2.6.0
+      - uses: maximilianfeix/repoatlas@v2.7.0
         with:
           compare-to: ${{ github.event.pull_request.base.sha }}
           output: architecture-diff.html
@@ -147,7 +147,7 @@ Add this server entry to an MCP client configuration and replace the project pat
       "command": "npx",
       "args": [
         "--yes",
-        "--package=github:maximilianfeix/repoatlas#v2.6.0",
+        "--package=github:maximilianfeix/repoatlas#v2.7.0",
         "repoatlas-cli",
         "mcp",
         "/absolute/path/to/project"
@@ -196,7 +196,7 @@ The RepoAtlas comparison uses real snapshots from [v1.10.0](https://github.com/m
     <td width="50%" valign="top"><strong>Get oriented quickly</strong><br>See detected entries, reachability, cycles, impact, external packages, and shortest entry paths. Share a focused view with a deep link.</td>
   </tr>
   <tr>
-    <td width="50%" valign="top"><strong>Read workspace boundaries</strong><br>Start with a ranked package and directory overview, then drill into a package or open any import count to inspect its exact source lines. Resolve declared npm, Yarn, and pnpm workspace packages through export maps.</td>
+    <td width="50%" valign="top"><strong>Read workspace boundaries</strong><br>Start with a ranked package and directory overview, then drill into a package or open any import count to inspect its exact source lines. Resolve declared npm, Yarn, and pnpm workspace packages through export maps in CLI and browser analysis.</td>
     <td width="50%" valign="top"><strong>Catch architecture drift</strong><br>Compare JSON snapshots to find changed modules, dependencies, and import specifiers. Export the comparison as a searchable standalone HTML report with source links. Formatting and line shifts alone do not count as drift.</td>
   </tr>
   <tr>

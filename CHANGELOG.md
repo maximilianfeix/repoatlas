@@ -1,5 +1,19 @@
 # Changelog
 
+## [2.7.0] - 2026-09-28
+
+### Added
+
+- Resolve declared npm/Yarn and pnpm workspace package imports to included TypeScript source in browser maps.
+- Honor package export roots, wildcard subpaths, and compiler conditions; add workspace metadata so package-boundary views group files correctly.
+- Leave duplicate workspace names unresolved with a warning and ignore undeclared nested packages.
+
+### Quality
+
+- Fetch nested package manifests and `pnpm-workspace.yaml` within browser byte and manifest limits.
+- Test public and local workspace resolution, source evidence, exclusions, wildcard exports, and ambiguity handling.
+
+
 ## [2.6.0] - 2026-09-28
 
 ### Added
