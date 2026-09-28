@@ -1,5 +1,16 @@
 # Changelog
 
+## [2.30.0] - 2026-09-28
+
+### Improved
+
+- Add a restrained staggered hero entrance and one-time scroll reveals for the showcase and feature sections.
+- Keep every section visible without JavaScript support and disable entrance/reveal motion when reduced motion is requested.
+
+### Quality
+
+- Verify the landing page motion remains gated by `prefers-reduced-motion` and progressive enhancement.
+
 ## [2.29.0] - 2026-09-28
 
 ### Added
