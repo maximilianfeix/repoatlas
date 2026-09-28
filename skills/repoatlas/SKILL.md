@@ -4,7 +4,7 @@ description: Map or explain an unfamiliar TypeScript repository with RepoAtlas. 
 license: MIT
 metadata:
   author: maximilianfeix
-  version: "2.40.1"
+  version: "2.40.2"
 ---
 
 # RepoAtlas

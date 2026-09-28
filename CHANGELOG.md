@@ -1,5 +1,15 @@
 # Changelog
 
+## [2.40.2] - 2026-09-28
+
+### Fixed
+
+- Version the browser-analysis worker URL with the release so visitors receive the current analyzer immediately instead of using a cached worker.
+
+### Quality
+
+- Verify that the worker URL carries the current package version.
+
 ## [2.40.1] - 2026-09-28
 
 ### Fixed

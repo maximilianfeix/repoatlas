@@ -13,7 +13,7 @@ test('worker client forwards progress and resolves one public analysis result',a
   FakeWorker.instances=[];const progress=[],atlas={name:'owner/repo',modules:[],edges:[]};
   const result=runAnalysisInWorker({type:'public',input:'owner/repo',includeTests:true,WorkerImpl:FakeWorker,onProgress:item=>progress.push(item)});
   const worker=FakeWorker.instances[0];
-  assert.match(worker.url,/assets\/repository-worker\.js$/);assert.equal(worker.options.name,'repoatlas-analysis');
+  const workerUrl=new URL(worker.url);assert.match(workerUrl.pathname,/assets\/repository-worker\.js$/);assert.equal(workerUrl.searchParams.get('v'),'2.40.2');assert.equal(worker.options.name,'repoatlas-analysis');
   assert.deepEqual(worker.message,{type:'analyze-public',input:'owner/repo',includeTests:true});
   worker.onmessage({data:{type:'progress',progress:{stage:'sources',completed:1,total:2}}});
   worker.onmessage({data:{type:'result',atlas}});
