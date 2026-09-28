@@ -59,6 +59,41 @@ test('reports legacy binding metadata as unavailable and does not infer changes'
   assert.throws(()=>parseAtlas({...after,importBindingsVersion:2}),/import binding index version/);
 });
 
+test('traces changed modules from detected entries per snapshot and reports unreachable modules',()=>{
+  const base=atlas(['src/main.ts','src/mid.ts','src/api.ts','src/shared.ts','src/orphan.ts'],[
+    edge('src/main.ts','src/mid.ts','./mid',{url:'https://github.com/example/demo/blob/base/src/main.ts#L2'}),
+    edge('src/mid.ts','src/api.ts','./api',{url:'https://github.com/example/demo/blob/base/src/mid.ts#L3'}),
+    edge('src/api.ts','src/shared.ts','./shared',{imports:[{name:'oldApi',localName:'client'}]}),
+  ]);
+  base.modules.find(module=>module.id==='src/orphan.ts').exports=[{name:'oldOrphan',kind:'function',line:1}];
+  const head=atlas(['src/main.ts','src/mid.ts','src/api.ts','src/shared.ts','src/orphan.ts'],[
+    edge('src/main.ts','src/mid.ts','./mid',{url:'https://github.com/example/demo/blob/head/src/main.ts#L4'}),
+    edge('src/mid.ts','src/api.ts','./api',{url:'https://github.com/example/demo/blob/head/src/mid.ts#L5'}),
+    edge('src/api.ts','src/shared.ts','./shared',{imports:[{name:'nextApi',localName:'client'}]}),
+  ]);
+  head.modules.find(module=>module.id==='src/orphan.ts').exports=[];
+  const diff=compareAtlases(base,head);
+  assert.equal(diff.impact.base.known,true);assert.equal(diff.impact.head.known,true);
+  const baseRoute=diff.impact.base.routes.find(route=>route.moduleId==='src/api.ts');
+  assert.equal(baseRoute.entry,'src/main.ts');assert.deepEqual(baseRoute.edges.map(edge=>edge.target),['src/mid.ts','src/api.ts']);
+  assert.match(diff.impact.head.routes.find(route=>route.moduleId==='src/api.ts').edges[0].url,/blob\/head/);
+  assert.deepEqual(diff.impact.base.unreachableModules,['src/orphan.ts']);
+});
+
+test('keeps entry reachability explicitly unknown without detected entries and bounds large route lists',()=>{
+  const before=atlas(['a.ts'],[]),after=atlas(['a.ts','b.ts'],[edge('a.ts','b.ts','./b')]);
+  for(const module of [...before.modules,...after.modules])module.entry=[];
+  const unknown=compareAtlases(before,after).impact;
+  assert.equal(unknown.base.known,false);assert.equal(unknown.head.known,false);
+  const many=atlas(['src/main.ts',...Array.from({length:61},(_,i)=>`src/m${i}.ts`)],[...Array.from({length:61},(_,i)=>edge('src/main.ts',`src/m${i}.ts`,`./m${i}`))]);
+  const bounded=compareAtlases(atlas(['src/main.ts'],[]),many).impact.head;
+  assert.equal(bounded.routes.length,60);assert.equal(bounded.omittedModules,2);
+  const longIds=['src/main.ts',...Array.from({length:50},(_,i)=>`src/deep-${i}.ts`)];
+  const long=atlas(longIds,longIds.slice(0,-1).map((source,i)=>edge(source,longIds[i+1],`./deep-${i}`)));
+  const longRoute=compareAtlases(atlas(['src/main.ts'],[]),long).impact.head.routes.find(route=>route.moduleId==='src/deep-49.ts');
+  assert.equal(longRoute.totalSteps,50);assert.equal(longRoute.edges.length,40);assert.equal(longRoute.omittedSteps,10);
+});
+
 test('compares static public exports, ignores line shifts, and identifies snapshots without export data',()=>{
   const base=atlas(['src/api.ts','src/old-snapshot.ts','src/removed.ts'],[],'base-sha');
   const head=atlas(['src/api.ts','src/old-snapshot.ts','src/new.ts'],[],'head-sha');
@@ -111,6 +146,16 @@ test('renders imported binding changes with exact source links and search/filter
   assert.match(html,/Bindings added/);assert.match(html,/data-binding-change/);assert.match(html,/updateBindingFilter/);assert.match(html,/\.change\[hidden\]\{display:none\}/);assert.match(html,/No module or dependency changes match this filter/);
 });
 
+test('renders shortest changed-module entry paths with snapshot-pinned evidence and disclosure controls',()=>{
+  const base=atlas(['src/main.ts','src/api.ts','src/shared.ts'],[edge('src/main.ts','src/api.ts','./api',{line:4,url:'https://github.com/example/demo/blob/base/src/main.ts#L4'}),edge('src/api.ts','src/shared.ts','./shared',{line:3,url:'https://github.com/example/demo/blob/base/src/api.ts#L3'})],'base');
+  const head=atlas(['src/main.ts','src/api.ts','src/shared.ts'],[edge('src/main.ts','src/api.ts','./api',{line:8,url:'https://github.com/example/demo/blob/head/src/main.ts#L8'}),edge('src/api.ts','src/shared.ts','./shared',{line:9,url:'https://github.com/example/demo/blob/head/src/api.ts#L9',imports:[{name:'next',localName:'next'}]})],'head');
+  const html=renderComparisonHtml(compareAtlases(base,head));
+  assert.match(html,/Changed modules from detected entry points/);assert.match(html,/Trace route · 1 import(?:<|"|\s)/);
+  assert.match(html,/blob\/base\/src\/main\.ts#L4/);assert.match(html,/blob\/head\/src\/main\.ts#L8/);
+  assert.match(html,/Reachability does not establish that runtime code executes/);assert.match(html,/entry-impact/);
+  assert.match(html,/\.impact-route\{animation:impact-in \.18s ease-out both\}/);assert.match(html,/prefers-reduced-motion:reduce/);
+});
+
 test('keeps base and head dependency links pinned to their respective commits',()=>{
   const before=atlas(['old.ts','shared.ts'],[edge('old.ts','shared.ts','./shared',{url:'https://github.com/example/demo/blob/base-sha/old.ts#L1'})],'base');
   const after=atlas(['new.ts','shared.ts'],[edge('new.ts','shared.ts','./shared',{url:'https://github.com/example/demo/blob/head-sha/new.ts#L1'})],'head');
@@ -138,6 +183,7 @@ test('compare CLI emits text, JSON and a safe standalone HTML file, refuses over
   const text=spawnSync(process.execPath,[cli,'compare',base,head],{encoding:'utf8'});
   assert.equal(text.status,0);assert.match(text.stdout,/Architecture drift: demo \(base\) → demo \(head\)/);assert.match(text.stdout,/Modules: \+1 added · −0 removed/);
   assert.match(text.stdout,/Public exports: \+0 added · −0 removed/);
+  assert.match(text.stdout,/Entry paths \(base\):/);assert.match(text.stdout,/Entry paths \(head\):/);
   const htmlFile=path.join(dir,'diff.html');
   const html=spawnSync(process.execPath,[cli,'compare',base,head,'--format','html','--output',htmlFile],{encoding:'utf8'});
   assert.equal(html.status,0);assert.match(readFileSync(htmlFile,'utf8'),/What changed in the architecture/);

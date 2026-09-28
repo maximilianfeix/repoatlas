@@ -1,7 +1,7 @@
 <p align="center">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="docs/assets/banner-dark.svg">
-    <img src="docs/assets/banner-light.svg" alt="RepoAtlas — trace imports and verify every edge in a clickable TypeScript architecture map" width="100%">
+    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/maximilianfeix/repoatlas/main/docs/assets/banner-dark.svg">
+    <img src="https://raw.githubusercontent.com/maximilianfeix/repoatlas/main/docs/assets/banner-light.svg" alt="RepoAtlas — trace imports and verify every edge in a clickable TypeScript architecture map" width="100%">
   </picture>
 </p>
 
@@ -41,15 +41,15 @@ RepoAtlas turns a TypeScript repository into a map you can investigate. Follow a
 
 <p align="center">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="docs/assets/readme-flow.svg">
-    <img src="docs/assets/readme-flow.svg" alt="Four steps: give RepoAtlas a GitHub repository or folder, resolve imports with static analysis, explore the interactive module map, and verify an edge against its exact source evidence" width="100%">
+    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/maximilianfeix/repoatlas/main/docs/assets/readme-flow.svg">
+    <img src="https://raw.githubusercontent.com/maximilianfeix/repoatlas/main/docs/assets/readme-flow.svg" alt="Four steps: give RepoAtlas a GitHub repository or folder, resolve imports with static analysis, explore the interactive module map, and verify an edge against its exact source evidence" width="100%">
   </picture>
 </p>
 
 ## A real map, not a mockup
 
 <p align="center">
-  <a href="https://maximilianfeix.github.io/repoatlas/examples/hono.html"><img src="docs/assets/bundled-import-evidence.png" alt="Interactive architecture map generated from Hono: a selected bundled connection exposes four clickable import locations in the source inspector" width="100%"></a>
+  <a href="https://maximilianfeix.github.io/repoatlas/examples/hono.html"><img src="https://raw.githubusercontent.com/maximilianfeix/repoatlas/main/docs/assets/bundled-import-evidence.png" alt="Interactive architecture map generated from Hono: a selected bundled connection exposes four clickable import locations in the source inspector" width="100%"></a>
 </p>
 
 <p align="center"><sub>In this Hono snapshot, one bundled edge represents four imports. Select it to inspect each location.</sub></p>
@@ -69,14 +69,14 @@ Want to explore before installing? [Paste a public TypeScript repository or choo
 For a versioned command-line run, install nothing globally. The CLI requires **Node.js 22 or later** and **Git**. Point it at a public GitHub repository:
 
 ```sh
-npx --yes --package=github:maximilianfeix/repoatlas#v2.19.0 -- \
+npx --yes --package=github:maximilianfeix/repoatlas#v2.20.0 -- \
   repoatlas-cli https://github.com/pmndrs/zustand --out zustand-map.html
 ```
 
 Open `zustand-map.html` in your browser. Search by module path or public export, then select a result to inspect its exact source evidence. RepoAtlas also analyzes a local checkout:
 
 ```sh
-npx --yes --package=github:maximilianfeix/repoatlas#v2.19.0 -- \
+npx --yes --package=github:maximilianfeix/repoatlas#v2.20.0 -- \
   repoatlas-cli ./my-project --out architecture.html
 ```
 
@@ -94,7 +94,7 @@ repoatlas-cli report architecture.json --format card --output docs/architecture.
 
 The card summarizes modules, detected entry points, resolved static imports, and dependency cycles. It is deterministic, contains no scripts or external requests, and states that it does not describe runtime behavior. Use `--overwrite` to replace an existing card. The [refresh workflow](.github/workflows/architecture-card.yml) shows how to regenerate a checked-in card through a reviewable pull request.
 
-<p align="center"><img src="docs/assets/architecture-card.svg" alt="RepoAtlas architecture summary for its own TypeScript source: module, entry point, resolved import, and cycle counts" width="720"></p>
+<p align="center"><img src="https://raw.githubusercontent.com/maximilianfeix/repoatlas/main/docs/assets/architecture-card.svg" alt="RepoAtlas architecture summary for its own TypeScript source: module, entry point, resolved import, and cycle counts" width="720"></p>
 
 ## GitHub Actions
 
@@ -110,12 +110,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: maximilianfeix/repoatlas@v2.19.0
+      - uses: maximilianfeix/repoatlas@v2.20.0
         with:
           output: repoatlas-map.html
 ```
 
-For pull requests, set `compare-to` to the base commit SHA to make the artifact a source-linked architecture diff. RepoAtlas adds module, import, named/default binding, and export counts with a direct artifact link to the GitHub Actions job summary. Binding changes describe explicit TypeScript import syntax, not function calls or runtime behavior; export changes do not establish package entry-point accessibility or type compatibility. This uses only `contents: read`; it does not post a comment or need a write token.
+For pull requests, set `compare-to` to the base commit SHA to make the artifact a source-linked architecture diff. RepoAtlas adds module, import, named/default binding, export, and detected-entry reachability counts with a direct artifact link to the GitHub Actions job summary. Binding changes describe explicit TypeScript import syntax; entry paths describe static reachability. Neither establishes runtime calls or behavior, and export changes do not establish package entry-point accessibility or type compatibility. This uses only `contents: read`; it does not post a comment or need a write token.
 
 ```yaml
 name: Architecture review
@@ -127,14 +127,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: maximilianfeix/repoatlas@v2.19.0
+      - uses: maximilianfeix/repoatlas@v2.20.0
         with:
           compare-to: ${{ github.event.pull_request.base.sha }}
           output: architecture-diff.html
           artifact-name: architecture-diff
 ```
 
-Download `architecture-diff` from the workflow run to explore added and removed modules, imports, imported names, and public exports; each source link points to the exact base or head line. Older snapshots without binding or export indexes are marked unavailable instead of being treated as unchanged. These reports track syntax-level names and aliases, not runtime calls, TypeScript assignability, or semver safety. The action accepts `path`, `compare-to`, `artifact-name`, `retention-days`, `include-tests`, and `include-js`. It needs read-only repository access and no token input. Maps and diffs include project paths and source snippets, so restrict artifacts from private repositories.
+Download `architecture-diff` from the workflow run to explore added and removed modules, imports, imported names, public exports, and shortest routes from detected entries; each link points to the exact base or head line. Older snapshots without binding or export indexes are marked unavailable instead of being treated as unchanged. Reports describe syntax and static reachability, not runtime calls, TypeScript assignability, or semver safety. The action accepts `path`, `compare-to`, `artifact-name`, `retention-days`, `include-tests`, and `include-js`. It needs read-only repository access and no token input. Maps and diffs include project paths and source snippets, so restrict artifacts from private repositories.
 
 ## MCP server
 
@@ -149,7 +149,7 @@ Add this server entry to an MCP client configuration and replace the project pat
       "command": "npx",
       "args": [
         "--yes",
-        "--package=github:maximilianfeix/repoatlas#v2.19.0",
+        "--package=github:maximilianfeix/repoatlas#v2.20.0",
         "repoatlas-cli",
         "mcp",
         "/absolute/path/to/project"
@@ -184,33 +184,33 @@ Each example below was generated from a pinned upstream commit. The counts and e
 
 <table>
   <tr>
-    <td width="50%" valign="top"><a href="https://maximilianfeix.github.io/repoatlas/examples/hono.html"><img src="docs/assets/entry-path-trace.png" alt="A highlighted shortest import path from a detected Hono entry point to a selected module" width="100%"></a><sub>Find the shortest detected path to a module.</sub></td>
-    <td width="50%" valign="top"><a href="https://maximilianfeix.github.io/repoatlas/examples/hono.html"><img src="docs/assets/guided-entry-tour.png" alt="Guided Hono entry-path stop showing the exact import line, pinned GitHub link, and previous or next controls" width="100%"></a><sub>Walk the path one import at a time and inspect its exact source line.</sub></td>
+    <td width="50%" valign="top"><a href="https://maximilianfeix.github.io/repoatlas/examples/hono.html"><img src="https://raw.githubusercontent.com/maximilianfeix/repoatlas/main/docs/assets/entry-path-trace.png" alt="A highlighted shortest import path from a detected Hono entry point to a selected module" width="100%"></a><sub>Find the shortest detected path to a module.</sub></td>
+    <td width="50%" valign="top"><a href="https://maximilianfeix.github.io/repoatlas/examples/hono.html"><img src="https://raw.githubusercontent.com/maximilianfeix/repoatlas/main/docs/assets/guided-entry-tour.png" alt="Guided Hono entry-path stop showing the exact import line, pinned GitHub link, and previous or next controls" width="100%"></a><sub>Walk the path one import at a time and inspect its exact source line.</sub></td>
   </tr>
   <tr>
-    <td width="50%" valign="top"><a href="https://maximilianfeix.github.io/repoatlas/examples/hono.html"><img src="docs/assets/package-overview.png" alt="The package overview for Hono ranks source directories by dependency connections and shows cross-package import counts" width="100%"></a><sub>Start broad, then drill into a package or inspect its source imports.</sub></td>
-    <td width="50%" valign="top"><a href="https://maximilianfeix.github.io/repoatlas/examples/hono.html"><img src="docs/assets/boundary-matrix-preview.png" alt="A directory boundary matrix showing source-backed imports between parts of Hono" width="100%"></a><sub>See which package and directory boundaries imports cross.</sub></td>
+    <td width="50%" valign="top"><a href="https://maximilianfeix.github.io/repoatlas/examples/hono.html"><img src="https://raw.githubusercontent.com/maximilianfeix/repoatlas/main/docs/assets/package-overview.png" alt="The package overview for Hono ranks source directories by dependency connections and shows cross-package import counts" width="100%"></a><sub>Start broad, then drill into a package or inspect its source imports.</sub></td>
+    <td width="50%" valign="top"><a href="https://maximilianfeix.github.io/repoatlas/examples/hono.html"><img src="https://raw.githubusercontent.com/maximilianfeix/repoatlas/main/docs/assets/boundary-matrix-preview.png" alt="A directory boundary matrix showing source-backed imports between parts of Hono" width="100%"></a><sub>See which package and directory boundaries imports cross.</sub></td>
   </tr>
   <tr>
-    <td colspan="2" valign="top"><a href="https://maximilianfeix.github.io/repoatlas/examples/repoatlas-v1-to-v2.html"><img src="docs/assets/architecture-diff.png" alt="A searchable architecture comparison between real RepoAtlas v1.10 and v2 snapshots, showing added modules and imports" width="100%"></a><sub>A real RepoAtlas 1.10 → 2.0 comparison. Expand an import to trace its source line in the pinned snapshot.</sub></td>
+    <td colspan="2" valign="top"><a href="https://maximilianfeix.github.io/repoatlas/examples/repoatlas-v1-to-v2.html"><img src="https://raw.githubusercontent.com/maximilianfeix/repoatlas/main/docs/assets/architecture-diff.png" alt="A searchable architecture comparison between real RepoAtlas v1.10 and v2 snapshots, showing added modules and imports" width="100%"></a><sub>A real RepoAtlas 1.10 → 2.0 comparison. Expand an import to trace its source line in the pinned snapshot.</sub></td>
   </tr>
   <tr>
-    <td colspan="2" valign="top"><a href="https://maximilianfeix.github.io/repoatlas/examples/hono.html#module=src%2Fadapter%2Faws-lambda%2Fhandler.ts"><img src="docs/assets/export-surface.png" alt="The Hono module inspector lists exported TypeScript names with links to exact lines in the pinned GitHub source" width="100%"></a><sub>Inspect a file's public API and jump straight to each export in the pinned source.</sub></td>
+    <td colspan="2" valign="top"><a href="https://maximilianfeix.github.io/repoatlas/examples/hono.html#module=src%2Fadapter%2Faws-lambda%2Fhandler.ts"><img src="https://raw.githubusercontent.com/maximilianfeix/repoatlas/main/docs/assets/export-surface.png" alt="The Hono module inspector lists exported TypeScript names with links to exact lines in the pinned GitHub source" width="100%"></a><sub>Inspect a file's public API and jump straight to each export in the pinned source.</sub></td>
   </tr>
   <tr>
-    <td colspan="2" valign="top"><a href="https://maximilianfeix.github.io/repoatlas/examples/hono.html#module=src%2Fhono.ts"><img src="docs/assets/export-import-sites.png" alt="The Hono export inspector shows 18 direct named imports of Hono, each linked to the precise importing line" width="100%"></a><sub>Open an export's direct import sites, then click any result to inspect its exact import statement and pinned source line.</sub></td>
+    <td colspan="2" valign="top"><a href="https://maximilianfeix.github.io/repoatlas/examples/hono.html#module=src%2Fhono.ts"><img src="https://raw.githubusercontent.com/maximilianfeix/repoatlas/main/docs/assets/export-import-sites.png" alt="The Hono export inspector shows 18 direct named imports of Hono, each linked to the precise importing line" width="100%"></a><sub>Open an export's direct import sites, then click any result to inspect its exact import statement and pinned source line.</sub></td>
   </tr>
   <tr>
-    <td colspan="2" valign="top"><a href="https://maximilianfeix.github.io/repoatlas/examples/hono.html#module=src%2Fcontext.ts"><img src="docs/assets/export-import-pagination.png" alt="The Hono Context export inspector paginates 39 direct import sites and shows its current range and page controls" width="100%"></a><sub>Large symbol histories stay navigable with bounded pages and clear previous/next controls.</sub></td>
+    <td colspan="2" valign="top"><a href="https://maximilianfeix.github.io/repoatlas/examples/hono.html#module=src%2Fcontext.ts"><img src="https://raw.githubusercontent.com/maximilianfeix/repoatlas/main/docs/assets/export-import-pagination.png" alt="The Hono Context export inspector paginates 39 direct import sites and shows its current range and page controls" width="100%"></a><sub>Large symbol histories stay navigable with bounded pages and clear previous/next controls.</sub></td>
   </tr>
   <tr>
-    <td colspan="2" valign="top"><a href="https://maximilianfeix.github.io/repoatlas/examples/hono.html#module=src%2Fadapter%2Faws-lambda%2Fconninfo.ts"><img src="docs/assets/import-search.png" alt="Searching Context in the Hono map lists modules that import it, with each exact line and the selected module's named import evidence" width="100%"></a><sub>Find importers by symbol or local alias; open a module to inspect its incoming named bindings.</sub></td>
+    <td colspan="2" valign="top"><a href="https://maximilianfeix.github.io/repoatlas/examples/hono.html#module=src%2Fadapter%2Faws-lambda%2Fconninfo.ts"><img src="https://raw.githubusercontent.com/maximilianfeix/repoatlas/main/docs/assets/import-search.png" alt="Searching Context in the Hono map lists modules that import it, with each exact line and the selected module's named import evidence" width="100%"></a><sub>Find importers by symbol or local alias; open a module to inspect its incoming named bindings.</sub></td>
   </tr>
   <tr>
-    <td colspan="2" valign="top"><a href="https://maximilianfeix.github.io/repoatlas/examples/hono.html"><img src="docs/assets/export-search.png" alt="Searching Hono in the module explorer shows matching exported symbols and their source lines, with the selected export linked in the inspector" width="100%"></a><sub>Find an exported symbol in the map, then open its source line from the selected module.</sub></td>
+    <td colspan="2" valign="top"><a href="https://maximilianfeix.github.io/repoatlas/examples/hono.html"><img src="https://raw.githubusercontent.com/maximilianfeix/repoatlas/main/docs/assets/export-search.png" alt="Searching Hono in the module explorer shows matching exported symbols and their source lines, with the selected export linked in the inspector" width="100%"></a><sub>Find an exported symbol in the map, then open its source line from the selected module.</sub></td>
   </tr>
   <tr>
-    <td colspan="2" valign="top"><a href="https://maximilianfeix.github.io/repoatlas/examples/repoatlas-v2.12-to-v2.13.html"><img src="docs/assets/public-export-diff.png" alt="A snapshot comparison showing added TypeScript exports with exact line links" width="100%"></a><sub>Review export-surface changes beside ordinary module and import drift.</sub></td>
+    <td colspan="2" valign="top"><a href="https://maximilianfeix.github.io/repoatlas/examples/repoatlas-v2.12-to-v2.13.html"><img src="https://raw.githubusercontent.com/maximilianfeix/repoatlas/main/docs/assets/public-export-diff.png" alt="A snapshot comparison showing added TypeScript exports with exact line links" width="100%"></a><sub>Review export-surface changes beside ordinary module and import drift.</sub></td>
   </tr>
 </table>
 
@@ -259,10 +259,10 @@ repoatlas compare before.json after.json
 repoatlas compare before.json after.json --format html --output architecture-diff.html
 ```
 
-Open `architecture-diff.html` to filter added, removed, and changed relationships, search paths or imports, and expand each dependency to its source line in both snapshots. The report tracks file-level TypeScript exports and explicit named/default import bindings, including renamed aliases, with exact lines. Older snapshots without either index are marked unavailable. These are syntax changes, not runtime calls or semantic type compatibility; the report is a single offline file.
+Open `architecture-diff.html` to filter added, removed, and changed relationships, search paths or imports, and expand each dependency to its source line in both snapshots. The report tracks file-level TypeScript exports and explicit named/default import bindings, including renamed aliases, with exact lines. It also shows the shortest resolved-import route from a detected entry to each changed module, separately for base and head. If no entry is found, reachability is marked unknown; a module outside all detected routes is labeled unreachable. Large reports limit route lists and show the first and last 20 hops of longer paths with the skipped middle count. These are static facts, not runtime calls or semantic type compatibility; the report is a single offline file.
 
-<p align="center"><img src="docs/assets/import-binding-diff-preview.png" alt="Offline architecture diff filtered to an added imported name, with the exact source module and line" width="100%"></p>
-<p align="center"><sub>Illustrative comparison using sample snapshots. Real reports link directly to the corresponding commit-pinned source lines.</sub></p>
+<p align="center"><a href="https://maximilianfeix.github.io/repoatlas/examples/entry-impact-diff.html"><img src="https://raw.githubusercontent.com/maximilianfeix/repoatlas/main/docs/assets/entry-impact-preview.png" alt="Architecture diff showing added and removed import bindings and separate base and head routes from the detected application entry to the changed module" width="100%"></a></p>
+<p align="center"><sub><a href="https://maximilianfeix.github.io/repoatlas/examples/entry-impact-diff.html">Open the interactive example.</a> It uses illustrative snapshots; real repository reports link to their pinned source commits.</sub></p>
 
 The [v2.12 → v2.13 comparison example](https://maximilianfeix.github.io/repoatlas/examples/repoatlas-v2.12-to-v2.13.html) shows a real source change with export evidence.
 

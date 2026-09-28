@@ -32,13 +32,15 @@ export function analyzeReachability(modules: Module[], edges: Edge[]): Reachabil
   return {known:true,reachable:orderedReachable,unreachable:new Set(modules.filter(module=>!reachable.has(module.id)).map(module=>module.id))};
 }
 
-/** Find a deterministic shortest resolved-import path from any detected entry to a module. */
-export function findEntryPath(modules: Module[], edges: Edge[], target: string): EntryPath | null {
+/** Find deterministic shortest resolved-import paths for several modules with one graph walk. */
+export function findEntryPaths(modules: Module[], edges: Edge[], targets: Iterable<string>): Map<string,EntryPath> {
+  const wanted=new Set(targets);
   const ids=new Set(modules.map(module=>module.id));
-  if(!ids.has(target))return null;
+  for(const id of [...wanted])if(!ids.has(id))wanted.delete(id);
+  if(!wanted.size)return new Map();
   const compare=(a:string,b:string)=>a<b?-1:a>b?1:0;
   const entries=modules.filter(module=>module.entry.length).map(module=>module.id).sort(compare);
-  if(!entries.length)return null;
+  if(!entries.length)return new Map();
   const adjacency=new Map(modules.map(module=>[module.id,[] as Edge[]]));
   for(const edge of edges)if(edge.resolution==='internal'&&ids.has(edge.source)&&ids.has(edge.target))adjacency.get(edge.source)!.push(edge);
   for(const outgoing of adjacency.values())outgoing.sort((a,b)=>compare(a.target,b.target)||a.line-b.line||compare(a.specifier,b.specifier));
@@ -46,16 +48,23 @@ export function findEntryPath(modules: Module[], edges: Edge[], target: string):
   const queue=[...entries];
   for(let index=0;index<queue.length;index++){
     const source=queue[index]!;
-    if(source===target){
-      const path:Edge[]=[];let cursor=target;
-      while(parent.has(cursor)){const edge=parent.get(cursor)!;path.push(edge);cursor=edge.source;}
-      path.reverse();return {entry:root.get(target)!,modules:[root.get(target)!,...path.map(edge=>edge.target)],edges:path};
-    }
     for(const edge of adjacency.get(source)??[])if(!visited.has(edge.target)){
       visited.add(edge.target);parent.set(edge.target,edge);root.set(edge.target,root.get(source)!);queue.push(edge.target);
     }
   }
-  return null;
+  const result=new Map<string,EntryPath>();
+  for(const target of wanted)if(visited.has(target)){
+    const path:Edge[]=[];let cursor=target;
+    while(parent.has(cursor)){const edge=parent.get(cursor)!;path.push(edge);cursor=edge.source;}
+    path.reverse();const entry=root.get(target)!;
+    result.set(target,{entry,modules:[entry,...path.map(edge=>edge.target)],edges:path});
+  }
+  return result;
+}
+
+/** Find a deterministic shortest resolved-import path from any detected entry to a module. */
+export function findEntryPath(modules: Module[], edges: Edge[], target: string): EntryPath | null {
+  return findEntryPaths(modules,edges,[target]).get(target)??null;
 }
 
 /** Return deterministic strongly connected groups that contain a real import cycle. */
