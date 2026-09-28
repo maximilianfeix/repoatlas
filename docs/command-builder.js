@@ -23,7 +23,7 @@ export function parseRepository(value) {
 
 export function createCommand(value) {
   const { owner, name } = parseRepository(value);
-  return `npx --yes --package=github:maximilianfeix/repoatlas#v2.29.0 -- repoatlas-cli 'https://github.com/${owner}/${name}' -o '${name}-architecture.html'`;
+  return `npx --yes --package=github:maximilianfeix/repoatlas#v2.30.0 -- repoatlas-cli 'https://github.com/${owner}/${name}' -o '${name}-architecture.html'`;
 }
 
 if (typeof document !== 'undefined') {
@@ -56,6 +56,20 @@ if (typeof document !== 'undefined') {
   const status = document.querySelector('#command-status');
   const copy = document.querySelector('#copy-command');
   const buildCli = document.querySelector('#build-cli-command');
+
+  const motionPreference = matchMedia('(prefers-reduced-motion: reduce)');
+  if (!motionPreference.matches && 'IntersectionObserver' in window) {
+    const targets = document.querySelectorAll('.showcase, main > .section');
+    const observer = new IntersectionObserver(entries => {
+      for (const entry of entries) {
+        if (!entry.isIntersecting) continue;
+        entry.target.classList.add('is-visible');
+        observer.unobserve(entry.target);
+      }
+    }, { rootMargin: '0px 0px -4% 0px', threshold: 0.04 });
+    for (const target of targets) observer.observe(target);
+    document.documentElement.classList.add('motion-ready');
+  }
 
   function updateCommand() {
     try {

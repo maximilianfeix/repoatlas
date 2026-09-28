@@ -10,7 +10,7 @@ test('repository input accepts canonical GitHub URLs, short names, and .git URLs
 });
 
 test('command output only contains validated owner and repository names', () => {
-  assert.equal(createCommand('https://github.com/honojs/hono'), "npx --yes --package=github:maximilianfeix/repoatlas#v2.29.0 -- repoatlas-cli 'https://github.com/honojs/hono' -o 'hono-architecture.html'");
+  assert.equal(createCommand('https://github.com/honojs/hono'), "npx --yes --package=github:maximilianfeix/repoatlas#v2.30.0 -- repoatlas-cli 'https://github.com/honojs/hono' -o 'hono-architecture.html'");
 });
 
 test('repository input rejects non-GitHub hosts, credentials, extra paths, and shell syntax', () => {
@@ -30,4 +30,16 @@ test('homepage makes browser analysis the URL form action and keeps CLI generati
   assert.match(html, /id="build-cli-command" class="button" type="button">Need a CLI command instead\?/);
   assert.match(html, /id="command-preview"[^>]*hidden/);
   assert.doesNotMatch(html, /id="browser-analyze"[^>]*type="button"/);
+});
+
+test('landing motion is progressive, scroll-triggered, and disabled for reduced-motion preferences', async () => {
+  const [html, script] = await Promise.all([
+    readFile(new URL('../docs/index.html', import.meta.url), 'utf8'),
+    readFile(new URL('../docs/command-builder.js', import.meta.url), 'utf8'),
+  ]);
+  assert.match(script, /matchMedia\('\(prefers-reduced-motion: reduce\)'\)/);
+  assert.match(script, /'IntersectionObserver' in window/);
+  assert.match(script, /observer\.unobserve\(entry\.target\)/);
+  assert.match(html, /html\.motion-ready \.showcase\.is-visible/);
+  assert.match(html, /@media\(prefers-reduced-motion:reduce\)[\s\S]*?html\.motion-ready \.showcase:not\(\.is-visible\)[\s\S]*?opacity:1/);
 });
