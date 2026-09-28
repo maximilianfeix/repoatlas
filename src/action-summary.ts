@@ -15,17 +15,18 @@ function commitLabel(value:string|undefined):string {
 /** Render a source-free GitHub job summary that points reviewers to the HTML diff. */
 export function renderActionSummary(comparison:AtlasComparison,artifactUrl:string):string {
   const artifact=validArtifactUrl(artifactUrl);
-  const modules=comparison.modules,dependencies=comparison.dependencies;
+  const modules=comparison.modules,dependencies=comparison.dependencies,exports=comparison.exports;
   return [
     '## RepoAtlas architecture change',
     '',
     `- **Modules:** +${modules.added.length} added · −${modules.removed.length} removed`,
     `- **Imports:** +${dependencies.added.length} added · −${dependencies.removed.length} removed · ${dependencies.changedSpecifier.length} changed specifiers`,
+    `- **Exports:** +${exports.added.length} added · −${exports.removed.length} removed · ${exports.unavailableModules.length} unavailable`,
     `- **Snapshots:** \`${commitLabel(comparison.base.commit)}\` → \`${commitLabel(comparison.head.commit)}\``,
     '',
     `[Download the interactive, source-linked HTML diff](<${artifact}>)`,
     '',
-    '> Counts describe resolved static source imports; they do not infer runtime behavior.',
+    '> Import counts describe resolved static source relationships, not runtime calls. Export counts describe syntax-level names, not type compatibility or semver safety.',
     '',
   ].join('\n');
 }

@@ -24,6 +24,16 @@ test('snapshot schema validation rejects fractional or negative source counts an
   }
 });
 
+test('snapshot comparison validates optional export metadata while older snapshots remain valid',()=>{
+  const base={schemaVersion:1,name:'Fixture',modules:[{id:'a.ts',group:'.',lines:3,entry:[],exports:[{name:'Thing',kind:'interface',line:2}]}],edges:[],warnings:[]};
+  assert.deepEqual(parseAtlas(base),base);
+  assert.deepEqual(parseAtlas({schemaVersion:1,name:'Old',modules:[{id:'a.ts',group:'.',lines:3,entry:[]}],edges:[],warnings:[]}).modules[0].exports,undefined);
+  for(const exports of [{},[{name:'Thing',kind:'method',line:2}],[{name:'Thing',kind:'interface',line:0}],[{name:'Thing',kind:'interface',line:2,source:3}]]){
+    const invalid=structuredClone(base);invalid.modules[0].exports=exports;
+    assert.throws(()=>parseAtlas(invalid),/malformed module record/);
+  }
+});
+
 test('snapshot parser and published schema accept additive computed-import and external dependency metadata',async()=>{
   const schema=JSON.parse(await readFile('schemas/snapshot.schema.json','utf8'));
   assert.deepEqual(schema.properties.edges.items.properties.externalKind.enum,['package','builtin','url','other']);

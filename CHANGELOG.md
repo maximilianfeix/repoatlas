@@ -1,5 +1,17 @@
 # Changelog
 
+## [2.14.0] - 2026-09-28
+
+### Added
+
+- Compare public TypeScript exports across snapshots and report added or removed names, aliases, and re-export targets with exact line links.
+- Include export-surface changes in JSON, text, and offline HTML reports, including CI-generated comparison artifacts.
+- Mark modules whose snapshots do not contain export metadata instead of inferring that no exports changed.
+
+### Quality
+
+- Ignore source line shifts when export identity is unchanged and test pinned base/head links, re-export changes, legacy snapshots, and safe HTML.
+
 ## [2.13.0] - 2026-09-28
 
 ### Added

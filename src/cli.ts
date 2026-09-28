@@ -88,12 +88,15 @@ program.command('compare').description('Compare two RepoAtlas JSON snapshots for
     process.stdout.write(`Architecture drift: ${comparison.base.name}${baseCommit} → ${comparison.head.name}${headCommit}\n`);
     process.stdout.write(`Modules: +${comparison.modules.added.length} added · −${comparison.modules.removed.length} removed\n`);
     process.stdout.write(`Dependencies: +${comparison.dependencies.added.length} added · −${comparison.dependencies.removed.length} removed · ${comparison.dependencies.changedSpecifier.length} changed specifiers\n`);
+    process.stdout.write(`Public exports: +${comparison.exports.added.length} added · −${comparison.exports.removed.length} removed · ${comparison.exports.unavailableModules.length} modules unavailable\n`);
     for(const id of comparison.modules.added.slice(0,20))process.stdout.write(`  + module ${id}\n`);
     for(const id of comparison.modules.removed.slice(0,20))process.stdout.write(`  − module ${id}\n`);
     for(const edge of comparison.dependencies.added.slice(0,20))process.stdout.write(`  + ${edge.source} → ${edge.target} (${edge.resolution})\n`);
     for(const edge of comparison.dependencies.removed.slice(0,20))process.stdout.write(`  − ${edge.source} → ${edge.target} (${edge.resolution})\n`);
     for(const change of comparison.dependencies.changedSpecifier.slice(0,20))process.stdout.write(`  ~ ${change.before.source}: ${change.before.specifier} → ${change.after.specifier}\n`);
-    const omitted=Math.max(0,comparison.modules.added.length-20)+Math.max(0,comparison.modules.removed.length-20)+Math.max(0,comparison.dependencies.added.length-20)+Math.max(0,comparison.dependencies.removed.length-20)+Math.max(0,comparison.dependencies.changedSpecifier.length-20);
+    for(const item of comparison.exports.added.slice(0,20))process.stdout.write(`  + export ${item.moduleId}:${item.line} ${item.name} (${item.kind})\n`);
+    for(const item of comparison.exports.removed.slice(0,20))process.stdout.write(`  − export ${item.moduleId}:${item.line} ${item.name} (${item.kind})\n`);
+    const omitted=Math.max(0,comparison.modules.added.length-20)+Math.max(0,comparison.modules.removed.length-20)+Math.max(0,comparison.dependencies.added.length-20)+Math.max(0,comparison.dependencies.removed.length-20)+Math.max(0,comparison.dependencies.changedSpecifier.length-20)+Math.max(0,comparison.exports.added.length-20)+Math.max(0,comparison.exports.removed.length-20);
     if(omitted)process.stdout.write(`  … ${omitted} more changes (use --json for the full report)\n`);
   });
 program.command('report').description('Export a text report, boundary SVG, or README architecture card')
