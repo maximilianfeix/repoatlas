@@ -1,5 +1,16 @@
 # Changelog
 
+## [2.21.0] - 2026-09-28
+
+### Improved
+
+- Draw the detected-entry path as a semantic route rail with distinct entry/change nodes and one exact source link per import hop.
+- Keep long-path omissions visible in sequence, preserve native disclosure and ordered-list navigation, and animate only when reduced motion is not requested.
+
+### Quality
+
+- Verify route order, base/head commit links, omitted-hop labels, responsive layout, and reduced-motion styling.
+
 ## [2.20.0] - 2026-09-28
 
 ### Added
