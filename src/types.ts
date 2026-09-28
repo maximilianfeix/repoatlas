@@ -11,6 +11,8 @@ export interface Edge {
   computed?: true;
   externalKind?: 'package' | 'builtin' | 'url' | 'other';
   externalName?: string;
+  /** Syntax-level named/default imports or re-exports from this edge's target. */
+  imports?: { name: string; localName: string }[];
 }
 export interface Atlas {
   schemaVersion: 1; name: string; repository?: string; commit?: string;

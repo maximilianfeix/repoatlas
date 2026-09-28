@@ -37,9 +37,10 @@ test('snapshot comparison validates optional export metadata while older snapsho
 test('snapshot parser and published schema accept additive computed-import and external dependency metadata',async()=>{
   const schema=JSON.parse(await readFile('schemas/snapshot.schema.json','utf8'));
   assert.deepEqual(schema.properties.edges.items.properties.externalKind.enum,['package','builtin','url','other']);
+  assert.deepEqual(schema.properties.edges.items.properties.imports.items.required,['name','localName']);
   assert.equal(schema.properties.edges.items.properties.computed.const,true);
   assert.deepEqual(schema.properties.modules.items.properties.exports.items.properties.kind.enum,['function','class','interface','type','variable','enum','namespace','re-export','re-export-all','assignment']);
-  const snapshot={schemaVersion:1,name:'Fixture',modules:[{id:'a.ts',group:'.',lines:1,entry:[],exports:[{name:'Thing',kind:'interface',line:1}]}],edges:[{source:'a.ts',target:'pkg',specifier:'pkg',kind:'import',line:1,code:"import 'pkg';",resolution:'external',externalKind:'package',externalName:'pkg'},{source:'a.ts',target:'name',specifier:'name',kind:'dynamic',line:1,code:'import(name)',resolution:'unresolved',computed:true}],warnings:[]};
+  const snapshot={schemaVersion:1,name:'Fixture',modules:[{id:'a.ts',group:'.',lines:1,entry:[],exports:[{name:'Thing',kind:'interface',line:1}]}],edges:[{source:'a.ts',target:'pkg',specifier:'pkg',kind:'import',line:1,code:"import 'pkg';",resolution:'external',externalKind:'package',externalName:'pkg'},{source:'a.ts',target:'b.ts',specifier:'./b',kind:'import',line:2,code:"import { Foo as Bar } from './b';",resolution:'internal',imports:[{name:'Foo',localName:'Bar'}]},{source:'a.ts',target:'name',specifier:'name',kind:'dynamic',line:1,code:'import(name)',resolution:'unresolved',computed:true}],warnings:[]};
   assert.deepEqual(parseAtlas(snapshot),snapshot);
 });
 

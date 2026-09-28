@@ -88,6 +88,7 @@ test('stdio MCP exposes deterministic architecture and exact import evidence', a
   const inspected = JSON.parse(byId(5).content[0].text);
   assert.equal(inspected.outgoing.evidence[0].target, 'src/util.ts');
   assert.equal(inspected.outgoing.evidence[0].line, 1);
+  assert.deepEqual(inspected.outgoing.evidence[0].imports,[{name:'helper',localName:'helper'}]);
   const search = JSON.parse(byId(6).content[0].text);
   assert.equal(search.total, 1);
   assert.equal(search.modules[0].id, 'src/util.ts');

@@ -90,3 +90,22 @@ export function visitModuleDependencies(compiler, source, onStatic, onComputed) 
     }
     visit(source);
 }
+/** Capture only explicit named/default bindings; namespace and computed access are intentionally omitted. */
+export function importedBindings(compiler, node) {
+    if (compiler.isImportDeclaration(node)) {
+        const clause = node.importClause;
+        if (!clause)
+            return [];
+        const result = [];
+        if (clause.name)
+            result.push({ name: 'default', localName: clause.name.text });
+        const bindings = clause.namedBindings;
+        if (bindings && compiler.isNamedImports(bindings))
+            for (const item of bindings.elements)
+                result.push({ name: item.propertyName?.text ?? item.name.text, localName: item.name.text });
+        return result;
+    }
+    if (compiler.isExportDeclaration(node) && node.moduleSpecifier && node.exportClause && compiler.isNamedExports(node.exportClause))
+        return node.exportClause.elements.map(item => ({ name: item.propertyName?.text ?? item.name.text, localName: item.name.text }));
+    return [];
+}

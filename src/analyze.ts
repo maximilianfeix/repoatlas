@@ -7,7 +7,7 @@ import { builtinModules } from 'node:module';
 import type { Atlas, Edge } from './types.js';
 import { collectExports } from './exports.js';
 import { activityCommitLimit, parseGitActivity } from './activity.js';
-import { visitModuleDependencies } from './syntax.js';
+import { importedBindings, visitModuleDependencies } from './syntax.js';
 
 const ignored = new Set(['node_modules', '.git', 'dist', 'build', 'coverage', '.next', '.turbo', 'vendor']);
 const typeScriptPattern = /\.(?:ts|tsx|mts|cts)$/;
@@ -275,7 +275,8 @@ export async function analyze(input: string, options: { includeTests?: boolean; 
       const line = sf.getLineAndCharacterOfPosition(node.getStart(sf)).line + 1;
       const end = sf.getLineAndCharacterOfPosition(node.end).line + 1;
       const dependency=resolution==='external'?externalDependency(specifier):undefined;
-      edges.push({source:id(file), target: internal ? id(target!) : specifier, specifier, kind, line, code:lines.slice(line-1, Math.min(end,line+7)).join('\n').slice(0,3000), url:url(file,line), resolution, ...(dependency?{externalKind:dependency.kind,externalName:dependency.name}:{})});
+      const imports=internal?importedBindings(ts,node):[];
+      edges.push({source:id(file), target: internal ? id(target!) : specifier, specifier, kind, line, code:lines.slice(line-1, Math.min(end,line+7)).join('\n').slice(0,3000), url:url(file,line), resolution, ...(imports.length?{imports}:{}), ...(dependency?{externalKind:dependency.kind,externalName:dependency.name}:{})});
     }
     function addComputed(expression: ts.Expression, node: ts.Node, kind: Edge['kind']) {
       const specifier = expression.getText(sf);

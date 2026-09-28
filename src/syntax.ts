@@ -70,3 +70,17 @@ export function visitModuleDependencies(compiler:Compiler,source:ts.SourceFile,o
   }
   visit(source);
 }
+
+/** Capture only explicit named/default bindings; namespace and computed access are intentionally omitted. */
+export function importedBindings(compiler:Compiler,node:ts.Node):{name:string;localName:string}[] {
+  if(compiler.isImportDeclaration(node)){
+    const clause=node.importClause;if(!clause)return [];
+    const result:{name:string;localName:string}[]=[];
+    if(clause.name)result.push({name:'default',localName:clause.name.text});
+    const bindings=clause.namedBindings;
+    if(bindings&&compiler.isNamedImports(bindings))for(const item of bindings.elements)result.push({name:item.propertyName?.text??item.name.text,localName:item.name.text});
+    return result;
+  }
+  if(compiler.isExportDeclaration(node)&&node.moduleSpecifier&&node.exportClause&&compiler.isNamedExports(node.exportClause))return node.exportClause.elements.map(item=>({name:item.propertyName?.text??item.name.text,localName:item.name.text}));
+  return [];
+}
