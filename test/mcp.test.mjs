@@ -61,6 +61,7 @@ test('stdio MCP exposes deterministic architecture and exact import evidence', a
     request(9, 'tools/call', { name: 'module_context', arguments: { moduleId: 'src/missing.ts' } }),
     request(13, 'tools/call', { name: 'search_exports', arguments: { query: 'variable', limit: 1 } }),
     request(14, 'tools/call', { name: 'module_context', arguments: { moduleId: 'src/index.ts', limit: 1 } }),
+    request(15, 'tools/call', { name: 'search_imports', arguments: { query: 'helper', limit: 1 } }),
   ];
   for (const message of protocolMessages) await send(message);
   await writeFile(path.join(project, 'src/new.ts'), 'export const next = true;\n');
@@ -76,7 +77,7 @@ test('stdio MCP exposes deterministic architecture and exact import evidence', a
   const byId = id => responses.get(id)?.result;
   assert.ok(byId(1)?.serverInfo?.name === 'repoatlas');
   const toolNames = byId(2)?.tools?.map(tool => tool.name);
-  assert.deepEqual(toolNames, ['architecture_summary', 'search_modules', 'search_exports', 'inspect_module', 'module_context', 'trace_entry_path', 'refresh_analysis']);
+  assert.deepEqual(toolNames, ['architecture_summary', 'search_modules', 'search_exports', 'search_imports', 'inspect_module', 'module_context', 'trace_entry_path', 'refresh_analysis']);
   assert.ok(byId(2).tools.every(tool => tool.annotations?.readOnlyHint && tool.annotations?.openWorldHint === false));
   const summary = JSON.parse(byId(3).content[0].text);
   assert.equal(summary.modules, 3);
@@ -111,6 +112,9 @@ test('stdio MCP exposes deterministic architecture and exact import evidence', a
   const indexContext=JSON.parse(byId(14).content[0].text);
   assert.equal(indexContext.exports.available,true);assert.equal(indexContext.exports.total,1);
   assert.equal(indexContext.exports.items[0].name,'app');assert.equal(indexContext.exports.items[0].line,2);
+  const importSearch=JSON.parse(byId(15).content[0].text);
+  assert.equal(importSearch.total,2);assert.equal(importSearch.items.length,1);assert.equal(importSearch.truncated,true);
+  assert.deepEqual([importSearch.items[0].sourceModule,importSearch.items[0].targetModule,importSearch.items[0].name,importSearch.items[0].line],['src/index.ts','src/util.ts','helper',1]);
   assert.ok(byId(10), `refresh MCP response was missing or errored: ${JSON.stringify(responses)}`);
   const refreshed = JSON.parse(byId(10).content[0].text);
   assert.equal(refreshed.modules, 4);

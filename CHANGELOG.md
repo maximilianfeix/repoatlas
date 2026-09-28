@@ -1,5 +1,17 @@
 # Changelog
 
+## [2.18.0] - 2026-09-28
+
+### Added
+
+- Search interactive maps by statically imported TypeScript names and local aliases, and show the exact import line beside matching modules.
+- Add bounded MCP `search_imports` results for direct named/default imports and re-exports with resolved target modules.
+- Keep namespace access, computed imports, and function call sites outside the symbol-search claim.
+
+### Quality
+
+- Test imported names, aliases, exact source records, external-edge exclusion, and MCP truncation.
+
 ## [2.17.0] - 2026-09-28
 
 ### Improved
