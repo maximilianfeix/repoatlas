@@ -119,9 +119,10 @@ program.command('report').description('Export a text report, boundary SVG, or RE
       process.stdout.write(`Report saved: ${output}\n`);
     }else process.stdout.write(content);
   });
-program.command('check').description('Fail CI when configured architecture rules are violated')
+program.command('check').description('Fail CI when configured architecture rules are violated or worsened from a baseline')
   .argument('<snapshot>', 'RepoAtlas JSON snapshot')
   .requiredOption('-c, --config <file>', 'JSON architecture rules configuration')
+  .option('--baseline <snapshot>', 'ignore configured violations already present in a baseline snapshot')
   .option('--json', 'emit machine-readable results')
   .option('--format <format>', 'text, json, or GitHub Actions annotations', 'text')
   .action(async (snapshotFile:string,opts) => {
@@ -130,7 +131,8 @@ program.command('check').description('Fail CI when configured architecture rules
     try{configText=await readFile(path.resolve(opts.config),'utf8');}catch{throw new Error(`Could not read config file: ${opts.config}`);}
     let configValue:unknown;
     try{configValue=JSON.parse(configText);}catch{throw new Error(`Config is not valid JSON: ${opts.config}`);}
-    const result=checkArchitecture(await loadSnapshot(snapshotFile),parseArchitectureConfig(configValue));
+    const [snapshot,baseline]=await Promise.all([loadSnapshot(snapshotFile),opts.baseline?loadSnapshot(opts.baseline):Promise.resolve(undefined)]);
+    const result=checkArchitecture(snapshot,parseArchitectureConfig(configValue),baseline);
     const json=opts.json||program.opts().json||process.argv.includes('--json');
     if(json&&opts.format!=='text')throw new Error('Choose either --json or --format, not both.');
     if(json||opts.format==='json')process.stdout.write(JSON.stringify(result,null,2)+'\n');

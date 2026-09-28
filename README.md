@@ -69,14 +69,14 @@ Want to explore before installing? [Paste a public TypeScript repository or choo
 For a versioned command-line run, install nothing globally. The CLI requires **Node.js 22 or later** and **Git**. Point it at a public GitHub repository:
 
 ```sh
-npx --yes --package=github:maximilianfeix/repoatlas#v2.21.0 -- \
+npx --yes --package=github:maximilianfeix/repoatlas#v2.22.0 -- \
   repoatlas-cli https://github.com/pmndrs/zustand --out zustand-map.html
 ```
 
 Open `zustand-map.html` in your browser. Search by module path or public export, then select a result to inspect its exact source evidence. RepoAtlas also analyzes a local checkout:
 
 ```sh
-npx --yes --package=github:maximilianfeix/repoatlas#v2.21.0 -- \
+npx --yes --package=github:maximilianfeix/repoatlas#v2.22.0 -- \
   repoatlas-cli ./my-project --out architecture.html
 ```
 
@@ -110,7 +110,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: maximilianfeix/repoatlas@v2.21.0
+      - uses: maximilianfeix/repoatlas@v2.22.0
         with:
           output: repoatlas-map.html
 ```
@@ -127,7 +127,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: maximilianfeix/repoatlas@v2.21.0
+      - uses: maximilianfeix/repoatlas@v2.22.0
         with:
           compare-to: ${{ github.event.pull_request.base.sha }}
           output: architecture-diff.html
@@ -149,7 +149,7 @@ Add this server entry to an MCP client configuration and replace the project pat
       "command": "npx",
       "args": [
         "--yes",
-        "--package=github:maximilianfeix/repoatlas#v2.21.0",
+        "--package=github:maximilianfeix/repoatlas#v2.22.0",
         "repoatlas-cli",
         "mcp",
         "/absolute/path/to/project"
@@ -233,7 +233,7 @@ The RepoAtlas comparison uses real snapshots from [v1.10.0](https://github.com/m
   </tr>
   <tr>
     <td width="50%" valign="top"><strong>Catch architecture drift</strong><br>Compare JSON snapshots to find changed modules, dependencies, and import specifiers. Export the comparison as a searchable standalone HTML report with source links. Formatting and line shifts alone do not count as drift.</td>
-    <td width="50%" valign="top"><strong>Set rules for CI</strong><br>Fail builds on forbidden boundaries, dependency cycles, or unreachable-module limits. Reports include the source file and line.</td>
+    <td width="50%" valign="top"><strong>Set rules for CI</strong><br>Fail builds on new forbidden boundaries, dependency cycles, or unreachable modules. Compare to a baseline to adopt rules gradually; reports include exact source lines.</td>
     <td width="50%" valign="top"><strong>Share a portable map</strong><br>Export one offline HTML file, the full JSON snapshot, a boundary SVG, or a concise CI report. The viewer makes no network requests.</td>
   </tr>
 </table>
@@ -284,12 +284,23 @@ Save rules in `repoatlas.config.json`:
 }
 ```
 
-Then generate and check a snapshot:
+Then generate and check a snapshot. Without a baseline, thresholds apply to the complete snapshot:
 
 ```sh
 repoatlas ./my-project --json > atlas.json
 repoatlas check atlas.json --config repoatlas.config.json --format github
 ```
+
+To adopt rules in a repository with existing debt, save a known-good snapshot once and compare each new snapshot against it:
+
+```sh
+repoatlas ./my-project --json > baseline.json
+# Later, in CI, generate the current snapshot and check only new violations.
+repoatlas ./my-project --json > head.json
+repoatlas check head.json --baseline baseline.json --config repoatlas.config.json --format github
+```
+
+Baseline mode ignores forbidden imports already present, cycle groups already present, and modules already outside detected entry paths. The cycle and unreachable limits cap newly added groups or modules; existing debt remains visible in the text/JSON baseline summary. If the baseline has no detected entries, the unreachable-module comparison is unknown and never claims new orphan violations. Keep the baseline under review like other architecture policy files.
 
 Boundary IDs use `package:<workspace path>` for declared workspace packages and `directory:<top-level source folder>` otherwise. If no entry point is detected, reachability remains unknown and does not fail the unreachable-module limit. Run `repoatlas check --help` for output formats; snapshot compatibility is documented in [`SCHEMA.md`](SCHEMA.md).
 
