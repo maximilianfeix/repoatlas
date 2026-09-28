@@ -18,7 +18,7 @@
   <a href="#github-actions"><img src="https://img.shields.io/badge/ADD%20TO%20CI-92EDC7?style=for-the-badge&logo=githubactions&logoColor=0B0E14&labelColor=0B0E14" alt="Jump to GitHub Actions"></a>
 </p>
 
-<p align="center"><a href="#quickstart">Quickstart</a> &nbsp;·&nbsp; <a href="#what-the-map-shows">What you can explore</a> &nbsp;·&nbsp; <a href="#features">Features</a> &nbsp;·&nbsp; <a href="#scope-and-privacy">Scope &amp; privacy</a></p>
+<p align="center"><a href="#quickstart">Quickstart</a> &nbsp;·&nbsp; <a href="#what-the-map-shows">What you can explore</a> &nbsp;·&nbsp; <a href="#mcp-server">Coding agents</a> &nbsp;·&nbsp; <a href="#scope-and-privacy">Scope &amp; privacy</a></p>
 
 <details>
   <summary><strong>Contents</strong></summary>
@@ -26,6 +26,7 @@
 - [See the map](#a-real-map-not-a-mockup)
 - [Quickstart](#quickstart)
 - [GitHub Actions](#github-actions)
+- [MCP server](#mcp-server)
 - [What the map shows](#what-the-map-shows)
 - [Features](#features)
 - [Compare snapshots](#compare-snapshots)
@@ -64,18 +65,18 @@ RepoAtlas turns a TypeScript repository into a map you can investigate. Follow a
 Requires **Node.js 22 or later** and **Git**. Point RepoAtlas at a public GitHub repository:
 
 ```sh
-npx --yes --package=github:maximilianfeix/repoatlas#v2.1.0 -- \
-  repoatlas https://github.com/pmndrs/zustand --out zustand-map.html
+npx --yes --package=github:maximilianfeix/repoatlas#v2.2.0 -- \
+  repoatlas-cli https://github.com/pmndrs/zustand --out zustand-map.html
 ```
 
 Open `zustand-map.html` in your browser. RepoAtlas also analyzes a local checkout:
 
 ```sh
-npx --yes --package=github:maximilianfeix/repoatlas#v2.1.0 -- \
-  repoatlas ./my-project --out architecture.html
+npx --yes --package=github:maximilianfeix/repoatlas#v2.2.0 -- \
+  repoatlas-cli ./my-project --out architecture.html
 ```
 
-It downloads the versioned CLI from GitHub. No global install, API key, or token for a public repository is needed.
+It downloads the versioned CLI from GitHub. The `repoatlas-cli` alias ensures `npx` uses the selected release even when another `repoatlas` is installed globally. No global install, API key, or token for a public repository is needed.
 Each GitHub release also includes an installable `.tgz` package for direct downloads or private registries.
 
 ## GitHub Actions
@@ -92,7 +93,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: maximilianfeix/repoatlas@v2.1.0
+      - uses: maximilianfeix/repoatlas@v2.2.0
         with:
           output: repoatlas-map.html
 ```
@@ -109,7 +110,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: maximilianfeix/repoatlas@v2.1.0
+      - uses: maximilianfeix/repoatlas@v2.2.0
         with:
           compare-to: ${{ github.event.pull_request.base.sha }}
           output: architecture-diff.html
@@ -117,6 +118,31 @@ jobs:
 ```
 
 Download `architecture-diff` from the workflow run to explore added and removed modules and imports; each edge links to the exact base or head source line. The action accepts `path`, `compare-to`, `artifact-name`, `retention-days`, `include-tests`, and `include-js`. It needs read-only repository access and no token input. Maps and diffs include project paths and source snippets, so restrict artifacts from private repositories.
+
+## MCP server
+
+Give a coding agent a local architecture map it can query while it works. RepoAtlas exposes deterministic tools over MCP stdio; the server does not send source to a hosted service, write to the repository, or make network requests after launch. Your MCP client sends returned context to the model provider configured for that client.
+
+Add this server entry to an MCP client configuration and replace the project path with an absolute path:
+
+```json
+{
+  "mcpServers": {
+    "repoatlas": {
+      "command": "npx",
+      "args": [
+        "--yes",
+        "--package=github:maximilianfeix/repoatlas#v2.2.0",
+        "repoatlas-cli",
+        "mcp",
+        "/absolute/path/to/project"
+      ]
+    }
+  }
+}
+```
+
+The tools summarize the architecture, search modules, inspect direct import evidence, trace a module from a detected entry, and refresh the analysis after edits. Every reported edge includes its exact source line; no runtime call graph or inferred import target is claimed. The server requires Node.js 22 or later and analyzes TypeScript by default. Use `--include-js` or `--include-tests` after `mcp` to opt in to those files.
 
 ## What the map shows
 

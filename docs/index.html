@@ -35,7 +35,7 @@
 <header class="wrap topbar">
   <a class="brand" href="./" aria-label="RepoAtlas home"><img src="assets/repoatlas-mark.svg" alt="">RepoAtlas</a>
   <div class="nav-actions">
-    <nav class="navlinks" aria-label="Sections"><a href="#map">The map</a><a href="#examples">Examples</a><a href="#make-a-map">Make a map</a></nav>
+    <nav class="navlinks" aria-label="Sections"><a href="#map">The map</a><a href="#examples">Examples</a><a href="#make-a-map">Make a map</a><a href="#mcp">For agents</a></nav>
     <button class="theme-toggle" id="theme-toggle" type="button" aria-label="Switch to dark theme" aria-pressed="false"><span class="toggle-knob" aria-hidden="true">☾</span></button>
     <a class="github-link" href="https://github.com/maximilianfeix/repoatlas" aria-label="RepoAtlas on GitHub">GitHub ↗</a>
   </div>
@@ -83,15 +83,22 @@
       <article class="feature-row"><h3>Find your way in</h3><p>Explore detected entries, shortest paths, cycles, reachability, external packages, and change impact.</p></article>
       <article class="feature-row"><h3>See project boundaries</h3><p>Start with a ranked package overview, drill into a workspace, or open an import count to inspect every contributing source line.</p></article>
       <article class="feature-row"><h3>Review architecture drift in pull requests</h3><p>Generate a downloadable HTML diff from the base commit and PR revision. Every changed import links to its exact source line; the workflow needs read-only access.</p></article>
+      <article class="feature-row"><h3>Give coding agents grounded context</h3><p>Connect over MCP to search modules, inspect direct imports, and trace a detected entry path. Results stay local and include source-line evidence.</p></article>
       <article class="feature-row"><h3>Keep it portable</h3><p>Share one offline HTML map, an architecture diff, a boundary SVG, or enforced rules in GitHub Actions.</p></article>
     </div>
+  </section>
+
+  <section id="mcp" class="section workflow" aria-labelledby="mcp-title">
+    <div><div class="kicker">For coding agents</div><h2 id="mcp-title">Architecture context with receipts.</h2><p>RepoAtlas serves a read-only TypeScript map over local MCP stdio. Agents can search modules, trace an entry path, and inspect the imports behind an answer.</p><a href="https://github.com/maximilianfeix/repoatlas#mcp-server">Connect an MCP client →</a></div>
+    <pre class="code-sample"><code><span class="comment"># Local process · read-only · no RepoAtlas credentials</span>
+npx --yes --package=github:maximilianfeix/repoatlas#v2.2.0 repoatlas-cli mcp /path/to/project</code></pre>
   </section>
 
   <section id="github-actions" class="section workflow" aria-labelledby="workflow-title">
     <div><div class="kicker">In your workflow</div><h2 id="workflow-title">Review the shape of every change.</h2><p>Build an architecture diff for a pull request, then follow each changed import to the exact base or head source line. RepoAtlas needs read-only access.</p><a href="https://github.com/maximilianfeix/repoatlas#github-actions">See the complete GitHub Actions setup →</a></div>
     <pre class="code-sample"><code><span class="comment"># .github/workflows/architecture.yml</span>
 - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 <span class="comment"># v7.0.1</span>
-<span class="mark">- uses:</span> maximilianfeix/repoatlas@v2.1.0
+<span class="mark">- uses:</span> maximilianfeix/repoatlas@v2.2.0
   with:
     compare-to: ${{ github.event.pull_request.base.sha }}
     output: architecture-diff.html
