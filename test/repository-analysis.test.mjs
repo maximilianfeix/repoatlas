@@ -136,4 +136,6 @@ test('local folder limits are checked before reading selected files',async()=>{
   await assert.rejects(()=>analyzeLocalRepositoryFiles(many,{compiler:ts}),/capped at 1,200/);
   const tooLarge=Array.from({length:27},(_,index)=>fake(`src/file-${index}.ts`,999_999));
   await assert.rejects(()=>analyzeLocalRepositoryFiles(tooLarge,{compiler:ts}),/25 MB browser source limit/);
+  const controller=new AbortController();controller.abort(new DOMException('Canceled by user','AbortError'));
+  await assert.rejects(()=>analyzeLocalRepositoryFiles([fake('src/index.ts',10)],{compiler:ts,signal:controller.signal}),/Canceled by user/);
 });
