@@ -3,6 +3,7 @@ import { serveStdio } from '@modelcontextprotocol/server/stdio';
 import * as z from 'zod/v4';
 import { analyze } from './analyze.js';
 import { analyzeReachability, findCycles, findEntryPath } from './insights.js';
+import { searchImports } from './search.js';
 import type { Edge } from './types.js';
 
 function result(value: unknown) {
@@ -81,6 +82,16 @@ export async function runMcpServer(root: string, version: string, options: { inc
         .map(item => ({ moduleId: module.id, ...item, ...(module.url ? { url: `${module.url.replace(/#L\d+$/, '')}#L${item.line}` } : {}) }));
     }).sort((a, b) => a.moduleId.localeCompare(b.moduleId) || a.line - b.line || a.name.localeCompare(b.name));
     return result({ query, total: matches.length, items: matches.slice(0, limit), truncated: matches.length > limit });
+  });
+
+  server.registerTool('search_imports', {
+    title: 'Search imported TypeScript symbols',
+    description: 'Find explicit named/default static imports and re-exports by imported name or local alias, with the exact importer line. Namespace access, computed imports, and call sites are not inferred.',
+    annotations: { readOnlyHint: true, openWorldHint: false },
+    inputSchema: z.object({ query: z.string().trim().min(1).max(200), limit: z.number().int().min(1).max(100).default(20) }),
+  }, async ({ query, limit }) => {
+    const matches = searchImports(atlas.edges,query).sort((a,b)=>a.edge.source.localeCompare(b.edge.source)||a.edge.line-b.edge.line||a.importedName.localeCompare(b.importedName));
+    return result({ query, total: matches.length, items: matches.slice(0,limit).map(({edge,importedName,localName})=>({sourceModule:edge.source,targetModule:edge.target,name:importedName,localName,kind:edge.kind,specifier:edge.specifier,line:edge.line,...(edge.url?{url:edge.url}:{})})), truncated: matches.length>limit });
   });
 
   server.registerTool('inspect_module', {

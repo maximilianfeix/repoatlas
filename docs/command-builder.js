@@ -23,7 +23,7 @@ export function parseRepository(value) {
 
 export function createCommand(value) {
   const { owner, name } = parseRepository(value);
-  return `npx --yes --package=github:maximilianfeix/repoatlas#v2.17.0 -- repoatlas-cli 'https://github.com/${owner}/${name}' -o '${name}-architecture.html'`;
+  return `npx --yes --package=github:maximilianfeix/repoatlas#v2.18.0 -- repoatlas-cli 'https://github.com/${owner}/${name}' -o '${name}-architecture.html'`;
 }
 
 if (typeof document !== 'undefined') {

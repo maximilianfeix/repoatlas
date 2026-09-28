@@ -90,19 +90,19 @@
   <section id="checks" class="section" aria-labelledby="checks-title">
     <div class="section-heading"><div><div class="kicker">What you can check</div><h2 id="checks-title">A map with receipts.</h2></div><p>Static evidence from the files in the repository. Runtime behavior stays out of scope.</p></div>
     <div class="features">
-      <article class="feature-row"><h3>Follow an export to its import sites</h3><p>Search the map by exported name, then inspect paginated direct named/default imports and re-exports with source-line evidence.</p></article>
+      <article class="feature-row"><h3>Find a module, export, or import</h3><p>Search the map by path, exported name, imported name, or local alias. Matching bindings and their source lines appear with each module.</p></article>
       <article class="feature-row"><h3>Find your way in</h3><p>Walk from a detected entry through each import, with the exact source line highlighted at every stop. Explore reachability, cycles, external packages, and change impact.</p></article>
       <article class="feature-row"><h3>See project boundaries</h3><p>Resolve declared npm, Yarn, and pnpm workspaces through package exports. Start with a ranked package overview, drill in, or inspect each contributing source line.</p></article>
       <article class="feature-row"><h3>See active hotspots</h3><p>Opt into a bounded Git history window to compare committed change activity across modules. RepoAtlas shows the period, per-file counts, and last changed date without assigning a quality or risk score.</p></article>
       <article class="feature-row"><h3>Review architecture drift in pull requests</h3><p>Generate a downloadable HTML diff from the base commit and PR revision. Changed imports and public exports link to their exact source lines; the workflow needs read-only access.</p></article>
-      <article class="feature-row"><h3>Give coding agents grounded context</h3><p>Connect over MCP to search modules and public exports, or get bounded imports, exports, and an entry path for one module. Every result links back to its source line; analysis stays local.</p></article>
+      <article class="feature-row"><h3>Give coding agents grounded context</h3><p>Connect over MCP to search modules, public exports, or imported names and aliases, or get bounded module evidence and an entry path. Results include exact source lines; analysis stays local.</p></article>
       <article class="feature-row"><h3>Keep a snapshot in your README</h3><p>Export a small, deterministic SVG card with module, entry-point, import, and cycle counts. A pinned workflow can propose refreshes as pull requests.</p></article>
       <article class="feature-row"><h3>Keep it portable</h3><p>Share one offline HTML map, an architecture diff, a boundary matrix, or enforced rules in GitHub Actions.</p></article>
     </div>
   </section>
 
   <section id="mcp" class="section workflow" aria-labelledby="mcp-title">
-    <div><div class="kicker">For coding agents</div><h2 id="mcp-title">Architecture context with receipts.</h2><p>Install the RepoAtlas skill in Codex or another supported agent, then connect the local MCP server for reusable, read-only architecture context. Agents can search module names or public exports, then fetch imports, exports, and a detected-entry path together with `module_context`.</p><a href="https://github.com/maximilianfeix/repoatlas#mcp-server">MCP setup and agent skill →</a></div>
+    <div><div class="kicker">For coding agents</div><h2 id="mcp-title">Architecture context with receipts.</h2><p>Install the RepoAtlas skill in Codex or another supported agent, then connect the local MCP server for reusable, read-only architecture context. Agents can search module names, public exports, or imported names, then fetch imports, exports, and a detected-entry path together with `module_context`.</p><a href="https://github.com/maximilianfeix/repoatlas#mcp-server">MCP setup and agent skill →</a></div>
     <pre class="code-sample"><code><span class="comment"># Agent skill · no project files written</span>
 npx skills add maximilianfeix/repoatlas --skill repoatlas --agent codex --yes
 
