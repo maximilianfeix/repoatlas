@@ -69,14 +69,14 @@ Want to explore before installing? [Paste a public TypeScript repository or choo
 For a versioned command-line run, install nothing globally. The CLI requires **Node.js 22 or later** and **Git**. Point it at a public GitHub repository:
 
 ```sh
-npx --yes --package=github:maximilianfeix/repoatlas#v2.18.0 -- \
+npx --yes --package=github:maximilianfeix/repoatlas#v2.19.0 -- \
   repoatlas-cli https://github.com/pmndrs/zustand --out zustand-map.html
 ```
 
 Open `zustand-map.html` in your browser. Search by module path or public export, then select a result to inspect its exact source evidence. RepoAtlas also analyzes a local checkout:
 
 ```sh
-npx --yes --package=github:maximilianfeix/repoatlas#v2.18.0 -- \
+npx --yes --package=github:maximilianfeix/repoatlas#v2.19.0 -- \
   repoatlas-cli ./my-project --out architecture.html
 ```
 
@@ -110,12 +110,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: maximilianfeix/repoatlas@v2.18.0
+      - uses: maximilianfeix/repoatlas@v2.19.0
         with:
           output: repoatlas-map.html
 ```
 
-For pull requests, set `compare-to` to the base commit SHA to make the artifact a source-linked architecture diff. RepoAtlas adds module, import, and export counts with a direct artifact link to the GitHub Actions job summary. Export changes describe file-level TypeScript syntax, not package entry-point accessibility or type compatibility. This uses only `contents: read`; it does not post a comment or need a write token.
+For pull requests, set `compare-to` to the base commit SHA to make the artifact a source-linked architecture diff. RepoAtlas adds module, import, named/default binding, and export counts with a direct artifact link to the GitHub Actions job summary. Binding changes describe explicit TypeScript import syntax, not function calls or runtime behavior; export changes do not establish package entry-point accessibility or type compatibility. This uses only `contents: read`; it does not post a comment or need a write token.
 
 ```yaml
 name: Architecture review
@@ -127,14 +127,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: maximilianfeix/repoatlas@v2.18.0
+      - uses: maximilianfeix/repoatlas@v2.19.0
         with:
           compare-to: ${{ github.event.pull_request.base.sha }}
           output: architecture-diff.html
           artifact-name: architecture-diff
 ```
 
-Download `architecture-diff` from the workflow run to explore added and removed modules, imports, and public exports; each source link points to the exact base or head line. The export report tracks syntax-level names and aliases, not TypeScript assignability or semver safety. The action accepts `path`, `compare-to`, `artifact-name`, `retention-days`, `include-tests`, and `include-js`. It needs read-only repository access and no token input. Maps and diffs include project paths and source snippets, so restrict artifacts from private repositories.
+Download `architecture-diff` from the workflow run to explore added and removed modules, imports, imported names, and public exports; each source link points to the exact base or head line. Older snapshots without binding or export indexes are marked unavailable instead of being treated as unchanged. These reports track syntax-level names and aliases, not runtime calls, TypeScript assignability, or semver safety. The action accepts `path`, `compare-to`, `artifact-name`, `retention-days`, `include-tests`, and `include-js`. It needs read-only repository access and no token input. Maps and diffs include project paths and source snippets, so restrict artifacts from private repositories.
 
 ## MCP server
 
@@ -149,7 +149,7 @@ Add this server entry to an MCP client configuration and replace the project pat
       "command": "npx",
       "args": [
         "--yes",
-        "--package=github:maximilianfeix/repoatlas#v2.18.0",
+        "--package=github:maximilianfeix/repoatlas#v2.19.0",
         "repoatlas-cli",
         "mcp",
         "/absolute/path/to/project"
@@ -259,7 +259,10 @@ repoatlas compare before.json after.json
 repoatlas compare before.json after.json --format html --output architecture-diff.html
 ```
 
-Open `architecture-diff.html` to filter added, removed, and changed relationships, search paths or imports, and expand each dependency to its source line in both snapshots. The report also tracks added or removed file-level TypeScript exports and links to their exact lines. It does not infer package entry-point accessibility or semantic type compatibility; snapshots without export metadata are called out as unavailable. The report is a single offline file.
+Open `architecture-diff.html` to filter added, removed, and changed relationships, search paths or imports, and expand each dependency to its source line in both snapshots. The report tracks file-level TypeScript exports and explicit named/default import bindings, including renamed aliases, with exact lines. Older snapshots without either index are marked unavailable. These are syntax changes, not runtime calls or semantic type compatibility; the report is a single offline file.
+
+<p align="center"><img src="docs/assets/import-binding-diff-preview.png" alt="Offline architecture diff filtered to an added imported name, with the exact source module and line" width="100%"></p>
+<p align="center"><sub>Illustrative comparison using sample snapshots. Real reports link directly to the corresponding commit-pinned source lines.</sub></p>
 
 The [v2.12 → v2.13 comparison example](https://maximilianfeix.github.io/repoatlas/examples/repoatlas-v2.12-to-v2.13.html) shows a real source change with export evidence.
 

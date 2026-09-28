@@ -24,6 +24,12 @@ test('snapshot schema validation rejects fractional or negative source counts an
   }
 });
 
+test('snapshot schema exposes the explicit import binding index version',async()=>{
+  const schema=JSON.parse(await readFile('schemas/snapshot.schema.json','utf8'));
+  assert.deepEqual(schema.properties.importBindingsVersion,{const:1});
+  assert.throws(()=>parseAtlas({schemaVersion:1,importBindingsVersion:2,name:'Bad',modules:[],edges:[],warnings:[]}),/import binding index version/);
+});
+
 test('snapshot comparison validates optional export metadata while older snapshots remain valid',()=>{
   const base={schemaVersion:1,name:'Fixture',modules:[{id:'a.ts',group:'.',lines:3,entry:[],exports:[{name:'Thing',kind:'interface',line:2}]}],edges:[],warnings:[]};
   assert.deepEqual(parseAtlas(base),base);

@@ -290,5 +290,5 @@ export async function analyze(input: string, options: { includeTests?: boolean; 
   const unresolved = edges.filter(e => e.resolution === 'unresolved').length;
   if (unresolved) warnings.push(`${unresolved} imports could not be mapped to included source files. See the dependency inspector.`);
   if (computedImportCount) warnings.push(`${computedImportCount} computed import expression${computedImportCount === 1 ? '' : 's'} shown as unresolved evidence; targets are not inferred.`);
-  return {schemaVersion:1, name: repository?.split('/').slice(-2).join('/') || path.basename(root), repository, commit,...(activity?{activity}:{}), modules, edges, warnings};
+  return {schemaVersion:1, importBindingsVersion:1, name: repository?.split('/').slice(-2).join('/') || path.basename(root), repository, commit,...(activity?{activity}:{}), modules, edges, warnings};
 }

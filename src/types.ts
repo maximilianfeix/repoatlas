@@ -16,6 +16,8 @@ export interface Edge {
 }
 export interface Atlas {
   schemaVersion: 1; name: string; repository?: string; commit?: string;
+  /** Marks snapshots that index explicit named/default import bindings. */
+  importBindingsVersion?: 1;
   activity?: { days: number; commitsScanned: number; truncated: boolean; shallow: boolean };
   modules: Module[]; edges: Edge[]; warnings: string[];
 }

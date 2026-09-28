@@ -8,7 +8,7 @@ import { readFileSync } from 'node:fs';
 import { compareAtlases, parseAtlas } from '../dist/compare.js';
 import { renderComparisonHtml } from '../dist/compare-render.js';
 
-const atlas=(modules,edges,commit='')=>({schemaVersion:1,name:'demo',repository:'https://github.com/example/demo',...(commit?{commit}:{}),modules:modules.map(id=>({id,group:id.split('/').slice(0,-1).join('/')||'.',lines:4,entry:id==='src/main.ts'?['filename convention']:[]})),edges,warnings:[]});
+const atlas=(modules,edges,commit='')=>({schemaVersion:1,importBindingsVersion:1,name:'demo',repository:'https://github.com/example/demo',...(commit?{commit}:{}),modules:modules.map(id=>({id,group:id.split('/').slice(0,-1).join('/')||'.',lines:4,entry:id==='src/main.ts'?['filename convention']:[]})),edges,warnings:[]});
 const edge=(source,target,specifier,extra={})=>({source,target,specifier,kind:'import',line:1,code:`import '${specifier}';`,resolution:'internal',...extra});
 
 test('compares stable module and dependency relationships and reports specifier changes separately',()=>{
@@ -40,6 +40,23 @@ test('ignores line and code shifts when the dependency relationship is unchanged
   const before=atlas(['a.ts','b.ts'],[edge('a.ts','b.ts','./b',{line:3,code:"import './b';"})]);
   const after=atlas(['a.ts','b.ts'],[edge('a.ts','b.ts','./b',{line:30,code:"import { b } from './b';"})]);
   assert.deepEqual(compareAtlases(before,after).dependencies,{added:[],removed:[],changedSpecifier:[]});
+});
+
+test('compares named/default import binding changes on shared edges and ignores line shifts',()=>{
+  const before=atlas(['src/app.ts','src/api.ts'],[edge('src/app.ts','src/api.ts','./api',{line:4,url:'https://github.com/example/demo/blob/base/src/app.ts#L4',imports:[{name:'oldName',localName:'run'},{name:'keep',localName:'keep'}]})]);
+  const after=atlas(['src/app.ts','src/api.ts'],[edge('src/app.ts','src/api.ts','./api',{line:40,url:'https://github.com/example/demo/blob/head/src/app.ts#L40',imports:[{name:'newName',localName:'run'},{name:'keep',localName:'keep'}]})]);
+  const diff=compareAtlases(before,after);
+  assert.deepEqual(diff.importBindings.unavailableSnapshots,[]);
+  assert.deepEqual(diff.importBindings.added.map(item=>[item.name,item.localName,item.line,item.url]),[['newName','run',40,'https://github.com/example/demo/blob/head/src/app.ts#L40']]);
+  assert.deepEqual(diff.importBindings.removed.map(item=>[item.name,item.localName,item.line]),[['oldName','run',4]]);
+});
+
+test('reports legacy binding metadata as unavailable and does not infer changes',()=>{
+  const before=atlas(['a.ts','b.ts'],[edge('a.ts','b.ts','./b',{imports:[{name:'old',localName:'old'}]})]);delete before.importBindingsVersion;
+  const after=atlas(['a.ts','b.ts'],[edge('a.ts','b.ts','./b',{imports:[{name:'new',localName:'new'}]})]);
+  const diff=compareAtlases(before,after);
+  assert.deepEqual(diff.importBindings,{added:[],removed:[],unavailableSnapshots:['base']});
+  assert.throws(()=>parseAtlas({...after,importBindingsVersion:2}),/import binding index version/);
 });
 
 test('compares static public exports, ignores line shifts, and identifies snapshots without export data',()=>{
@@ -83,6 +100,15 @@ test('renders an offline, searchable HTML diff with exact source evidence and es
   assert.match(html,/aria-label="Search architecture changes"/);assert.match(html,/No tracking or network requests/);
   assert.match(html,/prefers-reduced-motion:reduce/);assert.match(html,/translateY\(-1px\)/);
   assert.match(html,/Exports added/);assert.match(html,/export-changes/);
+});
+
+test('renders imported binding changes with exact source links and search/filter hooks',()=>{
+  const base=atlas(['a.ts','b.ts'],[edge('a.ts','b.ts','./b',{imports:[{name:'old',localName:'legacy'}]})]);
+  const head=atlas(['a.ts','b.ts'],[edge('a.ts','b.ts','./b',{line:8,url:'https://github.com/example/demo/blob/head/a.ts#L8',imports:[{name:'next',localName:'current'}]})]);
+  const html=renderComparisonHtml(compareAtlases(base,head));
+  assert.match(html,/Imported bindings/);assert.match(html,/a\.ts → b\.ts · next as current/);
+  assert.match(html,/a\.ts:8/);assert.match(html,/blob\/head\/a\.ts#L8/);
+  assert.match(html,/Bindings added/);assert.match(html,/data-binding-change/);assert.match(html,/updateBindingFilter/);assert.match(html,/\.change\[hidden\]\{display:none\}/);assert.match(html,/No module or dependency changes match this filter/);
 });
 
 test('keeps base and head dependency links pinned to their respective commits',()=>{

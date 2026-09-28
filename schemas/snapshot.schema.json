@@ -7,6 +7,7 @@
   "required": ["schemaVersion", "name", "modules", "edges", "warnings"],
   "properties": {
     "schemaVersion": { "const": 1 },
+    "importBindingsVersion": { "const": 1 },
     "name": { "type": "string" },
     "repository": { "type": "string" },
     "commit": { "type": "string" },

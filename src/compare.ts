@@ -14,6 +14,7 @@ export interface EdgeChange {
 }
 
 export interface ExportEvidence extends ExportedSymbol { moduleId: string; url?: string }
+export interface ImportBindingEvidence { sourceModule:string; targetModule:string; name:string; localName:string; kind:Edge['kind']; specifier:string; line:number; url?:string }
 
 export interface AtlasComparison {
   base: SnapshotMetadata;
@@ -21,6 +22,7 @@ export interface AtlasComparison {
   modules: { added: string[]; removed: string[] };
   dependencies: { added: Edge[]; removed: Edge[]; changedSpecifier: EdgeChange[] };
   exports: { added: ExportEvidence[]; removed: ExportEvidence[]; unavailableModules: string[] };
+  importBindings: { added: ImportBindingEvidence[]; removed: ImportBindingEvidence[]; unavailableSnapshots: ('base'|'head')[] };
 }
 
 const kinds=new Set(['import','type','export','dynamic','require']);
@@ -34,7 +36,8 @@ export function parseAtlas(value: unknown): Atlas {
   for(const module of value.modules){if(!record(module)||typeof module.id!=='string'||typeof module.group!=='string'||!Number.isSafeInteger(module.lines)||Number(module.lines)<0||!Array.isArray(module.entry)||!module.entry.every(item=>typeof item==='string')||('url'in module&&typeof module.url!=='string')||('workspace'in module&&typeof module.workspace!=='string')||('exports'in module&&(!Array.isArray(module.exports)||!module.exports.every(item=>record(item)&&typeof item.name==='string'&&exportKinds.has(String(item.kind))&&Number.isSafeInteger(item.line)&&Number(item.line)>=1&&(!('localName'in item)||typeof item.localName==='string')&&(!('source'in item)||typeof item.source==='string'))))||('activity'in module&&(!record(module.activity)||!Number.isSafeInteger(module.activity.commits)||Number(module.activity.commits)<0||typeof module.activity.lastChanged!=='string'||!/^\d{4}-\d{2}-\d{2}$/.test(module.activity.lastChanged)||!Number.isFinite(Date.parse(`${module.activity.lastChanged}T00:00:00Z`))||new Date(Date.parse(`${module.activity.lastChanged}T00:00:00Z`)).toISOString().slice(0,10)!==module.activity.lastChanged)))throw new Error('Invalid RepoAtlas snapshot: malformed module record.');}
   if('activity'in value&&(!record(value.activity)||!Number.isSafeInteger(value.activity.days)||Number(value.activity.days)<1||Number(value.activity.days)>365||!Number.isSafeInteger(value.activity.commitsScanned)||Number(value.activity.commitsScanned)<0||typeof value.activity.truncated!=='boolean'||typeof value.activity.shallow!=='boolean'))throw new Error('Invalid RepoAtlas snapshot: malformed activity metadata.');
   if(('repository'in value&&typeof value.repository!=='string')||('commit'in value&&typeof value.commit!=='string'))throw new Error('Invalid RepoAtlas snapshot: malformed snapshot metadata.');
-  for(const edge of value.edges){if(!record(edge)||typeof edge.source!=='string'||typeof edge.target!=='string'||typeof edge.specifier!=='string'||!kinds.has(String(edge.kind))||!Number.isSafeInteger(edge.line)||Number(edge.line)<1||typeof edge.code!=='string'||!resolutions.has(String(edge.resolution)))throw new Error('Invalid RepoAtlas snapshot: malformed dependency edge.');}
+  if('importBindingsVersion'in value&&value.importBindingsVersion!==1)throw new Error('Invalid RepoAtlas snapshot: unsupported import binding index version.');
+  for(const edge of value.edges){if(!record(edge)||typeof edge.source!=='string'||typeof edge.target!=='string'||typeof edge.specifier!=='string'||!kinds.has(String(edge.kind))||!Number.isSafeInteger(edge.line)||Number(edge.line)<1||typeof edge.code!=='string'||!resolutions.has(String(edge.resolution))||('imports'in edge&&(!Array.isArray(edge.imports)||!edge.imports.every(item=>record(item)&&typeof item.name==='string'&&typeof item.localName==='string'))))throw new Error('Invalid RepoAtlas snapshot: malformed dependency edge.');}
   if(!value.warnings.every(item=>typeof item==='string'))throw new Error('Invalid RepoAtlas snapshot: malformed warnings.');
   return value as unknown as Atlas;
 }
@@ -49,6 +52,11 @@ const exportOrder=(a:ExportEvidence,b:ExportEvidence)=>{const compare=(left:stri
 function exportEvidence(module:Module,item:ExportedSymbol):ExportEvidence {
   return {moduleId:module.id,...item,...(module.url?{url:`${module.url.replace(/#L\d+$/,'')}#L${item.line}`}:{})};
 }
+function bindingEvidence(edge:Edge,binding:{name:string;localName:string}):ImportBindingEvidence {
+  return {sourceModule:edge.source,targetModule:edge.target,name:binding.name,localName:binding.localName,kind:edge.kind,specifier:edge.specifier,line:edge.line,...(edge.url?{url:edge.url}:{})};
+}
+const bindingKey=(item:ImportBindingEvidence)=>JSON.stringify([item.sourceModule,item.targetModule,item.kind,item.specifier,item.name,item.localName]);
+const bindingOrder=(a:ImportBindingEvidence,b:ImportBindingEvidence)=>a.sourceModule.localeCompare(b.sourceModule)||a.line-b.line||a.name.localeCompare(b.name)||a.localName.localeCompare(b.localName)||a.targetModule.localeCompare(b.targetModule);
 
 /** Compare graph relationships while ignoring source line shifts and code formatting. */
 export function compareAtlases(base:Atlas,head:Atlas):AtlasComparison {
@@ -90,5 +98,18 @@ export function compareAtlases(base:Atlas,head:Atlas):AtlasComparison {
     for(const [key,item] of old)if(!next.has(key))exportChanges.removed.push(exportEvidence(before,item));
   }
   exportChanges.added.sort(exportOrder);exportChanges.removed.sort(exportOrder);
-  return {base:metadata(base),head:metadata(head),modules:{added:addedModules,removed:removedModules},dependencies:{added,removed,changedSpecifier:changes},exports:exportChanges};
+  const importBindings:{added:ImportBindingEvidence[];removed:ImportBindingEvidence[];unavailableSnapshots:('base'|'head')[]}={added:[],removed:[],unavailableSnapshots:[]};
+  if(base.importBindingsVersion!==1)importBindings.unavailableSnapshots.push('base');
+  if(head.importBindingsVersion!==1)importBindings.unavailableSnapshots.push('head');
+  if(!importBindings.unavailableSnapshots.length){
+    const bindings=(atlas:Atlas)=>{const found=new Map<string,ImportBindingEvidence>();for(const edge of atlas.edges)for(const binding of edge.imports??[]){const item=bindingEvidence(edge,binding);found.set(bindingKey(item),item);}return found;};
+    const before=bindings(base),after=bindings(head);
+    const edgeId=(source:string,target:string,kind:string,specifier:string)=>JSON.stringify([source,target,kind,specifier]);
+    const headEdges=new Set(head.edges.map(edge=>edgeId(edge.source,edge.target,edge.kind,edge.specifier)));
+    const sharedEdges=new Set(base.edges.map(edge=>edgeId(edge.source,edge.target,edge.kind,edge.specifier)).filter(key=>headEdges.has(key)));
+    for(const [key,item] of after)if(!before.has(key)&&sharedEdges.has(JSON.stringify([item.sourceModule,item.targetModule,item.kind,item.specifier])))importBindings.added.push(item);
+    for(const [key,item] of before)if(!after.has(key)&&sharedEdges.has(JSON.stringify([item.sourceModule,item.targetModule,item.kind,item.specifier])))importBindings.removed.push(item);
+    importBindings.added.sort(bindingOrder);importBindings.removed.sort(bindingOrder);
+  }
+  return {base:metadata(base),head:metadata(head),modules:{added:addedModules,removed:removedModules},dependencies:{added,removed,changedSpecifier:changes},exports:exportChanges,importBindings};
 }
