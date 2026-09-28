@@ -7,6 +7,7 @@ import { groupExternalDependencies, type ExternalUsage } from './packages.js';
 import { encodeInspectorRoute, resolveInspectorRoute } from './routes.js';
 import { groupParallelEdges, type ParallelEdgeGroup } from './graph.js';
 import { activateOnKeyboard } from './accessibility.js';
+import { buildEntryTour, clampEntryTourStep } from './tour.js';
 const data: Atlas = JSON.parse(document.getElementById('atlas-data')!.textContent!);
 const $ = (id: string) => document.getElementById(id)!;
 function el(tag: string, text = '', cls = '') { const e = document.createElement(tag); e.textContent = text; if (cls) e.className = cls; return e; }
@@ -45,7 +46,7 @@ for (const edge of internal) {
   importers.add(edge.source);
   importerSets.set(edge.target,importers);
 }
-let selected: string | undefined, selectedEdge: Edge | undefined, entriesOnly = false, focusMap = false, impactMap = false, activityMode = false, entryPathView = false, cyclesOnly = false, orphansOnly = false, boundaryView = false, architectureView = false, architectureGroup: string | undefined, clusterView = false, cycleGroupIndex = 0, pageIndex = 0, zoom = 1;
+let selected: string | undefined, selectedEdge: Edge | undefined, entriesOnly = false, focusMap = false, impactMap = false, activityMode = false, entryPathView = false, tourStep = 0, cyclesOnly = false, orphansOnly = false, boundaryView = false, architectureView = false, architectureGroup: string | undefined, clusterView = false, cycleGroupIndex = 0, pageIndex = 0, zoom = 1;
 $('repo-name').textContent = data.name;
 for (const [value,label] of [[data.modules.length,'modules'],[internal.length,'connections'],[data.modules.filter(m=>m.entry.length).length,'entry points']]) { const stat = el('div'); stat.append(el('strong',String(value)),el('span',String(label))); $('stats').append(stat); }
 for (const group of [...new Set(data.modules.map(m=>m.group))].sort()) { const opt = document.createElement('option'); opt.value = group; opt.textContent = group; $('group').append(opt); }
@@ -177,10 +178,36 @@ function choose(id: string,syncRoute=true) {
   if(!reachability.known)panel.append(el('p','Entry path is unknown because no entry points were detected.'));
   else if(reachability.reachable.has(id)){
     const path=findEntryPath(data.modules,internal,id)!;
+    const steps=buildEntryTour(path);
+    tourStep=clampEntryTourStep(tourStep,path);
+    if(entryPathView&&steps[tourStep]?.edge)selectedEdge=steps[tourStep]!.edge;
     panel.append(el('p',path.edges.length?`Shortest detected-entry path · ${path.edges.length} imports from ${path.entry}`:'This module is a detected entry point.'));
-    const pathButton=el('button',entryPathView?'Exit entry path':'Trace path from entry point','button impact-link');
-    pathButton.onclick=()=>{entryPathView=!entryPathView;focusMap=false;impactMap=false;cyclesOnly=false;orphansOnly=false;entriesOnly=false;boundaryView=false;pageIndex=0;draw();choose(id);};
+    const pathButton=el('button',entryPathView?'Exit guided tour':'Walk the entry path','button impact-link');
+    pathButton.onclick=()=>{entryPathView=!entryPathView;tourStep=0;focusMap=false;impactMap=false;cyclesOnly=false;orphansOnly=false;entriesOnly=false;boundaryView=false;pageIndex=0;draw();choose(id);};
     panel.append(pathButton);
+    if(entryPathView){
+      const tour=el('section','','entry-tour');
+      tour.setAttribute('aria-label','Guided entry path');
+      const current=steps[tourStep]!;
+      tour.append(el('h2','Guided entry path'));
+      const progress=el('p',`Stop ${tourStep+1} of ${steps.length} · ${current.module}`,'tour-progress');
+      progress.setAttribute('aria-live','polite');
+      tour.append(progress);
+      if(current.edge){
+        const evidence=el('div','','tour-evidence');
+        evidence.append(el('p',`${current.edge.source} imports ${current.edge.target} at line ${current.edge.line}.`),el('pre',current.edge.code));
+        if(current.edge.url)evidence.append(link('Open this line on GitHub ↗',current.edge.url));
+        else evidence.append(el('p','Source line shown from this snapshot.'));
+        tour.append(evidence);
+      }else tour.append(el('p','Start here: this module was detected as an entry point. The path follows resolved static imports.'));
+      const controls=el('div','','tour-controls');
+      const previous=el('button','← Previous','button') as HTMLButtonElement;
+      previous.disabled=tourStep===0;
+      previous.onclick=()=>{tourStep=clampEntryTourStep(tourStep-1,path);choose(id);};
+      const next=el('button',tourStep===steps.length-1?'Finish':'Next import →','button') as HTMLButtonElement;
+      next.onclick=()=>{if(tourStep===steps.length-1){entryPathView=false;tourStep=0;}else tourStep=clampEntryTourStep(tourStep+1,path);choose(id);};
+      controls.append(previous,next);tour.append(controls);panel.append(tour);
+    }
   }else panel.append(el('p','No path from the detected entry points reaches this module. Entry detection and import reachability are static signals.'));
   const directCount = importerSets.get(id)?.size ?? 0;
   const totalDependents = Math.max(0,impactNeighborhood(data.modules,internal,id).length-1);

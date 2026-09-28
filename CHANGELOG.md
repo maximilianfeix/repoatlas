@@ -1,5 +1,18 @@
 # Changelog
 
+## [2.11.0] - 2026-09-28
+
+### Added
+
+- Turn shortest detected-entry paths into a guided, keyboard-friendly walkthrough, one module and import at a time.
+- Highlight the current connection, show its exact source line, and link to the pinned GitHub line when available.
+- Animate the active path edge while respecting reduced-motion preferences.
+
+### Quality
+
+- Validate walkthrough stops against the resolved path so inconsistent evidence is rejected.
+- Test progress clamping, adjacent source edges, and entry-only paths.
+
 ## [2.10.0] - 2026-09-28
 
 ### Added
