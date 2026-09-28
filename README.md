@@ -73,14 +73,14 @@ Want to explore before installing? [Paste a public TypeScript repository or choo
 For a versioned command-line run, install nothing globally. The CLI requires **Node.js 22 or later** and **Git**. Point it at a public GitHub repository:
 
 ```sh
-npx --yes --package=github:maximilianfeix/repoatlas#v2.40.2 -- \
+npx --yes --package=github:maximilianfeix/repoatlas#v2.41.0 -- \
   repoatlas-cli https://github.com/pmndrs/zustand --out zustand-map.html
 ```
 
 Open `zustand-map.html` in your browser. Search by module path or public export, then select a result to inspect its exact source evidence. RepoAtlas also analyzes a local checkout:
 
 ```sh
-npx --yes --package=github:maximilianfeix/repoatlas#v2.40.2 -- \
+npx --yes --package=github:maximilianfeix/repoatlas#v2.41.0 -- \
   repoatlas-cli ./my-project --out architecture.html
 ```
 
@@ -100,6 +100,17 @@ The card summarizes modules, detected entry points, resolved static imports, and
 
 <p align="center"><img src="https://raw.githubusercontent.com/maximilianfeix/repoatlas/main/docs/assets/architecture-card.svg" alt="RepoAtlas architecture summary for its own TypeScript source: module, entry point, resolved import, and cycle counts" width="720"></p>
 
+## Put a dependency map in your README
+
+GitHub renders Mermaid diagrams directly in Markdown. Export a compact package or top-level-directory map from the same JSON snapshot, then paste the output inside a fenced `mermaid` block:
+
+```sh
+repoatlas-cli https://github.com/pmndrs/zustand --json > architecture.json
+repoatlas-cli report architecture.json --format mermaid --output architecture.mmd
+```
+
+The diagram groups files by workspace package or source directory, labels each cross-boundary edge with its static import count, and highlights groups containing detected entry points. If a project has just one group, it switches to file nodes when there are 80 modules or fewer. Dense maps keep the 200 strongest links and state how many they omit; larger single-group maps direct you to the interactive view. This is a README overview, not a runtime call graph. Use the interactive HTML map to inspect individual source lines. See [GitHub's Mermaid guide](https://docs.github.com/en/enterprise-cloud%40latest/get-started/writing-on-github/working-with-advanced-formatting/creating-diagrams) for fenced diagram blocks.
+
 ## GitHub Actions
 
 Build the map on every push and keep it as a downloadable workflow artifact:
@@ -114,7 +125,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: maximilianfeix/repoatlas@v2.40.2
+      - uses: maximilianfeix/repoatlas@v2.41.0
         with:
           output: repoatlas-map.html
 ```
@@ -131,7 +142,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: maximilianfeix/repoatlas@v2.40.2
+      - uses: maximilianfeix/repoatlas@v2.41.0
         with:
           compare-to: ${{ github.event.pull_request.base.sha }}
           check-config: repoatlas.config.json
@@ -154,7 +165,7 @@ Add this server entry to an MCP client configuration and replace the project pat
       "command": "npx",
       "args": [
         "--yes",
-        "--package=github:maximilianfeix/repoatlas#v2.40.2",
+        "--package=github:maximilianfeix/repoatlas#v2.41.0",
         "repoatlas-cli",
         "mcp",
         "/absolute/path/to/project"

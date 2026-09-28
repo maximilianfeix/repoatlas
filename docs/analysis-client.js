@@ -1,4 +1,4 @@
-const workerAssetVersion='2.40.2';
+const workerAssetVersion='2.41.0';
 
 export function runAnalysisInWorker({type,input,files,includeTests=false,ref,onProgress,signal,WorkerImpl=globalThis.Worker}={}){
   if(signal?.aborted)return Promise.reject(signal.reason??new DOMException('Canceled by user','AbortError'));
