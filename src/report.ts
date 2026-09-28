@@ -66,6 +66,58 @@ export function renderBoundarySvg(atlas:Atlas):string {
   return parts.join('\n')+'\n';
 }
 
+/** Render a README-friendly Mermaid graph of cross-boundary static imports. */
+export function renderBoundaryMermaid(atlas:Atlas):string {
+  const compare=(left:string,right:string)=>left<right?-1:left>right?1:0;
+  let groupByModule=new Map<string,string>();
+  const labels=new Map<string,string>();
+  const counts=new Map<string,number>();
+  for(const module of atlas.modules){
+    const label=module.workspace??(module.group||'.');
+    const id=module.workspace?`package:${label}`:`directory:${label}`;
+    groupByModule.set(module.id,id);labels.set(id,label);counts.set(id,(counts.get(id)??0)+1);
+  }
+  let groups=[...counts].map(([id,modules])=>({id,label:labels.get(id)!,modules})).sort((a,b)=>compare(a.label,b.label)||compare(a.id,b.id));
+  if(groups.length===1&&atlas.modules.length>1){
+    if(atlas.modules.length>80)throw new Error(`Mermaid map has one boundary containing ${atlas.modules.length} modules. Use the interactive HTML map for file-level detail.`);
+    groupByModule=new Map(atlas.modules.map(module=>[module.id,`module:${module.id}`]));
+    groups=atlas.modules.map(module=>({id:`module:${module.id}`,label:module.id,modules:1})).sort((a,b)=>compare(a.label,b.label)||compare(a.id,b.id));
+  }
+  const buckets=new Map<string,NonNullable<Atlas['edges']>>();
+  for(const edge of atlas.edges){
+    if(edge.resolution!=='internal')continue;
+    const source=groupByModule.get(edge.source),target=groupByModule.get(edge.target);
+    if(!source||!target||source===target)continue;
+    const key=`${source}\0${target}`,bucket=buckets.get(key)??[];bucket.push(edge);buckets.set(key,bucket);
+  }
+  const groupOrder=new Map(groups.map((group,index)=>[group.id,index]));
+  const cells=[...buckets].map(([key,edges])=>{const [source,target]=key.split('\0');return {source:source!,target:target!,edges};})
+    .sort((a,b)=>groupOrder.get(a.source)!-groupOrder.get(b.source)!||groupOrder.get(a.target)!-groupOrder.get(b.target)!);
+  const matrix={groups,cells};
+  if(matrix.groups.length>80)throw new Error(`Mermaid map supports at most 80 boundary groups; this snapshot has ${matrix.groups.length}. Use a narrower source snapshot.`);
+  const nodeByGroup=new Map(matrix.groups.map((group,index)=>[group.id,`b${index+1}`]));
+  const entryGroups=new Set(atlas.modules.filter(module=>module.entry.length).map(module=>groupByModule.get(module.id)).filter((id):id is string=>Boolean(id)));
+  const mermaidText=(value:string)=>value.replaceAll('&','#amp;').replaceAll('"','#quot;').replaceAll('<','#lt;').replaceAll('>','#gt;').replace(/[\r\n]+/g,' ');
+  const links=matrix.cells.filter(cell=>cell.source!==cell.target)
+    .sort((a,b)=>b.edges.length-a.edges.length||compare(a.source,b.source)||compare(a.target,b.target));
+  const visibleLinks=links.slice(0,200);
+  const lines=[
+    '%% Cross-boundary resolved static TypeScript imports; this is not a runtime call graph.',
+    'flowchart LR',
+    '  classDef entry fill:#d4f77a,stroke:#657f1b,color:#263300,stroke-width:2px',
+  ];
+  for(const group of matrix.groups){
+    const node=nodeByGroup.get(group.id)!;
+    const label=`${group.label} · ${group.modules} ${group.modules===1?'module':'modules'}${entryGroups.has(group.id)?' · detected entry':''}`;
+    lines.push(`  ${node}["${mermaidText(label)}"]`);
+    if(entryGroups.has(group.id))lines.push(`  class ${node} entry`);
+  }
+  for(const link of visibleLinks)lines.push(`  ${nodeByGroup.get(link.source)} -->|${link.edges.length} imports| ${nodeByGroup.get(link.target)}`);
+  if(links.length>visibleLinks.length)lines.push(`  %% ${links.length-visibleLinks.length} lower-volume boundary links omitted; use the interactive map for the complete graph.`);
+  if(!visibleLinks.length)lines.push('  %% No imports cross package or directory boundaries.');
+  return lines.join('\n')+'\n';
+}
+
 /** Render a compact, deterministic SVG card for repository landing pages. */
 export function renderArchitectureCard(atlas:Atlas):string {
   const internal=atlas.edges.filter(edge=>edge.resolution==='internal');

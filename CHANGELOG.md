@@ -1,5 +1,15 @@
 # Changelog
 
+## [2.41.0] - 2026-09-28
+
+### Added
+
+- Export a compact Mermaid package/directory dependency map for GitHub READMEs, with detected entry groups highlighted and dense links explicitly capped. Single-group repositories use file nodes when the map stays within the 80-module limit.
+
+### Quality
+
+- Verify stable Mermaid output, safe labels, entry marking, import counts, omission notes, group limits, and CLI file output.
+
 ## [2.40.2] - 2026-09-28
 
 ### Fixed
