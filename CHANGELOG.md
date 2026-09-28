@@ -1,5 +1,16 @@
 # Changelog
 
+## [2.32.0] - 2026-09-28
+
+### Improved
+
+- Make “Map your repository” the green primary hero action, with the Hono example directly beside it.
+- Lead the README action row with “Paste a repo” and keep the live map as the second path.
+
+### Quality
+
+- Verify both site and README put the user's repository analysis first.
+
 ## [2.31.0] - 2026-09-28
 
 ### Improved
