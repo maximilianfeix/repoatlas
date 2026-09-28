@@ -29,7 +29,7 @@ self.addEventListener('message',async event=>{
     const atlas=message.type==='analyze-local'
       ?await analyzeLocalRepositoryFiles(message.files,{compiler,includeTests:message.includeTests,onProgress})
       :message.type==='analyze-public'
-        ?await analyzePublicRepository(message.input,{compiler,includeTests:message.includeTests,onProgress})
+        ?await analyzePublicRepository(message.input,{compiler,includeTests:message.includeTests,ref:message.ref,onProgress})
         :(()=>{throw new Error('Unknown browser analysis request.');})();
     self.postMessage({type:'result',atlas});
   }catch(error){

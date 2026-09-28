@@ -310,16 +310,18 @@ export function analyzeRepositoryFiles({files,owner,repo,commit,compiler,include
   return {schemaVersion:1,name:`${owner}/${repo}`,...(commit?{repository:`https://github.com/${owner}/${repo}`,commit}:{}),modules,edges,warnings};
 }
 
-export async function analyzePublicRepository(input,{compiler,includeTests=false,fetchImpl=fetch,signal,onProgress}={}){
+export async function analyzePublicRepository(input,{compiler,includeTests=false,ref,fetchImpl=fetch,signal,onProgress}={}){
   if(!compiler)throw new Error('The TypeScript compiler is not loaded.');
+  if(ref!==undefined&&!/^(?:[0-9a-f]{40}|[0-9a-f]{64})$/i.test(ref))throw new Error('A shared map commit must be a full 40- or 64-character Git SHA.');
   const repository=parsePublicRepositoryInput(input),base=`${API}/repos/${encodeURIComponent(repository.owner)}/${encodeURIComponent(repository.repo)}`;
   onProgress?.({stage:'repository',message:'Checking the public GitHub repository…'});
   const metadata=await requestJson(fetchImpl,base,signal);
   if(metadata.private)throw new Error('Browser maps support public repositories only. Use the local CLI for private repositories.');
   const branch=metadata.default_branch;if(typeof branch!=='string'||!branch)throw new Error('GitHub did not report a default branch for this repository.');
-  const commitData=await requestJson(fetchImpl,`${base}/commits/${encodeURIComponent(branch)}`,signal);
+  const commitData=await requestJson(fetchImpl,`${base}/commits/${encodeURIComponent(ref??branch)}`,signal);
   const commit=commitData.sha,treeSha=commitData.commit?.tree?.sha;
-  if(typeof commit!=='string'||!/^([0-9a-f]{40}|[0-9a-f]{64})$/i.test(commit)||typeof treeSha!=='string')throw new Error('GitHub returned an invalid default-branch commit.');
+  if(typeof commit!=='string'||!/^([0-9a-f]{40}|[0-9a-f]{64})$/i.test(commit)||typeof treeSha!=='string')throw new Error('GitHub returned an invalid repository commit.');
+  if(ref&&commit.toLowerCase()!==ref.toLowerCase())throw new Error('GitHub returned a different commit than the shared map requested.');
   onProgress?.({stage:'tree',message:'Listing TypeScript files…'});
   const treeData=await requestJson(fetchImpl,`${base}/git/trees/${encodeURIComponent(treeSha)}?recursive=1`,signal);
   if(treeData.truncated)throw new Error('GitHub truncated this repository tree. Use the local CLI for a complete map.');

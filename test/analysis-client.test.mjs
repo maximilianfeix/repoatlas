@@ -31,6 +31,13 @@ test('worker client preserves local file paths and reports worker failures',asyn
   await assert.rejects(result,/Could not read TypeScript compiler/);assert.equal(worker.terminated,true);
 });
 
+test('worker client carries a pinned public repository commit into analysis',async()=>{
+  FakeWorker.instances=[];
+  runAnalysisInWorker({type:'public',input:'owner/repo',ref:'0123456789abcdef0123456789abcdef01234567',WorkerImpl:FakeWorker});
+  assert.deepEqual(FakeWorker.instances[0].message,{type:'analyze-public',input:'owner/repo',includeTests:false,ref:'0123456789abcdef0123456789abcdef01234567'});
+  FakeWorker.instances[0].onmessage({data:{type:'result',atlas:{}}});
+});
+
 test('canceling terminates the worker immediately and pre-canceled tasks do not start',async()=>{
   FakeWorker.instances=[];const controller=new AbortController();
   const result=runAnalysisInWorker({type:'public',input:'owner/repo',WorkerImpl:FakeWorker,signal:controller.signal});

@@ -1,4 +1,4 @@
-export function runAnalysisInWorker({type,input,files,includeTests=false,onProgress,signal,WorkerImpl=globalThis.Worker}={}){
+export function runAnalysisInWorker({type,input,files,includeTests=false,ref,onProgress,signal,WorkerImpl=globalThis.Worker}={}){
   if(signal?.aborted)return Promise.reject(signal.reason??new DOMException('Canceled by user','AbortError'));
   if(typeof WorkerImpl!=='function')return Promise.reject(new Error('This browser does not support background analysis. Use the RepoAtlas CLI instead.'));
   if(type!=='public'&&type!=='local')return Promise.reject(new Error('Unknown browser analysis mode.'));
@@ -25,7 +25,7 @@ export function runAnalysisInWorker({type,input,files,includeTests=false,onProgr
       signal?.addEventListener('abort',abort,{once:true});
       worker.postMessage(type==='local'
         ?{type:'analyze-local',files:[...files].map(file=>({path:file.webkitRelativePath||file.name,size:file.size,file})),includeTests}
-        :{type:'analyze-public',input,includeTests});
+        :{type:'analyze-public',input,includeTests,...(ref?{ref}:{})});
     }catch(error){finish(reject,error);}
   });
 }
