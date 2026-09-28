@@ -1,5 +1,15 @@
 # Changelog
 
+## [2.38.0] - 2026-09-28
+
+### Improved
+
+- Open exact-edge share links in a focused neighborhood view and center the selected connection when the viewport allows.
+
+### Quality
+
+- Verify source-linked map routes in a real browser at a narrow mobile viewport.
+
 ## [2.37.0] - 2026-09-28
 
 ### Improved

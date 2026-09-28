@@ -138,6 +138,7 @@ function externalDetail(usage: ExternalUsage,page: number,syncRoute=true) {
   }
 }
 function edgeDetail(edge: Edge,syncRoute=true) {
+  if(!syncRoute){selected=edge.source;focusMap=true;}
   selectedEdge=edge; const panel=$('inspector'); panel.replaceChildren(el('h2','Connection evidence'),el('h3',`${edge.source} → ${edge.target}`),el('span',edge.kind,'pill'),el('span',edge.resolution,'pill'),el('p',`${edge.source}:${edge.line}`),el('pre',edge.code));
   if(syncRoute)setInspectorRoute({type:'edge',edge});
   addShareControl(panel);
@@ -507,6 +508,14 @@ function restoreInspectorRoute() {
     if(usage)externalDetail(usage,route.page,false);else intro(false);
   }else intro(false);
   draw();
+  if(route.type==='edge'){
+    const canvas=$('graph').parentElement!,target=$('graph').querySelector('.edge.selected');
+    if(target){
+      canvas.scrollIntoView({block:'nearest',inline:'nearest'});
+      const view=canvas.getBoundingClientRect(),edge=target.getBoundingClientRect();
+      canvas.scrollTo({left:canvas.scrollLeft+edge.left-view.left+edge.width/2-view.width/2,top:canvas.scrollTop+edge.top-view.top+edge.height/2-view.height/2,behavior:'auto'});
+    }
+  }
 }
 window.addEventListener('popstate',restoreInspectorRoute);
 window.addEventListener('hashchange',restoreInspectorRoute);
