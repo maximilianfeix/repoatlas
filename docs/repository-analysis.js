@@ -5,6 +5,8 @@ const ignoredDirectories=new Set(['node_modules','.git','dist','build','coverage
 const sourcePattern=/\.(?:ts|tsx|mts|cts)$/i;
 const declarationPattern=/\.d\.(?:ts|mts|cts)$/i;
 const testPattern=/(^|\/)(?:__tests__|tests?|fixtures?|mocks?)(\/|$)|\.(?:test|spec|stories)\.(?:ts|tsx|mts|cts)$/i;
+const tsconfigPattern=/(^|\/)tsconfig(?:\.[^/]+)?\.json$/i;
+const isManifest=path=>/(^|\/)package\.json$/i.test(path)||tsconfigPattern.test(path)||path==='pnpm-workspace.yaml';
 const normalized=(value)=>{
   const parts=[];for(const part of value.replaceAll('\\','/').split('/')){if(!part||part==='.')continue;if(part==='..')parts.pop();else parts.push(part);}return `${value.startsWith('/')?'/':''}${parts.join('/')}`;
 };
@@ -53,10 +55,10 @@ async function loadFiles(entries,repository,commit,{fetchImpl,signal,onProgress,
   const files=new Map();let completed=0,sourceBytes=0,next=0;
   const excluded=[];
   const selected=entries.filter(entry=>entry.type==='blob'&&!isIgnored(entry.path)&&(
-    eligibleSource(entry.path,includeTests)||entry.path==='package.json'||/(^|\/)tsconfig(?:\.[^/]+)?\.json$/i.test(entry.path)
+    eligibleSource(entry.path,includeTests)||isManifest(entry.path)
   ));
   const sources=selected.filter(entry=>eligibleSource(entry.path,true));
-  const manifests=selected.filter(entry=>entry.path==='package.json'||/(^|\/)tsconfig(?:\.[^/]+)?\.json$/i.test(entry.path));
+  const manifests=selected.filter(entry=>isManifest(entry.path));
   if(sources.length>1200)throw new Error(`This repository has ${sources.length.toLocaleString()} TypeScript files. The browser flow is capped at 1,200; use the local CLI for larger repositories.`);
   if(manifests.length>300)throw new Error('This repository has too many package and TypeScript configuration files for the browser flow. Use the local CLI.');
   const queue=[...sources,...manifests.filter(item=>!sources.some(source=>source.path===item.path))];
@@ -141,9 +143,116 @@ function entryTargets(files,root,modules){
   return entries;
 }
 
+function workspaceMatch(pattern,directory){
+  let source='^';
+  for(let index=0;index<pattern.length;index++){
+    if(pattern[index]==='*'&&pattern[index+1]==='*'&&pattern[index+2]==='/'){source+='(?:.*/)?';index+=2;}
+    else if(pattern[index]==='*'&&pattern[index+1]==='*'){source+='.*';index++;}
+    else if(pattern[index]==='*')source+='[^/]*';
+    else source+=pattern[index].replace(/[|\\{}()[\]^$+?.]/g,'\\$&');
+  }
+  return new RegExp(`${source}$`).test(directory);
+}
+
+function workspaceSettings(files,warnings){
+  const packages=[];let rootPackage;
+  for(const [file,text] of files){
+    if(file!=='package.json'&&!file.endsWith('/package.json'))continue;
+    try{
+      const data=JSON.parse(text),directory=file==='package.json'?'':file.slice(0,-'package.json'.length).replace(/\/$/,'');
+      const item={dir:directory,data};packages.push(item);if(!directory)rootPackage=item;
+    }catch{warnings.push(`Invalid ${file}; workspace metadata is skipped.`);}
+  }
+  const patterns=[];
+  const configured=rootPackage?.data.workspaces,globs=Array.isArray(configured)?configured:configured?.packages;
+  if(Array.isArray(globs))patterns.push(...globs.filter(pattern=>typeof pattern==='string'));
+  const yaml=files.get('pnpm-workspace.yaml');
+  if(yaml){
+    let inPackages=false;
+    for(const line of yaml.split(/\r?\n/)){
+      if(/^packages\s*:\s*(?:#.*)?$/.test(line)){inPackages=true;continue;}
+      if(inPackages&&/^\S/.test(line)&&!/^[ \t]*#/.test(line))break;
+      if(!inPackages)continue;
+      const match=line.match(/^\s*-\s*(?:'([^']+)'|"([^"]+)"|([^#\s]+))/),pattern=match?.[1]??match?.[2]??match?.[3];
+      if(pattern)patterns.push(pattern);
+    }
+  }
+  const isDeclared=directory=>patterns.some(pattern=>!pattern.startsWith('!')&&workspaceMatch(pattern,directory))&&!patterns.some(pattern=>pattern.startsWith('!')&&workspaceMatch(pattern.slice(1),directory));
+  const workspaces=packages.filter(item=>item.dir&&typeof item.data.name==='string'&&isDeclared(item.dir)).sort((a,b)=>compare(a.dir,b.dir));
+  const counts=new Map();for(const item of workspaces)counts.set(item.data.name,(counts.get(item.data.name)??0)+1);
+  const ambiguous=new Set([...counts].filter(([,count])=>count>1).map(([name])=>name));
+  for(const name of [...ambiguous].sort(compare))warnings.push(`Multiple workspace packages use the name ${name}; imports to that package are left unresolved.`);
+  return {rootPackage,workspaces,ambiguous};
+}
+
+function conditionTargets(value,kind,customConditions=[]){
+  if(typeof value==='string')return [value];
+  if(Array.isArray(value))return value.flatMap(item=>conditionTargets(item,kind,customConditions));
+  if(!value||typeof value!=='object')return [];
+  const preference=['types',...customConditions,...(kind==='require'?['require','node','default','import','source']:['import','node','default','source','require'])];
+  return [...preference,...Object.keys(value)].filter((key,index,all)=>all.indexOf(key)===index&&key in value).flatMap(key=>conditionTargets(value[key],kind,customConditions));
+}
+
+function workspaceSourceTarget(pkg,target,modules){
+  if(typeof target!=='string'||target.startsWith('/')||target.includes('\\'))return undefined;
+  const relativeTarget=target.replace(/^\.\//,''),source=pkg.data.source?.replace(/^\.\//,'');
+  const sourceRoot=typeof source==='string'?source.slice(0,source.lastIndexOf('/')<0?0:source.lastIndexOf('/')):'src';
+  const builtPath=relativeTarget.replace(/^(?:dist|build|lib)\/(?:(?:types|cjs|esm|commonjs|module)\/)?/,'');
+  const bases=[join(pkg.dir,relativeTarget),join(pkg.dir,sourceRoot,builtPath),join(pkg.dir,'src',builtPath),join(pkg.dir,builtPath)];
+  const candidates=[];
+  for(const base of bases){
+    if(pkg.dir&&base!==pkg.dir&&!base.startsWith(`${pkg.dir}/`))continue;
+    candidates.push(base,base.replace(/\.d\.ts$/i,'.ts'),base.replace(/\.d\.mts$/i,'.mts'),base.replace(/\.d\.cts$/i,'.cts'),base.replace(/\.(?:js|jsx|mjs|cjs)$/i,'.ts'),base.replace(/\.mjs$/i,'.mts'),base.replace(/\.cjs$/i,'.cts'),...['.ts','.tsx','.mts','.cts','/index.ts','/index.tsx','/index.mts','/index.cts'].map(ext=>base+ext));
+  }
+  return candidates.find(candidate=>modules.has(candidate));
+}
+
+function workspaceTarget(specifier,kind,options,settings,modules){
+  const segments=specifier.split('/'),packageLength=segments[0].startsWith('@')?2:1;
+  const name=segments.slice(0,packageLength).join('/'),subpath=segments.slice(packageLength).join('/');
+  const matches=settings.workspaces.filter(item=>item.data.name===name);
+  if(settings.ambiguous.has(name)||matches.length>1)return undefined;
+  const pkg=matches[0]??(settings.rootPackage?.data.name===name?settings.rootPackage:undefined);
+  if(!pkg)return undefined;
+  const exportMap=pkg.data.exports;let targets=[],mappedSubpath=subpath;
+  if(exportMap!==undefined){
+    const exportPath=subpath?`./${subpath}`:'.';
+    if(typeof exportMap==='string'||Array.isArray(exportMap)){
+      if(subpath)return undefined;targets=conditionTargets(exportMap,kind,options.customConditions??[]);
+    }else if(exportMap&&typeof exportMap==='object'){
+      const entries=Object.entries(exportMap),subpathEntries=entries.filter(([key])=>key==='.'||key.startsWith('./'));
+      if(!subpathEntries.length){if(subpath||!entries.length)return undefined;targets=conditionTargets(exportMap,kind,options.customConditions??[]);}
+      else{
+        let found=subpathEntries.find(([key])=>key===exportPath),capture='';
+        if(!found){
+          const patterned=subpathEntries.map(([key,value])=>{
+            const star=key.indexOf('*');if(star<0)return undefined;
+            const before=key.slice(0,star),after=key.slice(star+1);
+            if(!exportPath.startsWith(before)||!exportPath.endsWith(after))return undefined;
+            return {key,value,capture:exportPath.slice(before.length,exportPath.length-after.length),specificity:before.length+after.length};
+          }).filter(Boolean).sort((a,b)=>b.specificity-a.specificity);
+          if(patterned[0]){found=[patterned[0].key,patterned[0].value];capture=patterned[0].capture;}
+        }
+        if(!found)return undefined;
+        const [key,value]=found;
+        mappedSubpath=key.includes('*')?key.replaceAll('*',capture).replace(/^\.\//,''):key==='.'?'':key.replace(/^\.\//,'');
+        targets=conditionTargets(value,kind,options.customConditions??[]).map(target=>target.replaceAll('*',capture));
+      }
+    }else return undefined;
+  }
+  for(const target of targets){const found=workspaceSourceTarget(pkg,target,modules);if(found)return found;}
+  const source=typeof pkg.data.source==='string'?pkg.data.source.replace(/^\.\//,''):undefined;
+  const sourceRoot=source?source.slice(0,source.lastIndexOf('/')<0?0:source.lastIndexOf('/')):'src';
+  const fallbacks=subpath?[source?join(sourceRoot,mappedSubpath):'',source?join(sourceRoot,subpath):'',subpath]:[source??'',join(sourceRoot,'index.ts'),'src/index.ts','index.ts'];
+  for(const target of fallbacks){if(!target)continue;const found=workspaceSourceTarget(pkg,target,modules);if(found)return found;}
+  return undefined;
+}
+function workspaceName(specifier){const segments=specifier.split('/');return segments[0]?.startsWith('@')?segments.slice(0,2).join('/'):segments[0];}
+
 export function analyzeRepositoryFiles({files,owner,repo,commit,compiler,includeTests=false}){
   const warnings=[],root=`/repoatlas/${owner}/${repo}`,paths=sourceFiles(files).filter(file=>includeTests||!testPattern.test(file));
   const modulesSet=new Set(paths),moduleEntries=entryTargets(files,root,modulesSet);
+  const workspace=workspaceSettings(files,warnings);
   const options=compilerOptions(compiler,files,root,warnings);
   const host=makeCompilerHost(compiler,files,root),modules=[],edges=[];let computed=0;
   const fileUrl=(file,line)=>commit?`https://github.com/${owner}/${repo}/blob/${commit}/${file.split('/').map(encodeURIComponent).join('/')}#L${line}`:undefined;
@@ -151,13 +260,16 @@ export function analyzeRepositoryFiles({files,owner,repo,commit,compiler,include
     const text=files.get(file);if(text===undefined)continue;
     const absoluteFile=absolute(root,file),source=compiler.createSourceFile(absoluteFile,text,compiler.ScriptTarget.Latest,true,/\.tsx$/i.test(file)?compiler.ScriptKind.TSX:compiler.ScriptKind.TS);
     const group=file.includes('/')?file.slice(0,file.lastIndexOf('/')):'.',lineCount=text.split(/\r?\n/).length;
-    modules.push({id:file,group,lines:lineCount,entry:moduleEntries.get(file)??[],...(fileUrl(file,1)?{url:fileUrl(file,1)}:{})});
+    const packageOwner=workspace.workspaces.filter(item=>item.dir&&file.startsWith(`${item.dir}/`)).sort((a,b)=>b.dir.length-a.dir.length)[0];
+    modules.push({id:file,group,lines:lineCount,entry:moduleEntries.get(file)??[],...(packageOwner?{workspace:packageOwner.dir}:{}),...(fileUrl(file,1)?{url:fileUrl(file,1)}:{})});
     const lines=text.split(/\r?\n/);
     const add=(expression,node,kind)=>{
       const specifier=expression.text,resolved=compiler.resolveModuleName(specifier,absoluteFile,options,host).resolvedModule?.resolvedFileName;
-      const targetPath=resolved?relative(root,resolved):undefined;
-      const internal=!!targetPath&&modulesSet.has(targetPath);
-      const resolution=internal?'internal':specifier.startsWith('.')||specifier.startsWith('/')||!!targetPath?'unresolved':'external';
+      let targetPath=resolved?relative(root,resolved):undefined;
+      let internal=!!targetPath&&modulesSet.has(targetPath);
+      if(!internal){const target=workspaceTarget(specifier,kind,options,workspace,modulesSet);if(target){targetPath=target;internal=true;}}
+      const ambiguous=workspace.ambiguous.has(workspaceName(specifier));
+      const resolution=internal?'internal':ambiguous||specifier.startsWith('.')||specifier.startsWith('/')||!!targetPath?'unresolved':'external';
       const line=source.getLineAndCharacterOfPosition(node.getStart(source)).line+1,end=source.getLineAndCharacterOfPosition(node.end).line+1;
       edges.push({source:file,target:internal?targetPath:specifier,specifier,kind,line,code:lines.slice(line-1,Math.min(end,line+7)).join('\n').slice(0,3000),...(fileUrl(file,line)?{url:fileUrl(file,line)}:{}),resolution,...(resolution==='external'?externalInfo(specifier):{})});
     };
@@ -188,7 +300,7 @@ export async function analyzePublicRepository(input,{compiler,includeTests=false
   if(treeData.truncated)throw new Error('GitHub truncated this repository tree. Use the local CLI for a complete map.');
   if(!Array.isArray(treeData.tree))throw new Error('GitHub returned an invalid repository tree.');
   const entries=treeData.tree.filter(entry=>entry.type==='blob'&&!isIgnored(entry.path)&&(
-    eligibleSource(entry.path,includeTests)||entry.path==='package.json'||/(^|\/)tsconfig(?:\.[^/]+)?\.json$/i.test(entry.path)
+    eligibleSource(entry.path,includeTests)||isManifest(entry.path)
   ));
   const sourceCount=entries.filter(entry=>eligibleSource(entry.path,includeTests)).length;
   if(!sourceCount)throw new Error('No TypeScript source files were found. Use the local CLI for JavaScript repositories.');
@@ -215,12 +327,12 @@ export async function analyzeLocalRepositoryFiles(fileList,{compiler,includeTest
     if(pieces.some(part=>part==='..'))continue;
     const path=pieces.length>1&&pieces[0]===projectName?pieces.slice(1).join('/'):pieces.join('/');
     if(!path||isIgnored(path))continue;
-    const source=eligibleSource(path,includeTests),manifest=path==='package.json'||/(^|\/)tsconfig(?:\.[^/]+)?\.json$/i.test(path);
+    const source=eligibleSource(path,includeTests),manifest=isManifest(path);
     if(source||manifest)entries.push({path,file,size:Number(file.size)});
   }
   const sources=entries.filter(entry=>eligibleSource(entry.path,includeTests));
   if(sources.length>1200)throw new Error(`This folder has ${sources.length.toLocaleString()} TypeScript files. Browser analysis is capped at 1,200; use the local CLI for larger repositories.`);
-  if(entries.filter(entry=>entry.path==='package.json'||/(^|\/)tsconfig(?:\.[^/]+)?\.json$/i.test(entry.path)).length>300)throw new Error('This folder has too many package and TypeScript configuration files for browser analysis.');
+  if(entries.filter(entry=>isManifest(entry.path)).length>300)throw new Error('This folder has too many package and TypeScript configuration files for browser analysis.');
   const oversized=entries.filter(entry=>entry.size>1_000_000),oversizedSet=new Set(oversized);
   const work=entries.filter(entry=>!oversizedSet.has(entry));
   const estimatedBytes=work.reduce((sum,entry)=>sum+entry.size,0);
