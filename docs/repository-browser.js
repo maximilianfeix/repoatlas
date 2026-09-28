@@ -30,7 +30,7 @@ function progress(item){
   bar.style.width=`${value}%`;
 }
 
-const input=byId('repo-url'),analyzeButton=byId('browser-analyze'),localButton=byId('browser-local'),localPicker=byId('browser-local-picker'),cancelButton=byId('browser-cancel'),progressPanel=byId('browser-progress'),errorPanel=byId('browser-error'),result=byId('browser-result'),frame=byId('browser-map'),download=byId('download-browser-map');
+const form=byId('repo-command-form'),input=byId('repo-url'),analyzeButton=byId('browser-analyze'),localButton=byId('browser-local'),localPicker=byId('browser-local-picker'),cancelButton=byId('browser-cancel'),progressPanel=byId('browser-progress'),errorPanel=byId('browser-error'),result=byId('browser-result'),frame=byId('browser-map'),download=byId('download-browser-map');
 
 async function runAnalysis(request){
   errorPanel.textContent='';result.hidden=true;frame.classList.remove('loaded');frame.srcdoc='';currentHtml=undefined;
@@ -61,7 +61,8 @@ async function runAnalysis(request){
   }
 }
 
-analyzeButton.addEventListener('click',()=>{
+form.addEventListener('submit',event=>{
+  event.preventDefault();
   try{parsePublicRepositoryInput(input.value);}catch(error){errorPanel.textContent=error.message;input.focus();return;}
   void runAnalysis({type:'public',input:input.value});
 });

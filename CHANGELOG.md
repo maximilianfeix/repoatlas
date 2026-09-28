@@ -1,5 +1,16 @@
 # Changelog
 
+## [2.28.0] - 2026-09-28
+
+### Improved
+
+- Make the repository URL form build the interactive browser map directly, including on Enter; keep local-folder and CLI workflows as clear alternatives.
+- Hide the generated CLI command until requested, so the primary path stays focused on understanding the repository.
+
+### Quality
+
+- Verify the homepage exposes browser analysis as its primary submit action and retains a distinct CLI option.
+
 ## [2.27.0] - 2026-09-28
 
 ### Added

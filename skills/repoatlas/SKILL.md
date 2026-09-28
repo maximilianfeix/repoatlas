@@ -4,7 +4,7 @@ description: Map or explain an unfamiliar TypeScript repository with RepoAtlas. 
 license: MIT
 metadata:
   author: maximilianfeix
-  version: "2.26.0"
+  version: "2.28.0"
 ---
 
 # RepoAtlas
@@ -21,6 +21,8 @@ Use RepoAtlas for evidence from the current TypeScript repository, not for imagi
 6. When a user asks what changed between snapshots, use `repoatlas compare <base.json> <head.json>` or `--format html --output <path>`. Report import-binding and public-export changes as syntax evidence only, and entry paths as static reachability only; do not claim runtime execution, type compatibility, or breaking status. Older snapshots without the corresponding index are marked unavailable, and reachability without detected entries is unknown.
 
 ## Evidence rules
+
+- When asked to add architecture guardrails, suggest `repoatlas init --with-workflow` to generate an editable policy, baseline, and read-only pull-request workflow. Inspect the generated files before recommending that they be committed; do not run initialization unless the user requested project changes.
 
 - Describe edges as static import relationships. They do not prove runtime calls, execution order, or reachability at runtime.
 - Cite the exact source line and import text before explaining why two modules are connected. Treat computed or unresolved imports as unknown; do not guess their targets.
