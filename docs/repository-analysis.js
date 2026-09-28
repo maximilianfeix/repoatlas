@@ -64,14 +64,14 @@ function relativeConfigTarget(from,target,available){
   return candidates.find(path=>available.has(path));
 }
 
-function extendedConfigPaths(file,text,available){
+function extendedConfigPaths(compiler,file,text,available){
   try{
-    const config=JSON.parse(text),extended=Array.isArray(config.extends)?config.extends:[config.extends];
+    const config=compiler.parseConfigFileTextToJson(file,text).config??{},extended=Array.isArray(config.extends)?config.extends:[config.extends];
     return extended.map(target=>relativeConfigTarget(file,target,available)).filter(Boolean);
   }catch{return [];}
 }
 
-async function loadFiles(entries,repository,commit,{fetchImpl,signal,onProgress,includeTests}){
+async function loadFiles(entries,repository,commit,{compiler,fetchImpl,signal,onProgress,includeTests}){
   const files=new Map();let completed=0,sourceBytes=0,next=0;
   const excluded=[];
   const selected=entries.filter(entry=>entry.type==='blob'&&!isIgnored(entry.path)&&(
@@ -106,7 +106,7 @@ async function loadFiles(entries,repository,commit,{fetchImpl,signal,onProgress,
     while(pending.length){
       if(controller.signal.aborted)throw controller.signal.reason??new DOMException('Aborted','AbortError');
       const configPath=pending.shift();if(visited.has(configPath))continue;visited.add(configPath);
-      for(const target of extendedConfigPaths(configPath,files.get(configPath),available)){
+      for(const target of extendedConfigPaths(compiler,configPath,files.get(configPath),available)){
         if(files.has(target))continue;
         if(visited.size>=300)throw new Error('This repository has too many inherited TypeScript configuration files for the browser flow. Use the local CLI.');
         const entry=entries.find(item=>item.path===target);if(!entry)continue;
@@ -135,7 +135,9 @@ function compilerOptions(compiler,files,root,warnings){
     const text=files.get(file),configPath=absolute(root,file);
     if(text===undefined)return undefined;
     try{
-      const config=JSON.parse(text),directory=file.slice(0,file.lastIndexOf('/')<0?'':file.lastIndexOf('/'));
+      const json=compiler.parseConfigFileTextToJson(configPath,text);
+      if(json.error){warnings.push(`${file}: ${compiler.flattenDiagnosticMessageText(json.error.messageText,' ')}`);cache.set(file,undefined);return undefined;}
+      const config=json.config??{},directory=file.slice(0,file.lastIndexOf('/')<0?'':file.lastIndexOf('/'));
       const extended=Array.isArray(config.extends)?config.extends:[config.extends];
       for(const value of extended)if(typeof value==='string'&&!value.startsWith('.')&&!value.startsWith('/'))warnings.push(`${file}: package-based tsconfig extension "${value}" is not fetched in browser analysis.`);
       const parsed=compiler.parseJsonConfigFileContent(config,{...host,readDirectory:()=>[]},absolute(root,directory),undefined,configPath);
@@ -389,7 +391,7 @@ export async function analyzePublicRepository(input,{compiler,includeTests=false
   const sourceCount=entries.filter(entry=>eligibleSource(entry.path,includeTests)).length;
   if(!sourceCount)throw new Error('No TypeScript source files were found. Use the local CLI for JavaScript repositories.');
   onProgress?.({stage:'sources',message:`Reading ${sourceCount.toLocaleString()} TypeScript files from the pinned commit…`});
-  const {files,excluded}=await loadFiles(treeData.tree,repository,commit,{fetchImpl,signal,onProgress:progress=>onProgress?.({stage:'sources',...progress}),includeTests});
+  const {files,excluded}=await loadFiles(treeData.tree,repository,commit,{compiler,fetchImpl,signal,onProgress:progress=>onProgress?.({stage:'sources',...progress}),includeTests});
   if(sourceFiles(files).filter(file=>includeTests||!testPattern.test(file)).length===0)throw new Error('No readable TypeScript source files fit the 1 MB per-file browser limit. Use the local CLI for larger repositories.');
   const atlas=analyzeRepositoryFiles({files,owner:repository.owner,repo:repository.repo,commit,compiler,includeTests});
   atlas.warnings.unshift('Browser mode analyzes public TypeScript files on this device. Repository tsconfig inheritance is resolved from files in the repository; external package-based configs are not fetched.');
@@ -441,7 +443,7 @@ export async function analyzeLocalRepositoryFiles(fileList,{compiler,includeTest
   while(pending.length){
     if(signal?.aborted)throw signal.reason??new DOMException('Aborted','AbortError');
     const configPath=pending.shift();if(visited.has(configPath))continue;visited.add(configPath);
-    for(const target of extendedConfigPaths(configPath,files.get(configPath),available)){
+    for(const target of extendedConfigPaths(compiler,configPath,files.get(configPath),available)){
       if(files.has(target))continue;
       if(visited.size>=300)throw new Error('This folder has too many inherited TypeScript configuration files for browser analysis.');
       const entry=availableEntries.find(item=>item.path===target);if(!entry)continue;
