@@ -1,5 +1,15 @@
 # Changelog
 
+## [2.34.0] - 2026-09-28
+
+### Improved
+
+- Make the README's animated Hono demo open the exact import it shows, with the source inspector already on line 3.
+
+### Quality
+
+- Verify the commit-pinned direct route in the live browser map before linking it from the README.
+
 ## [2.33.0] - 2026-09-28
 
 ### Improved
